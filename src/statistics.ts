@@ -30,6 +30,11 @@ const getAnimeStats = async (
   const data =
     animeList || ((await readJsonFile(FILE_PATHS.cleanedData)) as AnimeItem[]);
 
+  const percentiles: { [key: string]: Percentiles } = {};
+  Object.entries(PERCENTILE_FIELDS).forEach(([key, field]) => {
+    percentiles[key] = getPercentiles(data, field as AnimeField);
+  });
+
   return {
     totalAnime: data.length,
     scoreDistribution: getDistribution(
@@ -47,13 +52,7 @@ const getAnimeStats = async (
       [...DISTRIBUTION_RANGES.favorites],
       AnimeField.Favorites
     ),
-    percentiles: Object.entries(PERCENTILE_FIELDS).reduce(
-      (acc: { [key: string]: Percentiles }, [key, field]) => {
-        acc[key] = getPercentiles(data, field);
-        return acc;
-      },
-      {}
-    ),
+    percentiles,
     genreCounts: getFieldCounts(data, AnimeField.Genres),
     themeCounts: getFieldCounts(data, AnimeField.Themes),
     demographicCounts: getFieldCounts(data, AnimeField.Demographics),

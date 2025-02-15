@@ -1,169 +1,145 @@
-import { AnimeField } from "../config";
+import { readJsonFile } from "./file";
+import { FILE_PATHS, AnimeField } from "../config";
 import { AnimeItem } from "../types/anime";
-import { Distribution, FieldCount, Percentiles } from "../types/statistics";
+import { AnimeStats, Distribution, FieldCount, YearDistribution, TypeDistribution, GenreCombination, Percentiles } from "../types/statistics";
 
-const getFieldValue = (anime: AnimeItem, field: AnimeField): unknown => {
+type NumericValue = number | undefined;
+type MapValue = { [key: string]: number } | undefined;
+
+const getNumericValue = (item: AnimeItem, field: AnimeField): NumericValue => {
   switch (field) {
-    case AnimeField.MalId:
-      return anime.mal_id;
-    case AnimeField.Url:
-      return anime.url;
-    case AnimeField.Title:
-      return anime.title;
-    case AnimeField.TitleEnglish:
-      return anime.title_english;
-    case AnimeField.Type:
-      return anime.type;
-    case AnimeField.Episodes:
-      return anime.episodes;
-    case AnimeField.Aired:
-      return anime.aired;
-    case AnimeField.Score:
-      return anime.score;
-    case AnimeField.ScoredBy:
-      return anime.scored_by;
-    case AnimeField.Rank:
-      return anime.rank;
-    case AnimeField.Popularity:
-      return anime.popularity;
-    case AnimeField.Members:
-      return anime.members;
-    case AnimeField.Favorites:
-      return anime.favorites;
-    case AnimeField.Synopsis:
-      return anime.synopsis;
-    case AnimeField.Year:
-      return anime.year;
-    case AnimeField.Season:
-      return anime.season;
-    case AnimeField.Genres:
-      return anime.genres;
-    case AnimeField.Themes:
-      return anime.themes;
-    case AnimeField.Demographics:
-      return anime.demographics;
-    default:
-      return undefined;
+    case AnimeField.Score: return item.score;
+    case AnimeField.ScoredBy: return item.scored_by;
+    case AnimeField.Rank: return item.rank;
+    case AnimeField.Popularity: return item.popularity;
+    case AnimeField.Members: return item.members;
+    case AnimeField.Favorites: return item.favorites;
+    case AnimeField.Year: return item.year;
+    case AnimeField.Episodes: return item.episodes;
+    default: return undefined;
   }
 };
 
-export const getDistribution = (
-  data: AnimeItem[],
-  ranges: number[],
-  field: AnimeField
-): Distribution[] => {
-  const distribution: Distribution[] = ranges.map((range) => ({
-    range,
-    count: 0,
-  }));
-  
-  data.forEach((item) => {
-    const value = getFieldValue(item, field);
-    if (typeof value === 'number') {
-      const rangeIndex = ranges.findIndex(
-        (range, index) =>
-          value >= range && (index === ranges.length - 1 || value < ranges[index + 1])
-      );
-      if (rangeIndex !== -1) {
-        distribution[rangeIndex].count++;
-      }
+const getMapValue = (item: AnimeItem, field: AnimeField): MapValue => {
+  switch (field) {
+    case AnimeField.Genres: return item.genres;
+    case AnimeField.Themes: return item.themes;
+    case AnimeField.Demographics: return item.demographics;
+    default: return undefined;
+  }
+};
+
+export const getDistribution = (data: AnimeItem[], ranges: number[], field: AnimeField): Distribution[] => {
+  const distribution = ranges.map(range => ({ range, count: 0 }));
+  data.forEach(item => {
+    const value = getNumericValue(item, field);
+    if (value !== undefined) {
+      const idx = ranges.findIndex((r, i) => value >= r && (i === ranges.length - 1 || value < ranges[i + 1]));
+      if (idx !== -1) distribution[idx].count++;
     }
   });
-  
   return distribution;
 };
 
 export const getFieldCounts = (data: AnimeItem[], field: AnimeField): FieldCount[] => {
-  return Object.entries(
-    data.reduce((acc: { [key: string]: number }, item) => {
-      const value = getFieldValue(item, field);
-      if (typeof value === 'object' && value !== null) {
-        Object.keys(value).forEach((key) => {
-          acc[key] = (acc[key] || 0) + 1;
-        });
-      }
-      return acc;
-    }, {})
-  )
-    .sort((a, b) => b[1] - a[1])
+  const counts: { [key: string]: number } = {};
+  data.forEach(item => {
+    const value = getMapValue(item, field);
+    if (value) Object.keys(value).forEach(key => counts[key] = (counts[key] || 0) + 1);
+  });
+  return Object.entries(counts)
+    .sort(([,a], [,b]) => b - a)
     .map(([name, count]) => ({ name, count }));
 };
 
 export const getPercentiles = (data: AnimeItem[], field: AnimeField): Percentiles => {
-  const validValues = data
-    .map((item) => getFieldValue(item, field))
-    .filter((value): value is number => 
-      typeof value === 'number' && !isNaN(value)
-    )
+  const values = data
+    .map(item => getNumericValue(item, field))
+    .filter((n): n is number => n !== undefined)
     .sort((a, b) => b - a);
 
-  const total = validValues.length;
-  if (total === 0) {
+  if (!values.length) {
     return {
       p999: 0,
       p99: 0,
       p95: 0,
       p90: 0,
       median: 0,
-      mean: 0,
+      mean: 0
     };
   }
 
   return {
-    p999: validValues[Math.floor(total * 0.001)] || 0,
-    p99: validValues[Math.floor(total * 0.01)] || 0,
-    p95: validValues[Math.floor(total * 0.05)] || 0,
-    p90: validValues[Math.floor(total * 0.1)] || 0,
-    median: validValues[Math.floor(total * 0.5)] || 0,
-    mean: validValues.reduce((sum, val) => sum + val, 0) / total,
+    p999: values[Math.floor(values.length * 0.001)] || 0,
+    p99: values[Math.floor(values.length * 0.01)] || 0,
+    p95: values[Math.floor(values.length * 0.05)] || 0,
+    p90: values[Math.floor(values.length * 0.1)] || 0,
+    median: values[Math.floor(values.length * 0.5)] || 0,
+    mean: values.reduce((a, b) => a + b, 0) / values.length
   };
 };
 
-export const getGenreCombinations = (data: AnimeItem[], limit: number = 20) => {
-  return Object.entries(
-    data.reduce((acc: { [key: string]: number }, item) => {
-      const genres = getFieldValue(item, AnimeField.Genres) as { [key: string]: number } | undefined;
-      if (typeof genres === 'object' && genres !== null) {
-        const genreNames = Object.keys(genres).sort();
-        if (genreNames.length >= 2) {
-          for (let i = 0; i < genreNames.length - 1; i++) {
-            for (let j = i + 1; j < genreNames.length; j++) {
-              const pair = `${genreNames[i]} + ${genreNames[j]}`;
-              acc[pair] = (acc[pair] || 0) + 1;
-            }
-          }
+export const getYearDistribution = (data: AnimeItem[]): YearDistribution[] => {
+  const counts: { [key: number]: number } = {};
+  data.forEach(item => {
+    if (item.year) counts[item.year] = (counts[item.year] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort((a, b) => Number(a[0]) - Number(b[0]))
+    .map(([year, count]) => ({ year: Number(year), count }));
+};
+
+export const getTypeDistribution = (data: AnimeItem[]): TypeDistribution[] => {
+  const counts: { [key: string]: number } = {};
+  data.forEach(item => {
+    if (item.type) counts[item.type] = (counts[item.type] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .map(([type, count]) => ({ type, count }));
+};
+
+export const getGenreCombinations = (data: AnimeItem[], limit: number = 20): GenreCombination[] => {
+  const counts: { [key: string]: number } = {};
+  data.forEach(item => {
+    const genres = item.genres;
+    if (genres) {
+      const genreNames = Object.keys(genres).sort();
+      for (let i = 0; i < genreNames.length - 1; i++) {
+        for (let j = i + 1; j < genreNames.length; j++) {
+          const pair = `${genreNames[i]} + ${genreNames[j]}`;
+          counts[pair] = (counts[pair] || 0) + 1;
         }
       }
-      return acc;
-    }, {})
-  )
-    .sort((a, b) => b[1] - a[1])
+    }
+  });
+  return Object.entries(counts)
+    .sort(([,a], [,b]) => b - a)
     .slice(0, limit)
     .map(([pair, count]) => ({ pair, count }));
 };
 
-export const getTypeDistribution = (data: AnimeItem[]) => {
-  return Object.entries(
-    data.reduce((acc: { [key: string]: number }, item) => {
-      const type = getFieldValue(item, AnimeField.Type);
-      if (typeof type === 'string') {
-        acc[type] = (acc[type] || 0) + 1;
-      }
-      return acc;
-    }, {})
-  ).map(([type, count]) => ({ type, count }));
-};
+export const getAnimeStats = async (animeList: AnimeItem[] | null = null): Promise<AnimeStats> => {
+  const data = animeList || await readJsonFile<AnimeItem[]>(FILE_PATHS.cleanedData);
+  if (!data) throw new Error('No data found');
 
-export const getYearDistribution = (data: AnimeItem[]) => {
-  return Object.entries(
-    data.reduce((acc: { [key: string]: number }, item) => {
-      const year = getFieldValue(item, AnimeField.Year);
-      if (typeof year === 'number') {
-        acc[year.toString()] = (acc[year.toString()] || 0) + 1;
-      }
-      return acc;
-    }, {})
-  )
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([year, count]) => ({ year: parseInt(year), count }));
+  const numericFields = [AnimeField.Score, AnimeField.Members, AnimeField.Favorites];
+  const percentiles: { [key: string]: Percentiles } = {};
+
+  numericFields.forEach(field => {
+    percentiles[field] = getPercentiles(data, field);
+  });
+
+  return {
+    totalAnime: data.length,
+    scoreDistribution: getDistribution(data, [0, 2, 4, 6, 8, 10], AnimeField.Score),
+    membersDistribution: getDistribution(data, [0, 1000, 10000, 50000, 100000, 500000], AnimeField.Members),
+    favoritesDistribution: getDistribution(data, [0, 100, 1000, 5000, 10000, 50000], AnimeField.Favorites),
+    percentiles,
+    genreCounts: getFieldCounts(data, AnimeField.Genres),
+    themeCounts: getFieldCounts(data, AnimeField.Themes),
+    demographicCounts: getFieldCounts(data, AnimeField.Demographics),
+    yearDistribution: getYearDistribution(data),
+    typeDistribution: getTypeDistribution(data),
+    popularGenreCombinations: getGenreCombinations(data)
+  };
 };
