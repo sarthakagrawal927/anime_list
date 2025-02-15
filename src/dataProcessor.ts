@@ -1,135 +1,194 @@
-import { readJsonFile, writeJsonFile, FILTER_ACTIONS } from './utils';
-import { 
-    ANIME_FIELDS, 
-    GENRE_FIELDS, 
-    FILE_PATHS,
-    SUCCESS_MESSAGES,
-    ERROR_MESSAGES,
-    AnimeField
-} from './config';
+import { readJsonFile, writeJsonFile } from './utils/file';
+import { FILE_PATHS, AnimeField, FilterAction } from './config';
+import { AnimeItem, Filter, isNumericField, isArrayField, isStringField } from './types/anime';
 
-export interface AnimeItem {
-    [key: string]: any;
-    genres?: { [key: string]: number };
-    themes?: { [key: string]: number };
-    demographics?: { [key: string]: number };
+interface RawAnimeData {
+  data: {
+    mal_id: number;
+    url: string;
+    title: string;
+    title_english?: string;
     type?: string;
+    episodes?: number;
+    aired?: string;
+    score?: number;
+    scored_by?: number;
+    rank?: number;
+    popularity?: number;
+    members?: number;
+    favorites?: number;
+    synopsis?: string;
     year?: number;
+    season?: string;
+    genres?: { name: string }[];
+    themes?: { name: string }[];
+    demographics?: { name: string }[];
+  }[];
 }
 
-interface GenreEntry {
-    name: string;
-    [key: string]: any;
-}
+const transformRawAnime = (rawAnime: RawAnimeData['data'][0]): AnimeItem => {
+  const transformArrayToMap = (arr?: { name: string }[]): { [key: string]: number } | undefined => {
+    if (!arr) return undefined;
+    return arr.reduce((acc, { name }) => ({ ...acc, [name]: 1 }), {});
+  };
 
-export interface Filter {
-    field: string;
-    value: string | number | string[];
-    action: string;
-}
-
-interface GenreMap {
-    [key: string]: number;
-}
-
-const processGenres = (item: AnimeItem): AnimeItem => {
-    GENRE_FIELDS.forEach((field: AnimeField) => {
-        if (item[field]) {
-            item[field] = (item[field] as GenreEntry[]).map(entry => entry.name).reduce((acc: GenreMap, curr: string) => {
-                acc[curr] = 1;
-                return acc;
-            }, {});
-        }
-    });
-    return item;
+  return {
+    mal_id: rawAnime.mal_id,
+    url: rawAnime.url,
+    title: rawAnime.title,
+    title_english: rawAnime.title_english,
+    type: rawAnime.type,
+    episodes: rawAnime.episodes,
+    aired: rawAnime.aired,
+    score: rawAnime.score,
+    scored_by: rawAnime.scored_by,
+    rank: rawAnime.rank,
+    popularity: rawAnime.popularity,
+    members: rawAnime.members,
+    favorites: rawAnime.favorites,
+    synopsis: rawAnime.synopsis,
+    year: rawAnime.year,
+    season: rawAnime.season,
+    genres: transformArrayToMap(rawAnime.genres),
+    themes: transformArrayToMap(rawAnime.themes),
+    demographics: transformArrayToMap(rawAnime.demographics),
+  };
 };
 
-const cleanAnimeData = (animeData: AnimeItem | AnimeItem[]): AnimeItem | AnimeItem[] => {
-    if (Array.isArray(animeData)) {
-        return animeData.map(anime => {
-            const cleanedAnime: AnimeItem = {};
-            Object.values(ANIME_FIELDS).forEach(field => {
-                if (anime[field] !== undefined) {
-                    cleanedAnime[field] = anime[field];
-                }
-            });
-            return processGenres(cleanedAnime);
-        });
-    } else {
-        const cleanedAnime: AnimeItem = {};
-        Object.values(ANIME_FIELDS).forEach(field => {
-            if (animeData[field] !== undefined) {
-                cleanedAnime[field] = animeData[field];
-            }
-        });
-        return processGenres(cleanedAnime);
-    }
+const cleanAnimeData = (rawData: RawAnimeData): AnimeItem[] => {
+  return rawData.data
+    .map(transformRawAnime)
+    .filter(anime => 
+      anime.score !== undefined && 
+      anime.scored_by !== undefined && 
+      anime.members !== undefined
+    );
 };
 
-const cleanExistingJsonFile = async (): Promise<void> => {
-    try {
-        console.log(`Reading ${FILE_PATHS.rawData}...`);
-        const animeData = await readJsonFile(FILE_PATHS.rawData);
+export const cleanExistingJsonFile = async (): Promise<void> => {
+  try {
+    console.log(`Reading ${FILE_PATHS.rawData}...`);
+    const rawData = await readJsonFile(FILE_PATHS.rawData) as RawAnimeData;
+    console.log('Cleaning data...');
+    const cleanedData = cleanAnimeData(rawData);
+    console.log(`Writing cleaned data to ${FILE_PATHS.cleanedData}...`);
+    await writeJsonFile(FILE_PATHS.cleanedData, cleanedData);
+    console.log(`Cleaning completed. Saved to ${FILE_PATHS.cleanedData}`);
 
-        console.log('Cleaning data...');
-        const cleanedData = cleanAnimeData(animeData) as AnimeItem[];
-
-        console.log(`Writing cleaned data to ${FILE_PATHS.cleanedData}...`);
-        await writeJsonFile(FILE_PATHS.cleanedData, cleanedData);
-        console.log(`${SUCCESS_MESSAGES.cleaningCompleted} Saved to ${FILE_PATHS.cleanedData}`);
-
-        // Log statistics
-        console.log('\nStatistics:');
-        console.log(`Total entries: ${cleanedData.length}`);
-        const totalSize = Buffer.byteLength(JSON.stringify(cleanedData));
-        console.log(`File size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-    } catch (error) {
-        console.error('Error during cleaning:', error);
-    }
+    // Log statistics
+    console.log('\nStatistics:');
+    console.log(`Total entries: ${cleanedData.length}`);
+    const totalSize = Buffer.byteLength(JSON.stringify(cleanedData));
+    console.log(`File size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+  } catch (error) {
+    console.error('Error during cleaning:', error);
+  }
 };
 
-const filterAnimeList = async (filterList: Filter[], animeData: AnimeItem[] | null = null): Promise<AnimeItem[]> => {
-    const data = animeData || await readJsonFile(FILE_PATHS.cleanedData) as AnimeItem[];
+const getFieldValue = (anime: AnimeItem, field: AnimeField): unknown => {
+  switch (field) {
+    case AnimeField.MalId:
+      return anime.mal_id;
+    case AnimeField.Url:
+      return anime.url;
+    case AnimeField.Title:
+      return anime.title;
+    case AnimeField.TitleEnglish:
+      return anime.title_english;
+    case AnimeField.Type:
+      return anime.type;
+    case AnimeField.Episodes:
+      return anime.episodes;
+    case AnimeField.Aired:
+      return anime.aired;
+    case AnimeField.Score:
+      return anime.score;
+    case AnimeField.ScoredBy:
+      return anime.scored_by;
+    case AnimeField.Rank:
+      return anime.rank;
+    case AnimeField.Popularity:
+      return anime.popularity;
+    case AnimeField.Members:
+      return anime.members;
+    case AnimeField.Favorites:
+      return anime.favorites;
+    case AnimeField.Synopsis:
+      return anime.synopsis;
+    case AnimeField.Year:
+      return anime.year;
+    case AnimeField.Season:
+      return anime.season;
+    case AnimeField.Genres:
+      return anime.genres;
+    case AnimeField.Themes:
+      return anime.themes;
+    case AnimeField.Demographics:
+      return anime.demographics;
+    default:
+      return undefined;
+  }
+};
+
+export const filterAnimeList = async (filters: Filter[]): Promise<AnimeItem[]> => {
+  try {
+    const data = await readJsonFile(FILE_PATHS.cleanedData) as AnimeItem[];
     if (!data) {
-        throw new Error(ERROR_MESSAGES.noDataFound);
+      throw new Error('No data found');
     }
     
-    return data.map(item => {
-        for (const filter of filterList) {
-            const itemValue = item[filter.field];
-            switch (filter.action) {
-                case FILTER_ACTIONS.GREATER_THAN:
-                    if (itemValue <= filter.value) return false;
-                    break;
-                case FILTER_ACTIONS.GREATER_THAN_OR_EQUALS:
-                    if (itemValue < filter.value) return false;
-                    break;
-                case FILTER_ACTIONS.LESS_THAN:
-                    if (itemValue >= filter.value) return false;
-                    break;
-                case FILTER_ACTIONS.LESS_THAN_OR_EQUALS:
-                    if (itemValue > filter.value) return false;
-                    break;
-                case FILTER_ACTIONS.EQUALS:
-                    if (itemValue !== filter.value) return false;
-                    break;
-                case FILTER_ACTIONS.INCLUDES_ALL:
-                    if (!Array.isArray(filter.value) || !filter.value.every(value => Object.keys(itemValue || {}).includes(value))) return false;
-                    break;
-                case FILTER_ACTIONS.INCLUDES_ANY:
-                    if (!Array.isArray(filter.value) || !filter.value.some(value => Object.keys(itemValue || {}).includes(value))) return false;
-                    break;
-                case FILTER_ACTIONS.EXCLUDES:
-                    if (typeof filter.value === 'string' && Object.keys(itemValue || {}).includes(filter.value)) return false;
-                    break;
-            }
+    return data.filter(anime => 
+      filters.every(filter => {
+        const value = getFieldValue(anime, filter.field);
+        
+        if (value === undefined) {
+          return false;
         }
-        return item;
-    }).filter(Boolean) as AnimeItem[];
-};
 
-export {
-    cleanAnimeData,
-    cleanExistingJsonFile,
-    filterAnimeList
+        if (isNumericField(filter.field)) {
+          const numValue = value as number;
+          const numFilterValue = filter.value as number;
+          
+          switch (filter.action) {
+            case FilterAction.Equals:
+              return numValue === numFilterValue;
+            case FilterAction.GreaterThan:
+              return numValue > numFilterValue;
+            case FilterAction.GreaterThanOrEquals:
+              return numValue >= numFilterValue;
+            case FilterAction.LessThan:
+              return numValue < numFilterValue;
+            case FilterAction.LessThanOrEquals:
+              return numValue <= numFilterValue;
+            default:
+              return false;
+          }
+        }
+
+        if (isArrayField(filter.field)) {
+          const mapValue = value as { [key: string]: number };
+          
+          switch (filter.action) {
+            case FilterAction.IncludesAll:
+              return (filter.value as string[]).every(v => v in mapValue);
+            case FilterAction.IncludesAny:
+              return (filter.value as string[]).some(v => v in mapValue);
+            case FilterAction.Excludes:
+              return !(filter.value as string in mapValue);
+            default:
+              return false;
+          }
+        }
+
+        if (isStringField(filter.field)) {
+          return filter.action === FilterAction.Equals && value === filter.value;
+        }
+
+        return false;
+      })
+    );
+  } catch (error) {
+    console.error('Error during filtering:', error);
+    throw error;
+  }
 };
