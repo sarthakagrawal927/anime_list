@@ -1,4 +1,37 @@
-const API_CONFIG = {
+export enum AnimeField {
+  MalId = "mal_id",
+  Url = "url",
+  Title = "title",
+  TitleEnglish = "title_english",
+  Type = "type",
+  Episodes = "episodes",
+  Aired = "aired",
+  Score = "score",
+  ScoredBy = "scored_by",
+  Rank = "rank",
+  Popularity = "popularity",
+  Members = "members",
+  Favorites = "favorites",
+  Year = "year",
+  Season = "season",
+  Synopsis = "synopsis",
+  Genres = "genres",
+  Themes = "themes",
+  Demographics = "demographics"
+}
+
+export enum FilterAction {
+  Equals = "EQUALS",
+  GreaterThan = "GREATER_THAN",
+  GreaterThanOrEquals = "GREATER_THAN_OR_EQUALS",
+  LessThan = "LESS_THAN",
+  LessThanOrEquals = "LESS_THAN_OR_EQUALS",
+  IncludesAll = "INCLUDES_ALL",
+  IncludesAny = "INCLUDES_ANY",
+  Excludes = "EXCLUDES"
+}
+
+export const API_CONFIG = {
     baseUrl: 'https://api.jikan.moe/v4',
     endpoints: {
         topAnime: '/top/anime',
@@ -6,43 +39,21 @@ const API_CONFIG = {
     },
     rateLimit: 1000,
     totalPages: 700
-};
+} as const;
 
-const FILE_PATHS = {
+export const FILE_PATHS = {
     rawData: 'anime_data.json',
     partialData: 'partial_anime_data.json',
     cleanedData: 'cleaned_anime_data.json'
-};
+} as const;
 
-const ANIME_FIELDS = {
-    id: 'mal_id',
-    url: 'url',
-    title: 'title',
-    titleEnglish: 'title_english',
-    type: 'type',
-    episodes: 'episodes',
-    aired: 'aired',
-    score: 'score',
-    scoredBy: 'scored_by',
-    rank: 'rank',
-    popularity: 'popularity',
-    members: 'members',
-    favorites: 'favorites',
-    year: 'year',
-    season: 'season',
-    synopsis: 'synopsis',
-    genres: 'genres',
-    themes: 'themes',
-    demographics: 'demographics'
-};
+export const GENRE_FIELDS = [
+    AnimeField.Genres,
+    AnimeField.Themes,
+    AnimeField.Demographics
+] as const;
 
-const GENRE_FIELDS = [
-    ANIME_FIELDS.genres,
-    ANIME_FIELDS.themes,
-    ANIME_FIELDS.demographics
-];
-
-const SERVER_CONFIG = {
+export const SERVER_CONFIG = {
     port: 3000,
     routes: {
         base: '/api',
@@ -51,9 +62,9 @@ const SERVER_CONFIG = {
         fetch: '/fetch',
         filters: '/filters'
     }
-};
+} as const;
 
-const ERROR_MESSAGES = {
+export const ERROR_MESSAGES = {
     fetchFailed: 'Failed to fetch anime stats',
     filterFailed: 'Failed to apply filters and get stats',
     invalidFilters: 'Filters must be an array',
@@ -61,15 +72,15 @@ const ERROR_MESSAGES = {
     fetchError: 'Error in fetch process',
     filterError: 'Error in filter process',
     noDataFound: 'No anime data found. Please run the fetch process first.'
-};
+} as const;
 
-const SUCCESS_MESSAGES = {
+export const SUCCESS_MESSAGES = {
     fetchStarted: 'Fetch process started',
     fetchCompleted: 'Completed! Data saved',
     cleaningCompleted: 'Data cleaning completed!'
-};
+} as const;
 
-const LOG_MESSAGES = {
+export const LOG_MESSAGES = {
     serverStart: 'Anime stats server running at http://localhost:',
     availableEndpoints: 'Available endpoints:',
     endpoints: {
@@ -78,31 +89,22 @@ const LOG_MESSAGES = {
         fetch: '- POST /api/fetch         - Fetch new anime data',
         filters: '- GET  /api/filters       - Get available filter options'
     }
-};
+} as const;
 
-const DISTRIBUTION_RANGES = {
+export const DISTRIBUTION_RANGES = {
     score: [4, 5, 6, 7, 8, 9],
     members: [100, 1000, 10000, 100000, 1000000],
     favorites: [0, 1, 10, 100, 1000, 10000, 100000]
-};
+} as const;
 
-const PERCENTILE_FIELDS = {
-    score: ANIME_FIELDS.score,
-    members: ANIME_FIELDS.members,
-    favorites: ANIME_FIELDS.favorites,
-    rank: ANIME_FIELDS.rank,
-    popularity: ANIME_FIELDS.popularity
-};
+export const PERCENTILE_FIELDS = {
+    score: AnimeField.Score,
+    members: AnimeField.Members,
+    favorites: AnimeField.Favorites,
+    rank: AnimeField.Rank,
+    popularity: AnimeField.Popularity
+} as const;
 
-module.exports = {
-    API_CONFIG,
-    FILE_PATHS,
-    ANIME_FIELDS,
-    GENRE_FIELDS,
-    SERVER_CONFIG,
-    ERROR_MESSAGES,
-    SUCCESS_MESSAGES,
-    LOG_MESSAGES,
-    DISTRIBUTION_RANGES,
-    PERCENTILE_FIELDS
-};
+// Export types
+export type AnimeFieldType = typeof AnimeField;
+export type GenreField = typeof GENRE_FIELDS[number];

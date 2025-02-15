@@ -1,8 +1,8 @@
-const fs = require('fs').promises;
+import { promises as fs } from 'fs';
 
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+export const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-const readJsonFile = async (filename) => {
+export const readJsonFile = async (filename: string): Promise<any | null> => {
     try {
         const data = await fs.readFile(filename, 'utf8');
         return JSON.parse(data);
@@ -12,7 +12,7 @@ const readJsonFile = async (filename) => {
     }
 };
 
-const writeJsonFile = async (filename, data) => {
+export const writeJsonFile = async (filename: string, data: any): Promise<boolean> => {
     try {
         await fs.writeFile(filename, JSON.stringify(data, null, 2));
         return true;
@@ -22,7 +22,7 @@ const writeJsonFile = async (filename, data) => {
     }
 };
 
-const FILTER_ACTIONS = {
+export const FILTER_ACTIONS = {
     GREATER_THAN: 'GREATER_THAN',
     GREATER_THAN_OR_EQUALS: 'GREATER_THAN_OR_EQUALS',
     LESS_THAN: 'LESS_THAN',
@@ -31,11 +31,6 @@ const FILTER_ACTIONS = {
     INCLUDES_ALL: 'INCLUDES_ALL',
     INCLUDES_ANY: 'INCLUDES_ANY',
     EXCLUDES: 'EXCLUDES'
-};
+} as const;
 
-module.exports = {
-    delay,
-    readJsonFile,
-    writeJsonFile,
-    FILTER_ACTIONS
-};
+export type FilterAction = typeof FILTER_ACTIONS[keyof typeof FILTER_ACTIONS];
