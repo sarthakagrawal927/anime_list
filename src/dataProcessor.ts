@@ -277,7 +277,7 @@ export const storeUserWatchedDataInFile = async () => {
 };
 
 export async function addAnimeToWatched(
-  mal_id: string,
+  mal_ids: string[],
   status: WatchStatus
 ): Promise<void> {
   const watchedListPath = FILE_PATHS.userWatchList;
@@ -293,13 +293,15 @@ export async function addAnimeToWatched(
     }
 
     const { user, anime } = fileData;
-    if (anime[mal_id]) {
-      anime[mal_id].my_status = status;
-    } else {
-      anime[mal_id] = {
-        series_animedb_id: mal_id,
-        my_status: status,
-      } as UserAnimeListItem;
+    for (const mal_id of mal_ids) {
+      if (anime[mal_id]) {
+        anime[mal_id].my_status = status;
+      } else {
+        anime[mal_id] = {
+          series_animedb_id: mal_id,
+          my_status: status,
+        } as UserAnimeListItem;
+      }
     }
     await writeJsonFile(watchedListPath, { user, anime });
   } catch (error) {

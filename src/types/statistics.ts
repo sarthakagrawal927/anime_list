@@ -45,5 +45,5 @@ export interface AnimeStats {
   demographicCounts: FieldCount[];
   yearDistribution: YearDistribution[];
   typeDistribution: TypeDistribution[];
-  popularGenreCombinations: GenreCombination[];
+  // popularGenreCombinations: GenreCombination[];
 }

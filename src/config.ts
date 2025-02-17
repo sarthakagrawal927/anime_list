@@ -73,6 +73,7 @@ export enum WatchStatus {
   Dropped = "Dropped",
   OnHold = "On-Hold",
   PlanToWatch = "Plan to Watch",
+  Avoiding = "Avoiding",
 }
 
 export const ERROR_MESSAGES = {

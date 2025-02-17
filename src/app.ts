@@ -151,8 +151,8 @@ app.post(
         return;
       }
 
-      const { mal_id, status } = req.body;
-      await addAnimeToWatched(mal_id, status);
+      const { mal_ids, status } = req.body;
+      await addAnimeToWatched(mal_ids, status);
       res.json({ success: true, message: "Anime added to watched list" });
     } catch (error) {
       console.error("Error in add to watched endpoint:", error);

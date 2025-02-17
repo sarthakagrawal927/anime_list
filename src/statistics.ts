@@ -58,7 +58,7 @@ const getAnimeStats = async (
     demographicCounts: getFieldCounts(data, AnimeField.Demographics),
     yearDistribution: getYearDistribution(data),
     typeDistribution: getTypeDistribution(data),
-    popularGenreCombinations: getGenreCombinations(data),
+    // popularGenreCombinations: getGenreCombinations(data),
   };
 };
 

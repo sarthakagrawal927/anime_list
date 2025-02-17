@@ -2,7 +2,7 @@ import { ValidationResult } from "./animeFilters";
 import { WatchStatus } from "../config";
 
 export interface WatchedListPayload {
-  mal_id: string;
+  mal_ids: string;
   status: WatchStatus;
 }
 
@@ -16,19 +16,21 @@ export const validateWatchedListPayload = (
     };
   }
 
-  const { mal_id, status } = payload as WatchedListPayload;
+  const { mal_ids, status } = payload as WatchedListPayload;
 
-  if (!mal_id || typeof mal_id !== "string") {
+  if (!mal_ids || !Array.isArray(mal_ids)) {
     return {
       isValid: false,
-      error: "Invalid mal_id: expected a string",
+      error: "Invalid mal_ids: expected an array",
     };
   }
 
   if (!status || !Object.values(WatchStatus).includes(status)) {
     return {
       isValid: false,
-      error: `Invalid status: must be one of ${Object.values(WatchStatus).join(", ")}`,
+      error: `Invalid status: must be one of ${Object.values(WatchStatus).join(
+        ", "
+      )}`,
     };
   }
 
