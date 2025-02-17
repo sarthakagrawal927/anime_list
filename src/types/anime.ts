@@ -30,9 +30,10 @@ export interface Filter {
 
 export interface FilterRequestBody {
   filters: Filter[];
+  hideWatched: boolean;
 }
 
-export type NumericField = 
+export type NumericField =
   | AnimeField.Score
   | AnimeField.ScoredBy
   | AnimeField.Rank
@@ -42,12 +43,12 @@ export type NumericField =
   | AnimeField.Year
   | AnimeField.Episodes;
 
-export type ArrayField = 
+export type ArrayField =
   | AnimeField.Genres
   | AnimeField.Themes
   | AnimeField.Demographics;
 
-export type StringField = 
+export type StringField =
   | AnimeField.Type
   | AnimeField.Season
   | AnimeField.Title
@@ -96,8 +97,8 @@ export const ARRAY_ACTIONS = [
   FilterAction.Excludes,
 ] as const;
 
-export type ComparisonAction = typeof COMPARISON_ACTIONS[number];
-export type ArrayAction = typeof ARRAY_ACTIONS[number];
+export type ComparisonAction = (typeof COMPARISON_ACTIONS)[number];
+export type ArrayAction = (typeof ARRAY_ACTIONS)[number];
 
 // Type guard for checking if a field is numeric
 export const isNumericField = (field: AnimeField): field is NumericField => {

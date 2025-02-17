@@ -1,29 +1,38 @@
-import express, { Request, Response, NextFunction } from "express";
+import express, { NextFunction, Request, Response } from "express";
+import cors from "cors";
+import compression from "compression";
 import { fetchAllAnimePages } from "./api";
-import { cleanExistingJsonFile, filterAnimeList } from "./dataProcessor";
-import { getAnimeStats } from "./statistics";
 import {
-  SERVER_CONFIG,
-  ERROR_MESSAGES,
-  SUCCESS_MESSAGES,
-  LOG_MESSAGES,
   AnimeField,
+  ERROR_MESSAGES,
   FilterAction,
+  LOG_MESSAGES,
+  SERVER_CONFIG,
+  SUCCESS_MESSAGES,
 } from "./config";
 import {
-  Filter,
+  cleanExistingJsonFile,
+  filterAnimeList,
+  storeUserWatchedDataInFile,
+  addAnimeToWatched,
+} from "./dataProcessor";
+import { getAnimeStats } from "./statistics";
+import {
+  ARRAY_ACTIONS,
+  ARRAY_FIELDS,
+  COMPARISON_ACTIONS,
   FilterRequestBody,
   NUMERIC_FIELDS,
-  ARRAY_FIELDS,
   STRING_FIELDS,
-  COMPARISON_ACTIONS,
-  ARRAY_ACTIONS,
 } from "./types/anime";
 import { validateFilter } from "./validators/animeFilters";
+import { validateWatchedListPayload } from "./validators/watchedList";
 
 const app = express();
 const { port, routes } = SERVER_CONFIG;
 
+app.use(cors());
+app.use(compression());
 app.use(express.json());
 
 app.get(
@@ -66,11 +75,11 @@ app.post(
         return;
       }
 
-      const filteredList = await filterAnimeList(filters);
+      const filteredList = await filterAnimeList(filters, req.body.hideWatched);
       const stats = await getAnimeStats(filteredList);
       res.json({
         totalFiltered: filteredList.length,
-        filters,
+        filteredList,
         stats,
       });
     } catch (error) {
@@ -131,10 +140,45 @@ app.get(`${routes.base}${routes.filters}`, (_req: Request, res: Response) => {
   });
 });
 
+app.post(
+  `${routes.base}${routes.add_to_watched}`,
+  async (req: Request, res: Response) => {
+    try {
+      const validationResult = validateWatchedListPayload(req.body);
+
+      if (!validationResult.isValid) {
+        res.status(400).json({ error: validationResult.error });
+        return;
+      }
+
+      const { mal_id, status } = req.body;
+      await addAnimeToWatched(mal_id, status);
+      res.json({ success: true, message: "Anime added to watched list" });
+    } catch (error) {
+      console.error("Error in add to watched endpoint:", error);
+      res.status(500).json({ error: "Failed to add anime to watched list" });
+    }
+  }
+);
+
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: ERROR_MESSAGES.serverError });
 });
+
+app.post(
+  `${routes.base}${routes.init_user_anime_list}`,
+  // can add in future, which will make it better
+  async (_req: Request, res: Response) => {
+    try {
+      await storeUserWatchedDataInFile();
+      res.json({ message: "XML data received successfully" });
+    } catch (error) {
+      console.error("Error processing XML data:", error);
+      res.status(500).json({ error: ERROR_MESSAGES.serverError });
+    }
+  }
+);
 
 app.listen(port, () => {
   console.log(LOG_MESSAGES.serverStart + port);
