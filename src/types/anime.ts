@@ -39,11 +39,6 @@ export interface Filter {
   action: FilterAction;
 }
 
-export interface FilterRequestBody {
-  filters: Filter[];
-  hideWatched: boolean;
-}
-
 export type NumericField =
   | AnimeField.Score
   | AnimeField.ScoredBy

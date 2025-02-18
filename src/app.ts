@@ -82,7 +82,15 @@ app.post(
       return;
     }
 
-    const filteredList = await filterAnimeList(filters);
+    let filteredList = await filterAnimeList(filters);
+    if (req.body.hideWatched) {
+      const watchlist = await getWatchedAnimeList();
+      if (watchlist) {
+        filteredList = filteredList.filter(
+          (anime) => !watchlist.anime[anime.mal_id.toString()]
+        );
+      }
+    }
     const stats = await getAnimeStats(filteredList);
     res.json({
       totalFiltered: filteredList.length,
