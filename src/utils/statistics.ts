@@ -11,10 +11,10 @@ import {
   Percentiles,
 } from "../types/statistics";
 
-type NumericValue = number | undefined;
-type MapValue = { [key: string]: number } | undefined;
-
-const getNumericValue = (item: AnimeItem, field: AnimeField): NumericValue => {
+const getNumericValue = (
+  item: AnimeItem,
+  field: AnimeField
+): number | undefined => {
   switch (field) {
     case AnimeField.Score:
       return item.score;
@@ -37,53 +37,78 @@ const getNumericValue = (item: AnimeItem, field: AnimeField): NumericValue => {
   }
 };
 
-const getMapValue = (item: AnimeItem, field: AnimeField): MapValue => {
+const getMapValue = (item: AnimeItem, field: AnimeField): { [key: string]: number } => {
   switch (field) {
     case AnimeField.Genres:
-      return item.genres;
+      return item.genres || {};
     case AnimeField.Themes:
-      return item.themes;
+      return item.themes || {};
     case AnimeField.Demographics:
-      return item.demographics;
+      return item.demographics || {};
     default:
-      return undefined;
+      return {};
+  }
+};
+
+const getFieldValue = (
+  item: AnimeItem,
+  field: AnimeField
+): number | { [key: string]: number } | undefined => {
+  if (
+    field === AnimeField.Score ||
+    field === AnimeField.ScoredBy ||
+    field === AnimeField.Rank ||
+    field === AnimeField.Popularity ||
+    field === AnimeField.Members ||
+    field === AnimeField.Favorites ||
+    field === AnimeField.Year ||
+    field === AnimeField.Episodes
+  ) {
+    return getNumericValue(item, field);
+  } else {
+    return getMapValue(item, field);
   }
 };
 
 export const getDistribution = (
   data: AnimeItem[],
-  ranges: number[],
+  ranges: readonly number[],
   field: AnimeField
 ): Distribution[] => {
-  const distribution = ranges.map((range) => ({ range, count: 0 }));
-  data.forEach((item) => {
-    const value = getNumericValue(item, field);
-    if (value !== undefined) {
-      const idx = ranges.findIndex(
-        (r, i) =>
-          value >= r && (i === ranges.length - 1 || value < ranges[i + 1])
-      );
-      if (idx !== -1) distribution[idx].count++;
-    }
-  });
+  const distribution: Distribution[] = [];
+  const values = data
+    .map((item) => getFieldValue(item, field))
+    .filter((value): value is number => value !== undefined);
+
+  for (let i = 0; i < ranges.length - 1; i++) {
+    const count = values.filter(
+      (value) => value >= ranges[i] && value < ranges[i + 1]
+    ).length;
+    distribution.push({ range: ranges[i], count });
+  }
+
   return distribution;
 };
 
 export const getFieldCounts = (
-  data: AnimeItem[],
+  animeList: AnimeItem[],
   field: AnimeField
 ): FieldCount[] => {
   const counts: { [key: string]: number } = {};
-  data.forEach((item) => {
-    const value = getMapValue(item, field);
-    if (value)
-      Object.keys(value).forEach(
-        (key) => (counts[key] = (counts[key] || 0) + 1)
-      );
+
+  animeList.forEach((anime) => {
+    const value = getFieldValue(anime, field);
+    if (typeof value === 'object' && value !== null) {
+      Object.keys(value).forEach((key) => {
+        counts[key] = (counts[key] || 0) + 1;
+      });
+    }
   });
-  return Object.entries(counts)
-    .sort(([, a], [, b]) => b - a)
-    .map(([name, count]) => ({ name, count }));
+
+  return Object.entries(counts).map(([field, count]) => ({
+    field,
+    count,
+  }));
 };
 
 export const getPercentiles = (
@@ -92,46 +117,52 @@ export const getPercentiles = (
 ): Percentiles => {
   const values = data
     .map((item) => getNumericValue(item, field))
-    .filter((n): n is number => n !== undefined)
-    .sort((a, b) => b - a);
+    .filter((value): value is number => value !== undefined)
+    .sort((a, b) => a - b);
 
-  if (!values.length) {
-    return {
-      p999: 0,
-      p99: 0,
-      p95: 0,
-      p90: 0,
-      median: 0,
-      mean: 0,
-    };
-  }
+  const getPercentile = (p: number) => {
+    const index = Math.floor((p / 100) * values.length);
+    return values[index] || 0;
+  };
 
   return {
-    p999: values[Math.floor(values.length * 0.001)] || 0,
-    p99: values[Math.floor(values.length * 0.01)] || 0,
-    p95: values[Math.floor(values.length * 0.05)] || 0,
-    p90: values[Math.floor(values.length * 0.1)] || 0,
-    median: values[Math.floor(values.length * 0.5)] || 0,
-    mean: values.reduce((a, b) => a + b, 0) / values.length,
+    p999: getPercentile(99.9),
+    p99: getPercentile(99),
+    p95: getPercentile(95),
+    p90: getPercentile(90),
+    median: getPercentile(50),
+    mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0,
   };
 };
 
 export const getYearDistribution = (data: AnimeItem[]): YearDistribution[] => {
-  const counts: { [key: number]: number } = {};
+  const counts: Record<number, number> = {};
   data.forEach((item) => {
-    if (item.year) counts[item.year] = (counts[item.year] || 0) + 1;
+    if (item.year) {
+      counts[item.year] = (counts[item.year] || 0) + 1;
+    }
   });
+
   return Object.entries(counts)
-    .sort((a, b) => Number(a[0]) - Number(b[0]))
-    .map(([year, count]) => ({ year: Number(year), count }));
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([year, count]) => ({
+      year: Number(year),
+      count,
+    }));
 };
 
 export const getTypeDistribution = (data: AnimeItem[]): TypeDistribution[] => {
   const counts: { [key: string]: number } = {};
   data.forEach((item) => {
-    if (item.type) counts[item.type] = (counts[item.type] || 0) + 1;
+    if (item.type) {
+      counts[item.type] = (counts[item.type] || 0) + 1;
+    }
   });
-  return Object.entries(counts).map(([type, count]) => ({ type, count }));
+
+  return Object.entries(counts).map(([type, count]) => ({
+    type,
+    count,
+  }));
 };
 
 export const getGenreCombinations = (

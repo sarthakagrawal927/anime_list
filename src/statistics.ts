@@ -1,9 +1,8 @@
-import { readJsonFile } from "./utils/file";
 import {
-  FILE_PATHS,
-  DISTRIBUTION_RANGES,
-  PERCENTILE_FIELDS,
   AnimeField,
+  DISTRIBUTION_RANGES,
+  FILE_PATHS,
+  PERCENTILE_FIELDS,
 } from "./config";
 import { AnimeItem } from "./types/anime";
 import {
@@ -11,64 +10,63 @@ import {
   Distribution,
   FieldCount,
   Percentiles,
-  YearDistribution,
   TypeDistribution,
-  GenreCombination,
+  YearDistribution,
 } from "./types/statistics";
+import { readJsonFile } from "./utils/file";
 import {
   getDistribution,
   getFieldCounts,
   getPercentiles,
-  getGenreCombinations,
   getTypeDistribution,
   getYearDistribution,
 } from "./utils/statistics";
 
-const getAnimeStats = async (
+export const getAnimeStats = async (
   animeList: AnimeItem[] | null = null
 ): Promise<AnimeStats> => {
   const data =
-    animeList || ((await readJsonFile(FILE_PATHS.cleanedData)) as AnimeItem[]);
+    animeList ||
+    ((await readJsonFile(FILE_PATHS.cleanAnimeData)) as AnimeItem[]);
 
-  const percentiles: { [key: string]: Percentiles } = {};
+  const percentiles: Record<string, Percentiles> = {};
   Object.entries(PERCENTILE_FIELDS).forEach(([key, field]) => {
-    percentiles[key] = getPercentiles(data, field as AnimeField);
+    percentiles[key] = getPercentiles(data, field);
   });
+
+  const distributions = {
+    score: getDistribution(data, DISTRIBUTION_RANGES.score, AnimeField.Score),
+    members: getDistribution(
+      data,
+      DISTRIBUTION_RANGES.members,
+      AnimeField.Members
+    ),
+    favorites: getDistribution(
+      data,
+      DISTRIBUTION_RANGES.favorites,
+      AnimeField.Favorites
+    ),
+  };
 
   return {
     totalAnime: data.length,
-    scoreDistribution: getDistribution(
-      data,
-      [...DISTRIBUTION_RANGES.score],
-      AnimeField.Score
-    ),
-    membersDistribution: getDistribution(
-      data,
-      [...DISTRIBUTION_RANGES.members],
-      AnimeField.Members
-    ),
-    favoritesDistribution: getDistribution(
-      data,
-      [...DISTRIBUTION_RANGES.favorites],
-      AnimeField.Favorites
-    ),
+    scoreDistribution: distributions.score,
+    membersDistribution: distributions.members,
+    favoritesDistribution: distributions.favorites,
     percentiles,
     genreCounts: getFieldCounts(data, AnimeField.Genres),
     themeCounts: getFieldCounts(data, AnimeField.Themes),
     demographicCounts: getFieldCounts(data, AnimeField.Demographics),
     yearDistribution: getYearDistribution(data),
     typeDistribution: getTypeDistribution(data),
-    // popularGenreCombinations: getGenreCombinations(data),
   };
 };
 
-export {
-  getAnimeStats,
+export type {
   AnimeStats,
   Distribution,
   FieldCount,
   Percentiles,
-  YearDistribution,
   TypeDistribution,
-  GenreCombination,
+  YearDistribution,
 };

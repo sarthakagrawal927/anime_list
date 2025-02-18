@@ -4,7 +4,7 @@ export interface Distribution {
 }
 
 export interface FieldCount {
-  name: string;
+  field: string;
   count: number;
 }
 

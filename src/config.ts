@@ -42,9 +42,8 @@ export const API_CONFIG = {
 } as const;
 
 export const FILE_PATHS = {
-  rawData: "anime_data.json",
-  partialData: "partial_anime_data.json",
-  cleanedData: "cleaned_anime_data.json",
+  animeData: "anime_data.json",
+  cleanAnimeData: "cleaned_anime_data.json",
   userWatchList: "user_watchedlist_data.json",
 } as const;
 
@@ -59,9 +58,11 @@ export const SERVER_CONFIG = {
   routes: {
     base: "/api",
     stats: "/stats",
-    filter: "/stats/filter",
     fetch: "/fetch",
     filters: "/filters",
+    fields: "/fields",
+    search: "/search",
+    watchlist: "/watchlist",
     init_user_anime_list: "/init_user_anime_list",
     add_to_watched: "/watched/add",
   },

@@ -1,6 +1,6 @@
 import { AnimeField, FilterAction } from "../config";
 
-export interface AnimeItem {
+export interface BaseAnimeItem {
   mal_id: number;
   url?: string;
   title: string;
@@ -17,9 +17,20 @@ export interface AnimeItem {
   synopsis?: string;
   year?: number;
   season?: string;
-  genres?: { [key: string]: number };
-  themes?: { [key: string]: number };
-  demographics?: { [key: string]: number };
+}
+
+export interface AnimeItem extends BaseAnimeItem {
+  genres: { [key: string]: number };
+  themes: { [key: string]: number };
+  demographics: { [key: string]: number };
+}
+
+export interface RawAnimeData {
+  data: ({
+    genres?: Array<{ name: string }>;
+    themes?: Array<{ name: string }>;
+    demographics?: Array<{ name: string }>;
+  } & BaseAnimeItem)[];
 }
 
 export interface Filter {
@@ -49,13 +60,11 @@ export type ArrayField =
   | AnimeField.Demographics;
 
 export type StringField =
-  | AnimeField.Type
-  | AnimeField.Season
   | AnimeField.Title
   | AnimeField.TitleEnglish
-  | AnimeField.Synopsis
-  | AnimeField.Url
-  | AnimeField.Aired;
+  | AnimeField.Type
+  | AnimeField.Season
+  | AnimeField.Synopsis;
 
 export const NUMERIC_FIELDS: NumericField[] = [
   AnimeField.Score,
@@ -75,13 +84,11 @@ export const ARRAY_FIELDS: ArrayField[] = [
 ];
 
 export const STRING_FIELDS: StringField[] = [
-  AnimeField.Type,
-  AnimeField.Season,
   AnimeField.Title,
   AnimeField.TitleEnglish,
+  AnimeField.Type,
+  AnimeField.Season,
   AnimeField.Synopsis,
-  AnimeField.Url,
-  AnimeField.Aired,
 ];
 
 export const COMPARISON_ACTIONS = [
@@ -100,17 +107,15 @@ export const ARRAY_ACTIONS = [
 export type ComparisonAction = (typeof COMPARISON_ACTIONS)[number];
 export type ArrayAction = (typeof ARRAY_ACTIONS)[number];
 
-// Type guard for checking if a field is numeric
+// Type guards
 export const isNumericField = (field: AnimeField): field is NumericField => {
   return NUMERIC_FIELDS.includes(field as NumericField);
 };
 
-// Type guard for checking if a field is an array
 export const isArrayField = (field: AnimeField): field is ArrayField => {
   return ARRAY_FIELDS.includes(field as ArrayField);
 };
 
-// Type guard for checking if a field is a string
 export const isStringField = (field: AnimeField): field is StringField => {
   return STRING_FIELDS.includes(field as StringField);
 };

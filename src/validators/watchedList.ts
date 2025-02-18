@@ -12,7 +12,7 @@ export const validateWatchedListPayload = (
   if (!payload || typeof payload !== "object") {
     return {
       isValid: false,
-      error: "Invalid payload: expected an object",
+      errors: ["Invalid payload: expected an object"],
     };
   }
 
@@ -21,16 +21,18 @@ export const validateWatchedListPayload = (
   if (!mal_ids || !Array.isArray(mal_ids)) {
     return {
       isValid: false,
-      error: "Invalid mal_ids: expected an array",
+      errors: ["Invalid mal_ids: expected an array"],
     };
   }
 
   if (!status || !Object.values(WatchStatus).includes(status)) {
     return {
       isValid: false,
-      error: `Invalid status: must be one of ${Object.values(WatchStatus).join(
-        ", "
-      )}`,
+      errors: [
+        `Invalid status: must be one of ${Object.values(WatchStatus).join(
+          ", "
+        )}`,
+      ],
     };
   }
 

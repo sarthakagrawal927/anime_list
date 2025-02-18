@@ -1,7 +1,7 @@
 import axios from "axios";
 import { delay, writeJsonFile } from "./utils/file";
 import { API_CONFIG, FILE_PATHS } from "./config";
-import { AnimeItem } from "./types/anime";
+import { RawAnimeData } from "./types/anime";
 
 interface ApiResponse<T> {
   data: T;
@@ -23,13 +23,13 @@ const fetchFromApi = async <T>(url: string): Promise<T | null> => {
   }
 };
 
-export const fetchAllAnimePages = async (): Promise<AnimeItem[]> => {
-  const allAnime: AnimeItem[] = [];
+export const fetchAllAnimePages = async (): Promise<void> => {
+  const allAnime: RawAnimeData[] = [];
   let page = 1;
 
   while (page <= API_CONFIG.totalPages) {
     const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.topAnime}?page=${page}`;
-    const data = await fetchFromApi<ApiResponse<AnimeItem[]>>(url);
+    const data = await fetchFromApi<ApiResponse<RawAnimeData[]>>(url);
 
     if (!data?.data || !Array.isArray(data.data)) {
       console.error(`Invalid data format on page ${page}`);
@@ -43,6 +43,5 @@ export const fetchAllAnimePages = async (): Promise<AnimeItem[]> => {
     page++;
   }
 
-  await writeJsonFile(FILE_PATHS.rawData, allAnime);
-  return allAnime;
+  await writeJsonFile(FILE_PATHS.animeData, allAnime);
 };
