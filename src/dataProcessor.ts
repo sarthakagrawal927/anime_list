@@ -26,11 +26,6 @@ interface MyAnimeListUserInfo {
   user_total_plantowatch: string;
 }
 
-interface MyAnimeListData {
-  myinfo: MyAnimeListUserInfo;
-  anime: WatchlistUserAnimeItem[];
-}
-
 const transformRawAnime = (rawAnime: RawAnimeData["data"][0]): AnimeItem => {
   const arrayToMap = (
     arr?: Array<{ name: string }>
@@ -43,22 +38,7 @@ const transformRawAnime = (rawAnime: RawAnimeData["data"][0]): AnimeItem => {
   };
 
   return {
-    mal_id: rawAnime.mal_id,
-    url: rawAnime.url,
-    title: rawAnime.title,
-    title_english: rawAnime.title_english,
-    type: rawAnime.type,
-    episodes: rawAnime.episodes,
-    aired: rawAnime.aired,
-    score: rawAnime.score,
-    scored_by: rawAnime.scored_by,
-    rank: rawAnime.rank,
-    popularity: rawAnime.popularity,
-    members: rawAnime.members,
-    favorites: rawAnime.favorites,
-    synopsis: rawAnime.synopsis,
-    year: rawAnime.year,
-    season: rawAnime.season,
+    ...rawAnime,
     genres: arrayToMap(rawAnime.genres),
     themes: arrayToMap(rawAnime.themes),
     demographics: arrayToMap(rawAnime.demographics),
@@ -241,15 +221,6 @@ export const storeUserWatchedDataInFile = async (): Promise<void> => {
     user: {
       id: myanimelist.myinfo.user_id,
       name: myanimelist.myinfo.user_name,
-      stats: {
-        total: myanimelist.myinfo.user_total_anime,
-        watching: myanimelist.myinfo.user_total_watching,
-        completed: myanimelist.myinfo.user_total_completed,
-        onHold: myanimelist.myinfo.user_total_onhold,
-        dropped: myanimelist.myinfo.user_total_dropped,
-        planToWatch: myanimelist.myinfo.user_total_plantowatch,
-        avoiding: myanimelist.myinfo.user_total_avoiding || 0,
-      },
     },
     anime: myanimelist.anime.reduce(
       (acc: Record<string, WatchedAnime>, anime: WatchlistUserAnimeItem) => {

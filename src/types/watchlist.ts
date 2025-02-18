@@ -3,15 +3,6 @@ import { WatchStatus } from "../config";
 export interface UserInfo {
   id: string;
   name: string;
-  stats: {
-    total: string;
-    watching: string;
-    completed: string;
-    onHold: string;
-    dropped: string;
-    planToWatch: string;
-    avoiding: string;
-  };
 }
 
 export interface WatchedAnime {

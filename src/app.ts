@@ -2,20 +2,20 @@ import compression from "compression";
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import {
-  AnimeField,
   ERROR_MESSAGES,
-  FilterAction,
   LOG_MESSAGES,
   SERVER_CONFIG,
+  WatchStatus,
 } from "./config";
 import {
   addAnimeToWatched,
   filterAnimeList,
-  storeUserWatchedDataInFile,
   getWatchedAnimeList,
+  storeUserWatchedDataInFile,
 } from "./dataProcessor";
 import { loadAnimeData } from "./services/dataLoader";
 import { getAnimeStats } from "./statistics";
+import { animeStore } from "./store/animeStore";
 import {
   ARRAY_ACTIONS,
   ARRAY_FIELDS,
@@ -102,13 +102,51 @@ app.get(
 
 app.get(
   `${routes.base}${routes.watchlist}`,
-  catcher(async (_req: Request, res: Response) => {
+  catcher(async (req: Request, res: Response) => {
+    const status = req.query.status as WatchStatus | undefined;
     const watchlist = await getWatchedAnimeList();
+
     if (!watchlist) {
       res.status(404).json({ error: "Watchlist not found" });
       return;
     }
-    res.json(watchlist);
+
+    let filteredAnime = watchlist.anime;
+    if (status) {
+      filteredAnime = Object.fromEntries(
+        Object.entries(watchlist.anime).filter(
+          ([_, anime]) => anime.status.toLowerCase() === status.toLowerCase()
+        )
+      );
+    }
+
+    const animeList = Object.values(filteredAnime);
+
+    const stats = animeList.reduce((acc, anime) => {
+      acc[anime.status] = (acc[anime.status] || 0) + 1;
+      acc["Total"] = (acc["Total"] || 0) + 1;
+      return acc;
+    }, {} as Record<WatchStatus | string, number>);
+
+    const completeAnimeList = animeList
+      .map((anime) => {
+        const fullAnime = animeStore
+          .getAnimeList()
+          .find((a) => a.mal_id.toString() === anime.id);
+        if (!fullAnime) return null;
+        return {
+          ...fullAnime,
+          status: anime.status,
+          id: anime.id,
+        };
+      })
+      .filter((anime) => anime !== null);
+
+    res.json({
+      stats: status ? undefined : stats,
+      animeStats: await getAnimeStats(completeAnimeList),
+      anime: animeList,
+    });
   })
 );
 

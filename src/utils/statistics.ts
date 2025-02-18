@@ -37,7 +37,10 @@ const getNumericValue = (
   }
 };
 
-const getMapValue = (item: AnimeItem, field: AnimeField): { [key: string]: number } => {
+const getMapValue = (
+  item: AnimeItem,
+  field: AnimeField
+): { [key: string]: number } => {
   switch (field) {
     case AnimeField.Genres:
       return item.genres || {};
@@ -98,17 +101,19 @@ export const getFieldCounts = (
 
   animeList.forEach((anime) => {
     const value = getFieldValue(anime, field);
-    if (typeof value === 'object' && value !== null) {
+    if (typeof value === "object" && value !== null) {
       Object.keys(value).forEach((key) => {
         counts[key] = (counts[key] || 0) + 1;
       });
     }
   });
 
-  return Object.entries(counts).map(([field, count]) => ({
-    field,
-    count,
-  }));
+  return Object.entries(counts)
+    .map(([field, count]) => ({
+      field,
+      count,
+    }))
+    .sort((a, b) => b.count - a.count);
 };
 
 export const getPercentiles = (
