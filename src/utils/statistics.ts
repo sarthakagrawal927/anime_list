@@ -1,14 +1,12 @@
-import { readJsonFile } from "./file";
-import { FILE_PATHS, AnimeField } from "../config";
-import { AnimeItem } from "../types/anime";
+import { AnimeField, AnimeFieldType } from "../config";
+import { AnimeItem, Filter, ScoreMultiplier } from "../types/anime";
 import {
-  AnimeStats,
   Distribution,
   FieldCount,
-  YearDistribution,
-  TypeDistribution,
   GenreCombination,
   Percentiles,
+  TypeDistribution,
+  YearDistribution,
 } from "../types/statistics";
 
 const getNumericValue = (
@@ -191,4 +189,94 @@ export const getGenreCombinations = (
     .sort(([, a], [, b]) => b - a)
     .slice(0, limit)
     .map(([pair, count]) => ({ pair, count }));
+};
+
+const BASE_WEIGHTS = {
+  [AnimeField.Score]: 1, // Already 1-10 scale
+  [AnimeField.Members]: 0.3, // Normalize large numbers
+  [AnimeField.Favorites]: 0.3, // Normalize large numbers
+  [AnimeField.Year]: 0.1, // Slight preference for newer anime
+} as const;
+
+// Normalization constants based on typical ranges
+const MEMBERS_MAX = 2_000_000; // 2M members as reference max
+const FAVORITES_MAX = 200_000; // 200K favorites as reference max
+const CURRENT_YEAR = new Date().getFullYear();
+const EARLIEST_YEAR = 1960;
+const YEAR_RANGE = CURRENT_YEAR - EARLIEST_YEAR;
+
+const normalizeValue = (field: AnimeField, value: number): number => {
+  switch (field) {
+    case AnimeField.Score:
+      return value; // Already 1-10
+    case AnimeField.Members:
+      return (value / MEMBERS_MAX) * 10; // Convert to 0-10 scale
+    case AnimeField.Favorites:
+      return (value / FAVORITES_MAX) * 10; // Convert to 0-10 scale
+    case AnimeField.Year:
+      return ((value - EARLIEST_YEAR) / YEAR_RANGE) * 10; // Convert to 0-10 scale
+    default:
+      return value;
+  }
+};
+
+export const getAnimeScore = (anime: AnimeItem, filters: Filter[]): number => {
+  const fieldWiseMultipliers: Map<
+    AnimeField,
+    ScoreMultiplier<number | string[]>
+  > = filters.reduce((curr, acc) => {
+    if (acc.score_multiplier) {
+      curr.set(acc.field, acc.score_multiplier);
+    }
+    return curr;
+  }, new Map());
+  const baseScore = Object.keys(anime).reduce(
+    (currScore: number, field: string) => {
+      const value = anime[field as keyof AnimeItem];
+      const animeField = field as AnimeField;
+
+      switch (animeField) {
+        case AnimeField.Score:
+        case AnimeField.Members:
+        case AnimeField.Favorites:
+        case AnimeField.Year: {
+          if (typeof value !== "number") return currScore;
+
+          const normalizedValue = normalizeValue(animeField, value);
+          const baseWeight = BASE_WEIGHTS[animeField] || 0;
+
+          return (
+            currScore +
+            (1 +
+              normalizedValue *
+                baseWeight *
+                ((fieldWiseMultipliers.get(animeField) as number) || 1))
+          );
+        }
+
+        case AnimeField.Genres:
+        case AnimeField.Themes: {
+          return currScore;
+        }
+
+        default:
+          return currScore;
+      }
+    },
+    1
+  );
+
+  return baseScore;
+};
+
+export const getScoreSortedList = (
+  animeList: AnimeItem[],
+  filters: Filter[]
+) => {
+  const animeWithScores = animeList.map((anime) => ({
+    ...anime,
+    score: getAnimeScore(anime, filters),
+  }));
+
+  return animeWithScores.sort((a, b) => b.score - a.score);
 };

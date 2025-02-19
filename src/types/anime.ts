@@ -33,10 +33,17 @@ export interface RawAnimeData {
   } & BaseAnimeItem)[];
 }
 
-export interface Filter {
+export type ScoreMultiplier<T> = T extends string[]
+  ? { [subCategory: string]: number }
+  : number;
+
+export interface Filter<
+  T extends string | number | string[] = string | number | string[]
+> {
   field: AnimeField;
-  value: string | number | string[];
+  value: T;
   action: FilterAction;
+  score_multiplier?: ScoreMultiplier<T>;
 }
 
 export type NumericField =
@@ -87,6 +94,7 @@ export const STRING_FIELDS: StringField[] = [
 ];
 
 export const COMPARISON_ACTIONS = [
+  FilterAction.Equals,
   FilterAction.GreaterThan,
   FilterAction.GreaterThanOrEquals,
   FilterAction.LessThan,

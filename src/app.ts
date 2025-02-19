@@ -25,6 +25,7 @@ import {
   STRING_FIELDS,
 } from "./types/anime";
 import { catcher } from "./utils/functional";
+import { getScoreSortedList } from "./utils/statistics";
 import { validateFilters } from "./validators/animeFilters";
 import { validateWatchedListPayload } from "./validators/watchedList";
 
@@ -91,10 +92,12 @@ app.post(
         );
       }
     }
+
+    const sortedList = getScoreSortedList(filteredList, filters);
     const stats = await getAnimeStats(filteredList);
     res.json({
       totalFiltered: filteredList.length,
-      filteredList,
+      filteredList: sortedList,
       stats,
     });
   })
