@@ -117,7 +117,7 @@ export const API_CONFIG = {
     userHistory: "/users",
   },
   rateLimit: 1000,
-  totalPages: 700,
+  totalPages: 400,
 } as const;
 
 export const FILE_PATHS = {

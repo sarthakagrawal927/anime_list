@@ -191,36 +191,60 @@ export const getGenreCombinations = (
     .map(([pair, count]) => ({ pair, count }));
 };
 
+// keeping it same, configuring it via clients for now
 const BASE_WEIGHTS = {
   [AnimeField.Score]: 1, // Already 1-10 scale
-  [AnimeField.Members]: 0.3, // Normalize large numbers
-  [AnimeField.Favorites]: 0.3, // Normalize large numbers
-  [AnimeField.Year]: 0.1, // Slight preference for newer anime
+  [AnimeField.Members]: 1, // Normalize large numbers
+  [AnimeField.Favorites]: 1, // Normalize large numbers
+  [AnimeField.Year]: 1, // Slight preference for newer anime
 } as const;
 
-// Normalization constants based on typical ranges
-const MEMBERS_MAX = 2_000_000; // 2M members as reference max
-const FAVORITES_MAX = 200_000; // 200K favorites as reference max
-const CURRENT_YEAR = new Date().getFullYear();
-const EARLIEST_YEAR = 1990;
-const YEAR_RANGE = CURRENT_YEAR - EARLIEST_YEAR;
+const normalizeValue = (
+  field: AnimeField,
+  value: number,
+  data: AnimeItem[]
+): number => {
+  if (value <= 0) return 0;
 
-const normalizeValue = (field: AnimeField, value: number): number => {
   switch (field) {
     case AnimeField.Score:
-      return value; // Already 1-10
+      return Math.max(0, Math.min(10, value)); // Already 1-10 scale
+
     case AnimeField.Members:
-      return (value / MEMBERS_MAX) * 10; // Convert to 0-10 scale
-    case AnimeField.Favorites:
-      return (value / FAVORITES_MAX) * 10; // Convert to 0-10 scale
-    case AnimeField.Year:
-      return ((value - EARLIEST_YEAR) / YEAR_RANGE) * 10; // Convert to 0-10 scale
+    case AnimeField.Favorites: {
+      // Get max value for the field from current data
+      const maxValue = Math.max(
+        ...data
+          .map((item) =>
+            field === AnimeField.Members ? item.members : item.favorites
+          )
+          .filter((v): v is number => v !== undefined && v > 0)
+      );
+      // Log transformation for better distribution
+      return (Math.log(value + 1) / Math.log(maxValue + 1)) * 10;
+    }
+
+    case AnimeField.Year: {
+      const currentYear = new Date().getFullYear();
+      const minYear = Math.min(
+        ...data
+          .map((item) => item.year)
+          .filter((v): v is number => v !== undefined && v > 0)
+      );
+      // Simple normalization with slight recency bias
+      return Math.pow((value - minYear) / (currentYear - minYear), 0.8) * 10;
+    }
+
     default:
       return value;
   }
 };
 
-export const getAnimeScore = (anime: AnimeItem, filters: Filter[]): number => {
+export const getAnimeScore = (
+  anime: AnimeItem,
+  filters: Filter[],
+  data: AnimeItem[]
+): number => {
   const fieldWiseMultipliers: Map<
     AnimeField,
     ScoreMultiplier<number | string | string[]>
@@ -242,7 +266,7 @@ export const getAnimeScore = (anime: AnimeItem, filters: Filter[]): number => {
         case AnimeField.Year: {
           if (typeof value !== "number") return currScore;
 
-          const normalizedValue = normalizeValue(animeField, value);
+          const normalizedValue = normalizeValue(animeField, value, data);
           const baseWeight = BASE_WEIGHTS[animeField] || 0;
 
           return (
@@ -287,7 +311,7 @@ export const getScoreSortedList = (
 ) => {
   const animeWithScores = animeList.map((anime) => ({
     ...anime,
-    points: getAnimeScore(anime, filters),
+    points: getAnimeScore(anime, filters, animeList),
   }));
 
   return animeWithScores.sort((a, b) => b.points - a.points);
