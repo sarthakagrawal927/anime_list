@@ -32,6 +32,7 @@ import { validateWatchedListPayload } from "./validators/watchedList";
 interface FilterRequestBody {
   filters: Filter[];
   hideWatched?: boolean;
+  pagesize: number;
 }
 
 const app = express();
@@ -97,7 +98,23 @@ app.post(
     const stats = await getAnimeStats(filteredList);
     res.json({
       totalFiltered: filteredList.length,
-      filteredList: sortedList,
+      filteredList: sortedList
+        .slice(0, req.body.pagesize || 20)
+        .map((anime) => {
+          return {
+            id: anime.mal_id,
+            score: anime.score,
+            points: anime.points,
+            name: anime.title,
+            link: anime.url,
+            synopsis: anime.synopsis,
+            members: anime.members,
+            favorites: anime.favorites,
+            startYear: anime.year,
+            genres: Object.keys(anime.genres),
+            themes: Object.keys(anime.themes),
+          };
+        }),
       stats,
     });
   })

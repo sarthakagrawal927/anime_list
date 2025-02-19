@@ -202,7 +202,7 @@ const BASE_WEIGHTS = {
 const MEMBERS_MAX = 2_000_000; // 2M members as reference max
 const FAVORITES_MAX = 200_000; // 200K favorites as reference max
 const CURRENT_YEAR = new Date().getFullYear();
-const EARLIEST_YEAR = 1960;
+const EARLIEST_YEAR = 1990;
 const YEAR_RANGE = CURRENT_YEAR - EARLIEST_YEAR;
 
 const normalizeValue = (field: AnimeField, value: number): number => {
@@ -223,7 +223,7 @@ const normalizeValue = (field: AnimeField, value: number): number => {
 export const getAnimeScore = (anime: AnimeItem, filters: Filter[]): number => {
   const fieldWiseMultipliers: Map<
     AnimeField,
-    ScoreMultiplier<number | string[]>
+    ScoreMultiplier<number | string | string[]>
   > = filters.reduce((curr, acc) => {
     if (acc.score_multiplier) {
       curr.set(acc.field, acc.score_multiplier);
@@ -256,6 +256,18 @@ export const getAnimeScore = (anime: AnimeItem, filters: Filter[]): number => {
 
         case AnimeField.Genres:
         case AnimeField.Themes: {
+          let multiplier = fieldWiseMultipliers.get(animeField);
+          let animeInfoForField = getMapValue(anime, animeField);
+          if (multiplier) {
+            Object.keys(animeInfoForField).forEach((fieldVal) => {
+              const multiplierValue = (multiplier as { [key: string]: number })[
+                fieldVal
+              ];
+              if (multiplierValue !== undefined) {
+                currScore *= multiplierValue;
+              }
+            });
+          }
           return currScore;
         }
 
@@ -275,8 +287,8 @@ export const getScoreSortedList = (
 ) => {
   const animeWithScores = animeList.map((anime) => ({
     ...anime,
-    score: getAnimeScore(anime, filters),
+    points: getAnimeScore(anime, filters),
   }));
 
-  return animeWithScores.sort((a, b) => b.score - a.score);
+  return animeWithScores.sort((a, b) => b.points - a.points);
 };

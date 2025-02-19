@@ -94,3 +94,13 @@ src/
 - Express.js
 - Node.js
 - MyAnimeList API
+
+
+## Future Improvements
+
+- While calculating score, also consider user's past watching history with given filters
+- Make a web version to better visualize the statistics
+- Improve formulae to allow representation of smaller anime
+- Filter/Sort based on user's list (including its status)
+- Optimise new fetch logic
+- Use an actual DB, once multi user support is added

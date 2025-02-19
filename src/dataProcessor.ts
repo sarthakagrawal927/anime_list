@@ -117,7 +117,7 @@ const evaluateArrayFilter = (
     case FilterAction.IncludesAll:
       return values.every((v) => mapValue[v]);
     case FilterAction.IncludesAny:
-      return values.some((v) => mapValue[v]);
+      return values.length === 0 || values.some((v) => mapValue[v]);
     default:
       return false;
   }
