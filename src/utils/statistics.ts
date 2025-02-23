@@ -3,10 +3,8 @@ import { AnimeItem, Filter, ScoreMultiplier } from "../types/anime";
 import {
   Distribution,
   FieldCount,
-  GenreCombination,
   Percentiles,
   TypeDistribution,
-  YearDistribution,
 } from "../types/statistics";
 
 const getNumericValue = (
@@ -77,17 +75,17 @@ export const getDistribution = (
   field: AnimeField
 ): Distribution[] => {
   const distribution: Distribution[] = [];
-  const values = data
+  let values = data
     .map((item) => getFieldValue(item, field))
-    .filter((value): value is number => value !== undefined);
+    .filter((value): value is number => value !== undefined && value !== null);
 
-  for (let i = 0; i < ranges.length - 1; i++) {
-    const count = values.filter(
-      (value) => value >= ranges[i] && value < ranges[i + 1]
-    ).length;
-    distribution.push({ range: ranges[i], count });
+  for (let i = ranges.length - 1; i >= 0; i--) {
+    const count = values.filter((value) => value >= ranges[i]).length;
+    values = values.filter((value) => value < ranges[i]);
+    distribution.push({ range: `${ranges[i]}+`, count });
   }
 
+  distribution.push({ range: `others`, count: values.length });
   return distribution;
 };
 
@@ -129,29 +127,12 @@ export const getPercentiles = (
   };
 
   return {
-    p999: getPercentile(99.9),
     p99: getPercentile(99),
     p95: getPercentile(95),
     p90: getPercentile(90),
     median: getPercentile(50),
     mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0,
   };
-};
-
-export const getYearDistribution = (data: AnimeItem[]): YearDistribution[] => {
-  const counts: Record<number, number> = {};
-  data.forEach((item) => {
-    if (item.year) {
-      counts[item.year] = (counts[item.year] || 0) + 1;
-    }
-  });
-
-  return Object.entries(counts)
-    .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([year, count]) => ({
-      year: Number(year),
-      count,
-    }));
 };
 
 export const getTypeDistribution = (data: AnimeItem[]): TypeDistribution[] => {
@@ -166,29 +147,6 @@ export const getTypeDistribution = (data: AnimeItem[]): TypeDistribution[] => {
     type,
     count,
   }));
-};
-
-export const getGenreCombinations = (
-  data: AnimeItem[],
-  limit: number = 20
-): GenreCombination[] => {
-  const counts: { [key: string]: number } = {};
-  data.forEach((item) => {
-    const genres = item.genres;
-    if (genres) {
-      const genreNames = Object.keys(genres).sort();
-      for (let i = 0; i < genreNames.length - 1; i++) {
-        for (let j = i + 1; j < genreNames.length; j++) {
-          const pair = `${genreNames[i]} + ${genreNames[j]}`;
-          counts[pair] = (counts[pair] || 0) + 1;
-        }
-      }
-    }
-  });
-  return Object.entries(counts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, limit)
-    .map(([pair, count]) => ({ pair, count }));
 };
 
 // keeping it same, configuring it via clients for now

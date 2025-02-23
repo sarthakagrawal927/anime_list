@@ -26,7 +26,7 @@ interface MyAnimeListUserInfo {
   user_total_plantowatch: string;
 }
 
-const transformRawAnime = (rawAnime: RawAnimeData["data"][0]): AnimeItem => {
+const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   const arrayToMap = (
     arr?: Array<{ name: string }>
   ): { [key: string]: number } => {
@@ -46,7 +46,7 @@ const transformRawAnime = (rawAnime: RawAnimeData["data"][0]): AnimeItem => {
 };
 
 const cleanAnimeData = (rawData: RawAnimeData): AnimeItem[] => {
-  return rawData.data
+  return rawData
     .map(transformRawAnime)
     .filter(
       (anime) =>
@@ -60,7 +60,7 @@ export const cleanExistingJsonFile = async (): Promise<void> => {
   try {
     console.log(`Reading ${FILE_PATHS.animeData}...`);
     const rawData = await readJsonFile<RawAnimeData>(FILE_PATHS.animeData);
-    if (!rawData || !rawData.data) {
+    if (!rawData) {
       throw new Error("No data found in anime data file");
     }
 

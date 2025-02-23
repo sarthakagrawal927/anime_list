@@ -143,7 +143,7 @@ app.get(
     if (status) {
       filteredAnime = Object.fromEntries(
         Object.entries(watchlist.anime).filter(
-          ([_, anime]) => anime.status.toLowerCase() === status.toLowerCase()
+          ([_, anime]) => anime.status?.toLowerCase() === status.toLowerCase()
         )
       );
     }

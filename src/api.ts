@@ -39,9 +39,10 @@ export const fetchAllAnimePages = async (): Promise<void> => {
     allAnime.push(...data.data);
 
     if (!data.pagination?.has_next_page) break;
+    console.log(`Fetched page ${page} of ${API_CONFIG.totalPages}`);
     await delay(API_CONFIG.rateLimit);
     page++;
   }
-
+  console.log(`Fetched ${allAnime.length} anime entries`);
   await writeJsonFile(FILE_PATHS.animeData, allAnime);
 };

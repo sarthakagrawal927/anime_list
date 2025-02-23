@@ -25,13 +25,11 @@ export interface AnimeItem extends BaseAnimeItem {
   demographics: { [key: string]: number };
 }
 
-export interface RawAnimeData {
-  data: ({
-    genres?: Array<{ name: string }>;
-    themes?: Array<{ name: string }>;
-    demographics?: Array<{ name: string }>;
-  } & BaseAnimeItem)[];
-}
+export type RawAnimeData = ({
+  genres?: Array<{ name: string }>;
+  themes?: Array<{ name: string }>;
+  demographics?: Array<{ name: string }>;
+} & BaseAnimeItem)[];
 
 export type ScoreMultiplier<T> = T extends string[]
   ? { [subCategory: string]: number }

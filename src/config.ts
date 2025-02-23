@@ -184,15 +184,17 @@ export const LOG_MESSAGES = {
 } as const;
 
 export const DISTRIBUTION_RANGES = {
-  score: [5, 6, 7, 8, 9],
-  members: [1000, 10000, 100000, 1000000],
-  favorites: [1, 10, 100, 1000, 10000, 100000],
+  score: [7, 8, 9],
+  members: [100000, 1000000],
+  favorites: [1000, 10000, 100000],
+  years: [2000, 2010, 2020],
 } as const;
 
 export const PERCENTILE_FIELDS = {
   score: AnimeField.Score,
   members: AnimeField.Members,
   favorites: AnimeField.Favorites,
+  years: AnimeField.Year,
 } as const;
 
 // Export types

@@ -11,7 +11,6 @@ import {
   FieldCount,
   Percentiles,
   TypeDistribution,
-  YearDistribution,
 } from "./types/statistics";
 import { readJsonFile } from "./utils/file";
 import {
@@ -19,7 +18,6 @@ import {
   getFieldCounts,
   getPercentiles,
   getTypeDistribution,
-  getYearDistribution,
 } from "./utils/statistics";
 
 export const getAnimeStats = async (
@@ -46,6 +44,11 @@ export const getAnimeStats = async (
       DISTRIBUTION_RANGES.favorites,
       AnimeField.Favorites
     ),
+    yearDistribution: getDistribution(
+      data,
+      DISTRIBUTION_RANGES.years,
+      AnimeField.Year
+    ),
   };
 
   return {
@@ -53,11 +56,11 @@ export const getAnimeStats = async (
     scoreDistribution: distributions.score,
     membersDistribution: distributions.members,
     favoritesDistribution: distributions.favorites,
+    yearDistribution: distributions.yearDistribution,
     percentiles,
     genreCounts: getFieldCounts(data, AnimeField.Genres),
     themeCounts: getFieldCounts(data, AnimeField.Themes),
     demographicCounts: getFieldCounts(data, AnimeField.Demographics),
-    yearDistribution: getYearDistribution(data),
     typeDistribution: getTypeDistribution(data),
   };
 };
@@ -68,5 +71,4 @@ export type {
   FieldCount,
   Percentiles,
   TypeDistribution,
-  YearDistribution,
 };
