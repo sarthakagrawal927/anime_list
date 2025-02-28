@@ -104,3 +104,18 @@ src/
 - Filter/Sort based on user's list (including its status)
 - Optimise new fetch logic
 - Use an actual DB, once multi user support is added
+
+## Some random Idea I had 3yrs back
+Algorithm that provides movies that are most similar to what you have inputted, considers genres and tags as shared my IMDb.
+We can make a extensive list of common tags for all movies then take an array of binary for tags. For example we decide to go with 50 tags , and movie A has only first 3 tags attached to it.
+Then string for it would be
+1110000......
+
+Similarly we can do it for genres (maybe instead of 1 we can keep it in order of dominance)
+I think this should let me implement a real fast algorithm for this app. XOR op.
+
+Keep all the titles in a sorted (simple string sort might do ? ) array, when fetching new titles add them according to thier rank. This will give the results blazingly fast.
+
+An app that takes movie name and gets its information and computes whether I should watch or not.
+
+Subpart: an app that shows shared films between 2 actors.
