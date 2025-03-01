@@ -104,6 +104,7 @@ src/
 - Filter/Sort based on user's list (including its status)
 - Optimise new fetch logic
 - Use an actual DB, once multi user support is added
+- Integrate with [web](https://lovable.dev/projects/5bb8d65f-b1ff-4281-900e-55330c69b13a)
 
 ## Some random Idea I had 3yrs back
 Algorithm that provides movies that are most similar to what you have inputted, considers genres and tags as shared my IMDb.
@@ -119,3 +120,4 @@ Keep all the titles in a sorted (simple string sort might do ? ) array, when fet
 An app that takes movie name and gets its information and computes whether I should watch or not.
 
 Subpart: an app that shows shared films between 2 actors.
+
