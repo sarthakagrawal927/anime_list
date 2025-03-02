@@ -1,5 +1,10 @@
 import { AnimeField, AnimeFieldType } from "../config";
-import { AnimeItem, Filter, ScoreMultiplier } from "../types/anime";
+import {
+  AnimeItem,
+  Filter,
+  NumericField,
+  ScoreMultiplier,
+} from "../types/anime";
 import {
   Distribution,
   FieldCount,
@@ -265,11 +270,15 @@ export const getAnimeScore = (
 
 export const getScoreSortedList = (
   animeList: AnimeItem[],
-  filters: Filter[]
+  filters: Filter[],
+  sortBy?: NumericField
 ) => {
   const animeWithScores = animeList.map((anime) => ({
     ...anime,
-    points: getAnimeScore(anime, filters, animeList),
+    points:
+      sortBy && typeof anime[sortBy] === "number"
+        ? anime[sortBy]
+        : getAnimeScore(anime, filters, animeList),
   }));
 
   return animeWithScores.sort((a, b) => b.points - a.points);

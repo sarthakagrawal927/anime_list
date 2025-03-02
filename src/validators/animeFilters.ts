@@ -166,7 +166,7 @@ const fieldValidators = {
   },
 };
 
-const validateField = (field: AnimeField): ValidationResult =>
+export const validateField = (field: AnimeField): ValidationResult =>
   Object.values(AnimeField).includes(field)
     ? success
     : error(
@@ -198,6 +198,9 @@ export const validateFilter = (filter: Filter): ValidationResult => {
 };
 
 export const validateFilters = (filters: Filter[]): ValidationResult => {
+  if (!Array.isArray(filters)) {
+    return { isValid: false, errors: ["Invalid filters: expected an array"] };
+  }
   const errors = filters
     .map(validateFilter)
     .filter((result): result is ValidationError => !result.isValid)

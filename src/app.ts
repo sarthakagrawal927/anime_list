@@ -22,17 +22,19 @@ import {
   COMPARISON_ACTIONS,
   Filter,
   NUMERIC_FIELDS,
+  NumericField,
   STRING_FIELDS,
 } from "./types/anime";
 import { catcher } from "./utils/functional";
 import { getScoreSortedList } from "./utils/statistics";
-import { validateFilters } from "./validators/animeFilters";
+import { validateField, validateFilters } from "./validators/animeFilters";
 import { validateWatchedListPayload } from "./validators/watchedList";
 
 interface FilterRequestBody {
   filters: Filter[];
   hideWatched?: boolean;
   pagesize: number;
+  sortBy?: NumericField;
 }
 
 const app = express();
@@ -69,10 +71,6 @@ app.post(
   `${routes.base}${routes.search}`,
   catcher(async (req: Request<{}, {}, FilterRequestBody>, res: Response) => {
     const filters = req.body.filters;
-    if (!Array.isArray(filters)) {
-      res.status(400).json({ error: ERROR_MESSAGES.invalidFilters });
-      return;
-    }
 
     // Validate filters
     const validation = validateFilters(filters);
@@ -82,6 +80,17 @@ app.post(
         details: validation.errors,
       });
       return;
+    }
+
+    if (req.body.sortBy) {
+      const validateSortBy = validateField(req.body.sortBy);
+      if (!validateSortBy.isValid) {
+        res.status(400).json({
+          error: "Invalid sortBy field",
+          details: validateSortBy.errors,
+        });
+        return;
+      }
     }
 
     let filteredList = await filterAnimeList(filters);
@@ -94,7 +103,11 @@ app.post(
       }
     }
 
-    const sortedList = getScoreSortedList(filteredList, filters);
+    const sortedList = getScoreSortedList(
+      filteredList,
+      filters,
+      req.body.sortBy
+    );
     const stats = await getAnimeStats(filteredList);
     res.json({
       totalFiltered: filteredList.length,
