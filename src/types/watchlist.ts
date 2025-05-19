@@ -6,11 +6,9 @@ export interface UserInfo {
 }
 
 export interface WatchedAnime {
-  title?: string;
-  type?: string;
-  episodes?: string;
   status: WatchStatus;
   id: string;
+  [key: string]: string | number;
 }
 
 export interface WatchlistData {

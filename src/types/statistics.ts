@@ -14,6 +14,10 @@ export interface Percentiles {
   p90: number;
   median: number;
   mean: number;
+  top100: number;
+  top200: number;
+  top500: number;
+  top1000: number;
 }
 
 export interface TypeDistribution {

@@ -146,11 +146,24 @@ app.get(
   catcher(async (req: Request, res: Response) => {
     const status = req.query.status as WatchStatus | undefined;
     const watchlist = await getWatchedAnimeList();
+    const fullAnime = animeStore.getAnimeList();
 
     if (!watchlist) {
       res.status(404).json({ error: "Watchlist not found" });
       return;
     }
+
+    Object.keys(watchlist.anime).map((mal_id) => {
+      const fullAnimeData = fullAnime.find(
+        (fullAnime) => fullAnime.mal_id.toString() === mal_id
+      );
+      if (!fullAnimeData) return;
+      watchlist.anime[mal_id] = {
+        title: fullAnimeData.title,
+        link: fullAnimeData.url,
+        ...watchlist.anime[mal_id],
+      };
+    });
 
     let filteredAnime = watchlist.anime;
     if (status) {

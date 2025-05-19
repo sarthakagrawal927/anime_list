@@ -2,7 +2,7 @@ import { AnimeField, FilterAction } from "../config";
 
 export interface BaseAnimeItem {
   mal_id: number;
-  url?: string;
+  url: string;
   title: string;
   title_english?: string;
   type?: string;

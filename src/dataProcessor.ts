@@ -227,7 +227,7 @@ export const storeUserWatchedDataInFile = async (): Promise<void> => {
         acc[anime.series_animedb_id] = {
           title: anime.series_title,
           type: anime.series_type,
-          episodes: anime.series_episodes,
+          episodes: Number(anime.series_episodes),
           status: anime.my_status as WatchStatus,
           id: anime.series_animedb_id,
         };
