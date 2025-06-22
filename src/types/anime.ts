@@ -105,8 +105,14 @@ export const ARRAY_ACTIONS = [
   FilterAction.Excludes,
 ] as const;
 
+export const TEXT_SEARCH_ACTIONS = [
+  FilterAction.Equals,
+  FilterAction.Contains,
+] as const;
+
 export type ComparisonAction = (typeof COMPARISON_ACTIONS)[number];
 export type ArrayAction = (typeof ARRAY_ACTIONS)[number];
+export type TextSearchAction = (typeof TEXT_SEARCH_ACTIONS)[number];
 
 // Type guards
 export const isNumericField = (field: AnimeField): field is NumericField => {

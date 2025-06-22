@@ -29,6 +29,7 @@ export enum FilterAction {
   IncludesAll = "INCLUDES_ALL",
   IncludesAny = "INCLUDES_ANY",
   Excludes = "EXCLUDES",
+  Contains = "CONTAINS",
 }
 
 export enum Genre {

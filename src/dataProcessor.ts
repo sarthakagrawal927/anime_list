@@ -192,9 +192,16 @@ export const filterAnimeList = async (
         }
 
         if (isStringField(filter.field)) {
-          return (
-            filter.action === FilterAction.Equals && value === filter.value
-          );
+          if (filter.action === FilterAction.Equals) {
+            return value === filter.value;
+          } else if (filter.action === FilterAction.Contains) {
+            return (
+              typeof value === "string" &&
+              typeof filter.value === "string" &&
+              value.toLowerCase().includes(filter.value.toLowerCase())
+            );
+          }
+          return false;
         }
 
         return false;

@@ -6,6 +6,7 @@ import {
   STRING_FIELDS,
   COMPARISON_ACTIONS,
   ARRAY_ACTIONS,
+  TEXT_SEARCH_ACTIONS,
   NumericField,
   ArrayField,
   StringField,
@@ -19,7 +20,7 @@ export type ValidationResult = ValidationSuccess | ValidationError;
 type FieldType = {
   numeric: { type: "numeric"; actions: typeof COMPARISON_ACTIONS };
   array: { type: "array"; actions: typeof ARRAY_ACTIONS };
-  string: { type: "string"; actions: [FilterAction.Equals] };
+  string: { type: "string"; actions: typeof TEXT_SEARCH_ACTIONS };
 };
 
 // Utilities
@@ -150,9 +151,13 @@ const fieldValidators = {
   },
   string: {
     action: (action: FilterAction): ValidationResult =>
-      action === FilterAction.Equals
+      TEXT_SEARCH_ACTIONS.includes(action as any)
         ? success
-        : error(`Invalid action: ${action}. Must be ${FilterAction.Equals}`),
+        : error(
+            `Invalid action: ${action}. Must be one of: ${TEXT_SEARCH_ACTIONS.join(
+              ", "
+            )}`
+          ),
     value: (value: unknown): ValidationResult =>
       typeof value === "string"
         ? success
