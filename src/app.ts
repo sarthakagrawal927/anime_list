@@ -32,7 +32,7 @@ import { validateWatchedListPayload } from "./validators/watchedList";
 
 interface FilterRequestBody {
   filters: Filter[];
-  hideWatched?: boolean;
+  hideWatched: WatchStatus[];
   pagesize: number;
   sortBy?: NumericField;
 }
@@ -94,11 +94,15 @@ app.post(
     }
 
     let filteredList = await filterAnimeList(filters);
-    if (req.body.hideWatched) {
+    if (req.body.hideWatched.length > 0) {
       const watchlist = await getWatchedAnimeList();
       if (watchlist) {
         filteredList = filteredList.filter(
-          (anime) => !watchlist.anime[anime.mal_id.toString()]
+          (anime) =>
+            !watchlist.anime[anime.mal_id.toString()] ||
+            !req.body.hideWatched.includes(
+              watchlist.anime[anime.mal_id.toString()].status
+            )
         );
       }
     }
@@ -123,7 +127,7 @@ app.post(
             synopsis: anime.synopsis,
             members: anime.members,
             favorites: anime.favorites,
-            startYear: anime.year,
+            year: anime.year,
             genres: Object.keys(anime.genres),
             themes: Object.keys(anime.themes),
           };

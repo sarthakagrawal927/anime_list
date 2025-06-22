@@ -27,6 +27,7 @@ export const fetchAllAnimePages = async (): Promise<void> => {
   const allAnime: RawAnimeData[] = [];
   let page = 1;
 
+  const p0 = performance.now();
   while (page <= API_CONFIG.totalPages) {
     const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.topAnime}?page=${page}`;
     const data = await fetchFromApi<ApiResponse<RawAnimeData[]>>(url);
@@ -39,10 +40,15 @@ export const fetchAllAnimePages = async (): Promise<void> => {
     allAnime.push(...data.data);
 
     if (!data.pagination?.has_next_page) break;
-    console.log(`Fetched page ${page} of ${API_CONFIG.totalPages}`);
+    if (page % 10 === 0)
+      console.log(`Fetched page ${page} of ${API_CONFIG.totalPages}`);
     await delay(API_CONFIG.rateLimit);
     page++;
   }
-  console.log(`Fetched ${allAnime.length} anime entries`);
+  console.log(
+    `Fetched ${allAnime.length} anime entries. Total time taken: ${
+      performance.now() - p0
+    } ms`
+  );
   await writeJsonFile(FILE_PATHS.animeData, allAnime);
 };

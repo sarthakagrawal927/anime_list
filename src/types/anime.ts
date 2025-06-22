@@ -7,7 +7,7 @@ export interface BaseAnimeItem {
   title_english?: string;
   type?: string;
   episodes?: number;
-  aired?: string;
+  aired?: { from: string; to: string };
   score?: number;
   scored_by?: number;
   rank?: number;

@@ -15,17 +15,6 @@ import {
 } from "./types/watchlist";
 import { animeStore } from "./store/animeStore";
 
-interface MyAnimeListUserInfo {
-  user_id: string;
-  user_name: string;
-  user_total_anime: string;
-  user_total_watching: string;
-  user_total_completed: string;
-  user_total_onhold: string;
-  user_total_dropped: string;
-  user_total_plantowatch: string;
-}
-
 const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   const arrayToMap = (
     arr?: Array<{ name: string }>
@@ -38,7 +27,21 @@ const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   };
 
   return {
-    ...rawAnime,
+    mal_id: rawAnime.mal_id,
+    url: rawAnime.url,
+    title: rawAnime.title,
+    title_english: rawAnime.title_english,
+    type: rawAnime.type,
+    episodes: rawAnime.episodes,
+    score: rawAnime.score,
+    scored_by: rawAnime.scored_by,
+    rank: rawAnime.rank,
+    popularity: rawAnime.popularity,
+    members: rawAnime.members,
+    favorites: rawAnime.favorites,
+    synopsis: rawAnime.synopsis,
+    year: rawAnime.year || Number(rawAnime.aired?.from.slice(0, 4)),
+    season: rawAnime.season,
     genres: arrayToMap(rawAnime.genres),
     themes: arrayToMap(rawAnime.themes),
     demographics: arrayToMap(rawAnime.demographics),
