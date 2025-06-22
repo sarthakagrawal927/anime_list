@@ -40,7 +40,7 @@ const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
     members: rawAnime.members,
     favorites: rawAnime.favorites,
     synopsis: rawAnime.synopsis,
-    year: rawAnime.year || Number(rawAnime.aired?.from.slice(0, 4)),
+    year: rawAnime.year || Number(rawAnime.aired?.from?.slice(0, 4)),
     season: rawAnime.season,
     genres: arrayToMap(rawAnime.genres),
     themes: arrayToMap(rawAnime.themes),
@@ -53,9 +53,11 @@ const cleanAnimeData = (rawData: RawAnimeData): AnimeItem[] => {
     .map(transformRawAnime)
     .filter(
       (anime) =>
-        anime.score !== undefined &&
-        anime.scored_by !== undefined &&
-        anime.members !== undefined
+        anime.score &&
+        anime.scored_by &&
+        anime.members &&
+        anime.favorites &&
+        anime.year
     );
 };
 
