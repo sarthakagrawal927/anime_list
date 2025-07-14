@@ -35,6 +35,7 @@ interface FilterRequestBody {
   hideWatched: WatchStatus[];
   pagesize: number;
   sortBy?: NumericField;
+  airing?: "yes" | "no" | "any";
 }
 
 const app = express();
@@ -94,6 +95,15 @@ app.post(
     }
 
     let filteredList = await filterAnimeList(filters);
+
+    // Filter by airing status if specified
+    if (req.body.airing && req.body.airing !== "any") {
+      filteredList = filteredList.filter((anime) => {
+        const isAiring = anime.status?.toLowerCase() === "currently airing";
+        return req.body.airing === "yes" ? isAiring : !isAiring;
+      });
+    }
+
     if (req.body.hideWatched.length > 0) {
       const watchlist = await getWatchedAnimeList();
       if (watchlist) {
@@ -128,6 +138,7 @@ app.post(
             members: anime.members,
             favorites: anime.favorites,
             year: anime.year,
+            status: anime.status,
             genres: Object.keys(anime.genres),
             themes: Object.keys(anime.themes),
           };

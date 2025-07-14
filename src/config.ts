@@ -155,6 +155,7 @@ export enum WatchStatus {
   OnHold = "On-Hold",
   PlanToWatch = "Plan to Watch",
   Avoiding = "Avoiding",
+  BadRatingRatio = "BRR",
 }
 
 export const ERROR_MESSAGES = {

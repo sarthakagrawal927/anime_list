@@ -11,6 +11,7 @@ export interface BaseAnimeItem {
   score?: number;
   scored_by?: number;
   rank?: number;
+  status?: string;
   popularity?: number;
   members?: number;
   favorites?: number;

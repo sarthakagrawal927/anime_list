@@ -42,6 +42,7 @@ const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
     synopsis: rawAnime.synopsis,
     year: rawAnime.year || Number(rawAnime.aired?.from?.slice(0, 4)),
     season: rawAnime.season,
+    status: rawAnime.status,
     genres: arrayToMap(rawAnime.genres),
     themes: arrayToMap(rawAnime.themes),
     demographics: arrayToMap(rawAnime.demographics),
