@@ -116,8 +116,11 @@ export const API_CONFIG = {
   endpoints: {
     topAnime: "/top/anime",
     userHistory: "/users",
+    seasons: "/seasons",
+    currentSeason: "/seasons/now",
+    seasonAnime: "/seasons",
   },
-  rateLimit: 1000,
+  rateLimit: 1000, // 1 call per second (safe within 3/sec, 60/min limits)
   totalPages: 10000,
 } as const;
 
@@ -125,6 +128,8 @@ export const FILE_PATHS = {
   animeData: "anime_data.json",
   cleanAnimeData: "cleaned_anime_data.json",
   userWatchList: "user_watchedlist_data.json",
+  seasonalData: "seasonal_anime_data.json",
+  fetchedSeasons: "fetched_seasons.json",
 } as const;
 
 export const GENRE_FIELDS = [
