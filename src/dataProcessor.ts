@@ -74,15 +74,13 @@ export const cleanExistingJsonFile = async (): Promise<void> => {
     const cleanedData = cleanAnimeData(rawData);
     console.log(`Writing cleaned data to ${FILE_PATHS.cleanAnimeData}...`);
     await writeJsonFile(FILE_PATHS.cleanAnimeData, cleanedData);
-    animeStore.setAnimeList(cleanedData);
 
     // Log statistics
     console.log(`Cleaning completed. Saved to ${FILE_PATHS.cleanAnimeData}`);
-    console.log("\nStatistics:");
     console.log(`Total entries: ${cleanedData.length}`);
     const totalSize = Buffer.byteLength(JSON.stringify(cleanedData));
     console.log(`File size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-
+    animeStore.setAnimeList(cleanedData);
     return;
   } catch (error) {
     console.error("Error during cleaning:", error);

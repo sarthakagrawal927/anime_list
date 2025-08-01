@@ -1,4 +1,6 @@
+import { FILE_PATHS } from "../config";
 import { AnimeItem } from "../types/anime";
+import { readJsonFile } from "../utils/file";
 
 class AnimeStore {
   private animeList: AnimeItem[] = [];
@@ -13,8 +15,8 @@ class AnimeStore {
     return AnimeStore.instance;
   }
 
-  setAnimeList(list: AnimeItem[]): void {
-    this.animeList = list;
+  setAnimeList(animeData: AnimeItem[]): void {
+    this.animeList = animeData;
   }
 
   getAnimeList(): AnimeItem[] {

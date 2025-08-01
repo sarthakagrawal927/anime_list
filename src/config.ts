@@ -118,7 +118,6 @@ export const API_CONFIG = {
     userHistory: "/users",
     seasons: "/seasons",
     currentSeason: "/seasons/now",
-    seasonAnime: "/seasons",
   },
   rateLimit: 1000, // 1 call per second (safe within 3/sec, 60/min limits)
   totalPages: 10000,

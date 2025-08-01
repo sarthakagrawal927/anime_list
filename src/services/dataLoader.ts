@@ -1,60 +1,38 @@
 import { existsSync } from "fs";
 import { stat } from "fs/promises";
-import { FILE_PATHS } from "../config";
-import { readJsonFile } from "../utils/file";
-import { animeStore } from "../store/animeStore";
-import { AnimeItem } from "../types/anime";
-import { 
-  fetchAllAnimePages, 
+import {
+  fetchAllAnimePages,
   fetchAllAnimePagesSeasonBased,
-  shouldRunMonthlyUpdate 
+  shouldRunMonthlyUpdate,
 } from "../api";
+import { FILE_PATHS } from "../config";
 import { cleanExistingJsonFile } from "../dataProcessor";
+import { animeStore } from "../store/animeStore";
 
-const SEVEN_DAY_MS = 7 * 24 * 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function isFileOlderThanOneDay(filePath: string): Promise<boolean> {
   if (!existsSync(filePath)) return true;
   const stats = await stat(filePath);
   const fileAge = Date.now() - stats.mtime.getTime();
-  return fileAge > SEVEN_DAY_MS;
+  return fileAge > ONE_DAY_MS;
+}
+
+async function initAnimeData() {
+  await fetchAllAnimePages();
+  await cleanExistingJsonFile();
 }
 
 export async function loadAnimeData(): Promise<void> {
-  try {
-    // Startup: Fetch seasons and append new data
-    await fetchAllAnimePagesSeasonBased();
+  let fileExists = existsSync(FILE_PATHS.cleanAnimeData);
+  if (!fileExists) return initAnimeData();
 
-    // Monthly: Check if reclean needed and run in background
-    const needsMonthlyUpdate = await shouldRunMonthlyUpdate();
-    if (needsMonthlyUpdate) {
-      console.log("Monthly reclean starting in background");
-      setImmediate(async () => {
-        try {
-          await fetchAllAnimePages();
-          await cleanExistingJsonFile();
-          console.log("Monthly reclean completed");
-        } catch (error) {
-          console.error("Monthly reclean failed:", error);
-        }
-      });
-    }
-
-    // Load cleaned data
-    const shouldRefreshData = await isFileOlderThanOneDay(FILE_PATHS.cleanAnimeData);
-    if (shouldRefreshData) {
-      await cleanExistingJsonFile();
-    }
-
-    const animeData = await readJsonFile<AnimeItem[]>(FILE_PATHS.cleanAnimeData);
-    if (!animeData || !Array.isArray(animeData)) {
-      throw new Error("Failed to load anime data");
-    }
-
-    animeStore.setAnimeList(animeData);
-    console.log(`Loaded ${animeData.length} anime entries`);
-  } catch (error) {
-    console.error("Error loading anime data:", error);
-    throw error;
+  const needsMonthlyUpdate = await shouldRunMonthlyUpdate();
+  if (needsMonthlyUpdate) {
+    console.log("Monthly reclean starting in background");
+    initAnimeData();
+  } else {
+    if (await isFileOlderThanOneDay(FILE_PATHS.cleanAnimeData))
+      await fetchAllAnimePagesSeasonBased();
   }
 }
