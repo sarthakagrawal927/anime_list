@@ -55,29 +55,17 @@ export const fetchAllAnimePages = async (): Promise<void> => {
     page++;
   }
 
-  let existingAnime: RawAnimeItem[] = [];
-  try {
-    const existing = await readJsonFile<RawAnimeItem[]>(FILE_PATHS.animeData);
-    if (existing && Array.isArray(existing)) existingAnime = existing;
-  } catch {
-    console.log("No existing data found");
-  }
-
-  const animeMap = new Map(existingAnime.map((anime) => [anime.mal_id, anime]));
+  let existingAnime: Record<string, RawAnimeItem> = {};
   for (const anime of fetchedAnime) {
-    animeMap.set(anime.mal_id, anime);
+    existingAnime[anime.mal_id.toString()] = anime;
   }
 
-  await writeJsonFile(FILE_PATHS.animeData, Array.from(animeMap.values()));
-
-  try {
-    const record = { lastFullUpdate: new Date().toISOString() };
-    await writeJsonFile(FILE_PATHS.fetchedSeasons, record);
-  } catch {}
+  await writeJsonFile(FILE_PATHS.animeData, existingAnime);
+  console.log(`Updated all anime again in ${performance.now() - p0}ms`);
 };
 
 // Fetch last 2 seasons and cleanup old data
-export const fetchAllAnimePagesSeasonBased = async (): Promise<void> => {
+export const updateLatestTwoSeasonData = async (): Promise<void> => {
   const p0 = performance.now();
 
   const now = new Date();
@@ -106,20 +94,20 @@ export const fetchAllAnimePagesSeasonBased = async (): Promise<void> => {
   const currentSeason = getSeason(currentMonth);
   const previousSeasonData = getPreviousSeason(currentSeason, currentYear);
 
-  let existingAnime: RawAnimeItem[] = [];
-  try {
-    const existing = await readJsonFile<RawAnimeItem[]>(FILE_PATHS.animeData);
-    if (existing && Array.isArray(existing)) existingAnime = existing;
-  } catch {}
+  let existingAnime = await readJsonFile<Record<string, RawAnimeItem>>(
+    FILE_PATHS.animeData
+  );
+  if (!existingAnime) throw new Error("No data found in anime data file");
 
-  const animeMap = new Map(existingAnime.map((anime) => [anime.mal_id, anime]));
-  let newCount = 0;
+  let newCount = 0,
+    updatedCount = 0;
   const seasonsToFetch = [
     { season: currentSeason, year: currentYear },
     { season: previousSeasonData.season, year: previousSeasonData.year },
   ];
 
   for (const { season, year } of seasonsToFetch) {
+    console.log(`Fetching ${season} ${year}`);
     let page = 1;
     while (true) {
       const url = `${API_CONFIG.baseUrl}/seasons/${year}/${season}?page=${page}&limit=25`;
@@ -128,10 +116,10 @@ export const fetchAllAnimePagesSeasonBased = async (): Promise<void> => {
       if (!data?.data || !Array.isArray(data.data)) break;
 
       for (const anime of data.data) {
-        if (!animeMap.has(anime.mal_id)) {
-          animeMap.set(anime.mal_id, anime);
-          newCount++;
-        }
+        const key = anime.mal_id.toString();
+        if (!existingAnime[key]) newCount++;
+        else updatedCount++;
+        existingAnime[key] = anime;
       }
 
       if (!data.pagination?.has_next_page) break;
@@ -139,27 +127,12 @@ export const fetchAllAnimePagesSeasonBased = async (): Promise<void> => {
     }
   }
 
-  await writeJsonFile(FILE_PATHS.animeData, Array.from(animeMap.values()));
+  await writeJsonFile(FILE_PATHS.animeData, existingAnime);
 
-  if (newCount > 0) {
-    console.log(`Added ${newCount} new anime`);
-  }
-
-  console.log(`Season fetch completed in ${performance.now() - p0}ms`);
-};
-
-// Check if monthly update needed
-export const shouldRunMonthlyUpdate = async (): Promise<boolean> => {
-  try {
-    const record = await readJsonFile<{ lastFullUpdate: string }>(
-      FILE_PATHS.fetchedSeasons
+  if (newCount > 0 || updatedCount > 0) {
+    console.log(
+      `Added ${newCount} new anime, updated ${updatedCount} existing anime`
     );
-    if (!record?.lastFullUpdate) return true;
-
-    const lastUpdate = new Date(record.lastFullUpdate).getTime();
-    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return lastUpdate < oneMonthAgo;
-  } catch {
-    return true;
   }
+  console.log(`Season fetch completed in ${(performance.now() - p0) / 1000}s`);
 };

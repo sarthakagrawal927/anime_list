@@ -127,8 +127,6 @@ export const FILE_PATHS = {
   animeData: "anime_data.json",
   cleanAnimeData: "cleaned_anime_data.json",
   userWatchList: "user_watchedlist_data.json",
-  seasonalData: "seasonal_anime_data.json",
-  fetchedSeasons: "fetched_seasons.json",
 } as const;
 
 export const GENRE_FIELDS = [

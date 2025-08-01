@@ -62,26 +62,23 @@ const cleanAnimeData = (rawData: RawAnimeData): AnimeItem[] => {
     );
 };
 
-export const cleanExistingJsonFile = async (): Promise<void> => {
+export const cleanExistingJsonFile = async (): Promise<AnimeItem[] | null> => {
   try {
     console.log(`Reading ${FILE_PATHS.animeData}...`);
-    const rawData = await readJsonFile<RawAnimeData>(FILE_PATHS.animeData);
+    const rawData = await readJsonFile<Record<string, RawAnimeData[0]>>(
+      FILE_PATHS.animeData
+    );
     if (!rawData) {
       throw new Error("No data found in anime data file");
     }
 
     console.log("Cleaning data...");
-    const cleanedData = cleanAnimeData(rawData);
+    const dataArray = Object.values(rawData);
+    const cleanedData = cleanAnimeData(dataArray);
     console.log(`Writing cleaned data to ${FILE_PATHS.cleanAnimeData}...`);
     await writeJsonFile(FILE_PATHS.cleanAnimeData, cleanedData);
 
-    // Log statistics
-    console.log(`Cleaning completed. Saved to ${FILE_PATHS.cleanAnimeData}`);
-    console.log(`Total entries: ${cleanedData.length}`);
-    const totalSize = Buffer.byteLength(JSON.stringify(cleanedData));
-    console.log(`File size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
-    animeStore.setAnimeList(cleanedData);
-    return;
+    return cleanedData;
   } catch (error) {
     console.error("Error during cleaning:", error);
     throw error;

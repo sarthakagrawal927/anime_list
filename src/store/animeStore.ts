@@ -15,7 +15,11 @@ class AnimeStore {
     return AnimeStore.instance;
   }
 
-  setAnimeList(animeData: AnimeItem[]): void {
+  async setAnimeList(animeData?: AnimeItem[] | null): Promise<void> {
+    if (!animeData)
+      animeData = await readJsonFile<AnimeItem[]>(FILE_PATHS.cleanAnimeData);
+    if (!animeData) return console.error("No data found in anime data file");
+    console.log(`Loaded ${animeData.length} anime. You can now use the API`);
     this.animeList = animeData;
   }
 
