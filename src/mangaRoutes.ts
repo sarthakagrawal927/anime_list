@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { FilterAction, WatchStatus } from "./config";
 import { filterMangaList, getMangaFieldValue } from "./dataProcessor";
+import { getMangaStats } from "./statistics";
 import { mangaStore } from "./store/mangaStore";
 import {
   ARRAY_ACTIONS,
@@ -65,35 +66,7 @@ router.get(
       return;
     }
 
-    // Basic statistics
-    const stats = {
-      total: mangaList.length,
-      averageScore:
-        mangaList.reduce((sum, manga) => sum + (manga.score || 0), 0) /
-        mangaList.length,
-      topRated: mangaList
-        .filter((manga) => manga.score && manga.score > 0)
-        .sort((a, b) => (b.score || 0) - (a.score || 0))
-        .slice(0, 10)
-        .map((manga) => ({
-          title: manga.title,
-          score: manga.score,
-          rank: manga.rank,
-          members: manga.members,
-        })),
-      typeDistribution: mangaList.reduce((acc, manga) => {
-        const type = manga.type || "Unknown";
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>),
-      genreDistribution: mangaList.reduce((acc, manga) => {
-        Object.keys(manga.genres || {}).forEach((genre) => {
-          acc[genre] = (acc[genre] || 0) + 1;
-        });
-        return acc;
-      }, {} as Record<string, number>),
-    };
-
+    const stats = await getMangaStats(mangaList);
     res.json(stats);
   })
 );
