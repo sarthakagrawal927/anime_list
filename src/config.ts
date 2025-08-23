@@ -153,9 +153,7 @@ export const SERVER_CONFIG = {
 export enum WatchStatus {
   Watching = "Watching",
   Completed = "Completed",
-  Dropped = "Dropped",
-  OnHold = "On-Hold",
-  PlanToWatch = "Plan to Watch",
+  Deferred = "Deferred",
   Avoiding = "Avoiding",
   BadRatingRatio = "BRR",
 }
