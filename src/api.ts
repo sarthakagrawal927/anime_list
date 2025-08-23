@@ -2,8 +2,15 @@ import axios from "axios";
 import { delay, writeJsonFile, readJsonFile } from "./utils/file";
 import { API_CONFIG, FILE_PATHS } from "./config";
 import { BaseAnimeItem } from "./types/anime";
+import { BaseMangaItem } from "./types/manga";
 
 type RawAnimeItem = BaseAnimeItem & {
+  genres?: Array<{ name: string }>;
+  themes?: Array<{ name: string }>;
+  demographics?: Array<{ name: string }>;
+};
+
+type RawMangaItem = BaseMangaItem & {
   genres?: Array<{ name: string }>;
   themes?: Array<{ name: string }>;
   demographics?: Array<{ name: string }>;
@@ -135,4 +142,35 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
     );
   }
   console.log(`Season fetch completed in ${(performance.now() - p0) / 1000}s`);
+};
+
+// Manga API functions
+export const fetchAllMangaPages = async (): Promise<void> => {
+  const fetchedManga: RawMangaItem[] = [];
+  let page = 1;
+
+  const p0 = performance.now();
+
+  while (page <= API_CONFIG.totalPages) {
+    const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.topManga}?page=${page}&limit=20`;
+    const data = await fetchFromApi<ApiResponse<RawMangaItem[]>>(url);
+
+    if (!data?.data || !Array.isArray(data.data)) {
+      console.error(`Invalid data format on page ${page}`);
+      break;
+    }
+
+    fetchedManga.push(...data.data);
+    if (!data.pagination?.has_next_page) break;
+    if (page % 10 === 0) console.log(`Fetched manga page ${page}`);
+    page++;
+  }
+
+  let existingManga: Record<string, RawMangaItem> = {};
+  for (const manga of fetchedManga) {
+    existingManga[manga.mal_id.toString()] = manga;
+  }
+
+  await writeJsonFile(FILE_PATHS.mangaData, existingManga);
+  console.log(`Updated all manga in ${performance.now() - p0}ms`);
 };

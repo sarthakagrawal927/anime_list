@@ -13,7 +13,8 @@ import {
   getWatchedAnimeList,
   storeUserWatchedDataInFile,
 } from "./dataProcessor";
-import { loadAnimeData } from "./services/dataLoader";
+import mangaRoutes from "./mangaRoutes";
+import { loadAnimeData, loadMangaData } from "./services/dataLoader";
 import { getAnimeStats } from "./statistics";
 import { animeStore } from "./store/animeStore";
 import {
@@ -45,6 +46,9 @@ const { port, routes } = SERVER_CONFIG;
 app.use(express.json());
 app.use(compression());
 app.use(cors());
+
+// Mount manga routes
+app.use("/api/manga", mangaRoutes);
 
 // Routes
 app.get(
@@ -252,6 +256,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 app.listen(port, async () => {
   try {
     await loadAnimeData();
+    await loadMangaData();
     console.log(LOG_MESSAGES.serverStart + port);
     console.log(LOG_MESSAGES.availableEndpoints);
     Object.values(LOG_MESSAGES.endpoints).forEach((endpoint) =>

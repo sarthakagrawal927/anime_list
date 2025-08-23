@@ -115,6 +115,7 @@ export const API_CONFIG = {
   baseUrl: "https://api.jikan.moe/v4",
   endpoints: {
     topAnime: "/top/anime",
+    topManga: "/top/manga",
     userHistory: "/users",
     seasons: "/seasons",
     currentSeason: "/seasons/now",
@@ -127,6 +128,8 @@ export const FILE_PATHS = {
   animeData: "anime_data.json",
   cleanAnimeData: "cleaned_anime_data.json",
   userWatchList: "user_watchedlist_data.json",
+  mangaData: "manga_data.json",
+  cleanMangaData: "cleaned_manga_data.json",
 } as const;
 
 export const GENRE_FIELDS = [

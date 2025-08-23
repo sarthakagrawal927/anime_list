@@ -1,0 +1,127 @@
+### Search Manga with Filters
+POST http://localhost:3000/api/manga/search
+Content-Type: application/json
+
+{
+    "filters": [
+        {
+            "field": "year",
+            "value": 2010,
+            "action": "GREATER_THAN_OR_EQUALS",
+            "score_multiplier": 1
+        },
+        {
+            "field": "score",
+            "value": 7.0,
+            "action": "GREATER_THAN_OR_EQUALS",
+            "score_multiplier": 1
+        },
+        {
+            "field": "members",
+            "value": 10000,
+            "action": "GREATER_THAN_OR_EQUALS",
+            "score_multiplier": 1
+        },
+        {
+            "field": "genres",
+            "value": ["Action", "Drama"],
+            "action": "INCLUDES_ANY",
+            "score_multiplier": {}
+        },
+        {
+            "field": "status",
+            "value": "Finished",
+            "action": "EQUALS",
+            "score_multiplier": 1
+        }
+    ],
+    "hideWatched": ["Completed", "Avoiding"],
+    "pagesize": 50,
+    "sortBy": "score"
+}
+
+
+### Get Manga Statistics
+GET http://localhost:3000/api/manga/stats
+
+### Get Available Manga Fields
+GET http://localhost:3000/api/manga/fields
+
+### Get Available Filter Actions
+GET http://localhost:3000/api/manga/filters
+
+### Get Top Manga by Score
+GET http://localhost:3000/api/manga/top?limit=50
+
+### Get All Available Genres
+GET http://localhost:3000/api/manga/genres
+
+### Search by Type (Manga/Manhwa/Manhua)
+POST http://localhost:3000/api/manga/search
+Content-Type: application/json
+
+{
+    "filters": [
+        {
+            "field": "type",
+            "value": "Manga",
+            "action": "EQUALS",
+            "score_multiplier": 1
+        }
+    ],
+    "pagesize": 20
+}
+
+### Search by Chapters Count
+POST http://localhost:3000/api/manga/search
+Content-Type: application/json
+
+{
+    "filters": [
+        {
+            "field": "chapters",
+            "value": 50,
+            "action": "GREATER_THAN",
+            "score_multiplier": 1
+        },
+        {
+            "field": "chapters",
+            "value": 200,
+            "action": "LESS_THAN",
+            "score_multiplier": 1
+        }
+    ],
+    "pagesize": 25
+}
+
+### Search by Publication Status
+POST http://localhost:3000/api/manga/search
+Content-Type: application/json
+
+{
+    "filters": [
+        {
+            "field": "status",
+            "value": "Publishing",
+            "action": "EQUALS",
+            "score_multiplier": 1
+        }
+    ],
+    "pagesize": 20
+}
+
+### Search Discontinued/On Hiatus Manga
+POST http://localhost:3000/api/manga/search
+Content-Type: application/json
+
+{
+    "filters": [
+        {
+            "field": "status",
+            "value": ["Discontinued", "On Hiatus"],
+            "action": "INCLUDES_ANY",
+            "score_multiplier": {}
+        }
+    ],
+    "pagesize": 10
+}

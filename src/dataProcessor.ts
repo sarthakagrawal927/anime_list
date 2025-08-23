@@ -9,11 +9,21 @@ import {
   RawAnimeData,
 } from "./types/anime";
 import {
+  MangaItem,
+  MangaField,
+  MangaFilter,
+  isMangaNumericField,
+  isMangaArrayField,
+  isMangaStringField,
+  RawMangaData,
+} from "./types/manga";
+import {
   WatchlistData,
   WatchedAnime,
   UserAnimeListItem as WatchlistUserAnimeItem,
 } from "./types/watchlist";
 import { animeStore } from "./store/animeStore";
+import { mangaStore } from "./store/mangaStore";
 
 const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   const arrayToMap = (
@@ -81,6 +91,81 @@ export const cleanExistingJsonFile = async (): Promise<AnimeItem[] | null> => {
     return cleanedData;
   } catch (error) {
     console.error("Error during cleaning:", error);
+    throw error;
+  }
+};
+
+// Manga data processing functions
+const transformRawManga = (rawManga: RawMangaData[0]): MangaItem => {
+  const arrayToMap = (
+    arr?: Array<{ name: string }>
+  ): { [key: string]: number } => {
+    const map: { [key: string]: number } = {};
+    if (arr) {
+      arr.forEach(({ name }) => (map[name] = 1));
+    }
+    return map;
+  };
+
+  return {
+    mal_id: rawManga.mal_id,
+    url: rawManga.url,
+    title: rawManga.title,
+    title_english: rawManga.title_english,
+    type: rawManga.type,
+    chapters: rawManga.chapters,
+    volumes: rawManga.volumes,
+    score: rawManga.score,
+    scored_by: rawManga.scored_by,
+    rank: rawManga.rank,
+    popularity: rawManga.popularity,
+    members: rawManga.members,
+    favorites: rawManga.favorites,
+    synopsis: rawManga.synopsis,
+    year: rawManga.year || Number(rawManga.published?.from?.slice(0, 4)),
+    status: rawManga.status,
+    genres: arrayToMap(rawManga.genres),
+    themes: arrayToMap(rawManga.themes),
+    demographics: arrayToMap(rawManga.demographics),
+  };
+};
+
+const cleanMangaData = (rawData: RawMangaData): MangaItem[] => {
+  return rawData
+    .map(transformRawManga)
+    .filter(
+      (manga) =>
+        manga.score &&
+        manga.scored_by &&
+        manga.members &&
+        manga.favorites &&
+        manga.year
+    );
+};
+
+export const cleanExistingMangaJsonFile = async (): Promise<
+  MangaItem[] | null
+> => {
+  try {
+    console.log(`Reading ${FILE_PATHS.mangaData}...`);
+    const rawData = await readJsonFile<Record<string, RawMangaData[0]>>(
+      FILE_PATHS.mangaData
+    );
+    if (!rawData) {
+      throw new Error("No data found in manga data file");
+    }
+
+    console.log("Cleaning manga data...");
+    const dataArray = Object.values(rawData);
+    const cleanedData = cleanMangaData(dataArray);
+    console.log(
+      `Writing cleaned manga data to ${FILE_PATHS.cleanMangaData}...`
+    );
+    await writeJsonFile(FILE_PATHS.cleanMangaData, cleanedData);
+
+    return cleanedData;
+  } catch (error) {
+    console.error("Error during manga cleaning:", error);
     throw error;
   }
 };
@@ -281,3 +366,107 @@ export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
     return null;
   }
 }
+
+// Manga filtering functions
+export const getMangaFieldValue = (
+  manga: MangaItem,
+  field: MangaField
+): unknown => {
+  switch (field) {
+    case MangaField.MalId:
+      return manga.mal_id;
+    case MangaField.Title:
+      return manga.title;
+    case MangaField.TitleEnglish:
+      return manga.title_english;
+    case MangaField.Type:
+      return manga.type;
+    case MangaField.Chapters:
+      return manga.chapters;
+    case MangaField.Volumes:
+      return manga.volumes;
+    case MangaField.Score:
+      return manga.score;
+    case MangaField.ScoredBy:
+      return manga.scored_by;
+    case MangaField.Rank:
+      return manga.rank;
+    case MangaField.Status:
+      return manga.status;
+    case MangaField.Popularity:
+      return manga.popularity;
+    case MangaField.Members:
+      return manga.members;
+    case MangaField.Favorites:
+      return manga.favorites;
+    case MangaField.Year:
+      return manga.year;
+    case MangaField.Synopsis:
+      return manga.synopsis;
+    case MangaField.Genres:
+      return manga.genres;
+    case MangaField.Themes:
+      return manga.themes;
+    case MangaField.Demographics:
+      return manga.demographics;
+    case MangaField.HasColored:
+      return manga.has_colored;
+    case MangaField.IsCompleted:
+      return manga.is_completed;
+    case MangaField.AvailableInEnglish:
+      return manga.available_in_english;
+    case MangaField.AvailableLanguages:
+      return manga.available_languages;
+    default:
+      return undefined;
+  }
+};
+
+export const filterMangaList = async (
+  filters: MangaFilter[]
+): Promise<MangaItem[]> => {
+  try {
+    const mangaList = mangaStore.getMangaList();
+
+    return mangaList.filter((manga) =>
+      filters.every((filter) => {
+        const value = getMangaFieldValue(manga, filter.field);
+        if (value === undefined) return false;
+
+        if (isMangaNumericField(filter.field)) {
+          return evaluateNumericFilter(
+            value as number,
+            filter.value as number,
+            filter.action
+          );
+        }
+
+        if (isMangaArrayField(filter.field)) {
+          return evaluateArrayFilter(
+            value as { [key: string]: number },
+            filter.value as string | string[],
+            filter.action
+          );
+        }
+
+        if (isMangaStringField(filter.field)) {
+          if (filter.action === FilterAction.Equals) {
+            return value === filter.value;
+          } else if (filter.action === FilterAction.Contains) {
+            return (
+              typeof value === "string" &&
+              typeof filter.value === "string" &&
+              value.toLowerCase().includes(filter.value.toLowerCase())
+            );
+          }
+          return false;
+        }
+
+        return false;
+      })
+    );
+  } catch (error) {
+    console.error("Error during manga filtering:", error);
+    throw error;
+  }
+};
