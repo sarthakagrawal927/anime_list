@@ -130,6 +130,7 @@ export const FILE_PATHS = {
   userWatchList: "user_watchedlist_data.json",
   mangaData: "manga_data.json",
   cleanMangaData: "cleaned_manga_data.json",
+  userMangaWatchList: "user_manga_watchedlist_data.json",
 } as const;
 
 export const GENRE_FIELDS = [
@@ -150,6 +151,8 @@ export const SERVER_CONFIG = {
     watchlist: "/watchlist",
     init_user_anime_list: "/init_user_anime_list",
     add_to_watched: "/watched/add",
+    manga_watchlist: "/manga/watchlist",
+    add_manga_to_watched: "/manga/watched/add",
   },
 } as const;
 

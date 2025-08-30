@@ -5,14 +5,8 @@ Content-Type: application/json
 {
     "filters": [
         {
-            "field": "score",
-            "value": 7.64,
-            "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
-        },
-        {
-            "field": "members",
-            "value": 9806,
+            "field": "year",
+            "value": 2010,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
@@ -23,7 +17,13 @@ Content-Type: application/json
             "score_multiplier": {}
         }, {
             "field": "genres",
-            "value": ["Action", "Fantasy"],
+            "value": ["Fantasy"],
+            "action": "INCLUDES_ANY",
+            "score_multiplier": {}
+        },
+        {
+            "field": "genres",
+            "value": ["Action", "Comedy"],
             "action": "INCLUDES_ANY",
             "score_multiplier": {}
         },
@@ -34,8 +34,8 @@ Content-Type: application/json
             "score_multiplier": 1
         }
         ,{
-            "field": "available_in_english",
-            "value": true,
+            "field": "type",
+            "value": "Manhwa",
             "action": "EQUALS",
             "score_multiplier": 1.1
         }
@@ -44,7 +44,6 @@ Content-Type: application/json
     "pagesize": 50,
     "sortBy": "score"
 }
-
 
 ### Get Manga Statistics
 GET http://localhost:3000/api/manga/stats
@@ -61,47 +60,43 @@ GET http://localhost:3000/api/manga/top?limit=50
 ### Get All Available Genres
 GET http://localhost:3000/api/manga/genres
 
-### Search for Colored Manga
+### Get Manga Watchlist
+GET http://localhost:3000/api/manga/watchlist
+
+### Add Manga to Watchlist
+POST http://localhost:3000/api/manga/watched/add
+Content-Type: application/json
+
+{
+    "mal_ids": ["1", "2", "3"],
+    "status": "Watching"
+}
+
+### Add Manga to Watchlist - Completed
+POST http://localhost:3000/api/manga/watched/add
+Content-Type: application/json
+
+{
+    "mal_ids": ["4", "5"],
+    "status": "Completed"
+}
+
+### Add Manga to Watchlist - Deferred
+POST http://localhost:3000/api/manga/watched/add
+Content-Type: application/json
+
+{
+    "mal_ids": ["6"],
+    "status": "Deferred"
+}
+
+### Search Manga with Watchlist Filter Only
 POST http://localhost:3000/api/manga/search
 Content-Type: application/json
 
 {
-    "filters": [
-        {
-            "field": "has_colored",
-            "value": true,
-            "action": "EQUALS",
-            "score_multiplier": 1.2
-        },
-        {
-            "field": "score",
-            "value": 8.0,
-            "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
-        }
-    ],
-    "pagesize": 20
+    "filters": [],
+    "hideWatched": ["Completed", "Deferred", "Avoiding"],
+    "pagesize": 20,
+    "sortBy": "score"
 }
-
-### Search for English Available Manga
-POST http://localhost:3000/api/manga/search
-Content-Type: application/json
-
-{
-    "filters": [
-        {
-            "field": "available_in_english",
-            "value": true,
-            "action": "EQUALS",
-            "score_multiplier": 1
-        },
-        {
-            "field": "score",
-            "value": 7.5,
-            "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
-        }
-    ],
-    "pagesize": 30
-}
-

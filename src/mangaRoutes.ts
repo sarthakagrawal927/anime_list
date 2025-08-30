@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { FilterAction, WatchStatus } from "./config";
-import { filterMangaList, getMangaFieldValue } from "./dataProcessor";
+import { filterMangaList, getMangaFieldValue, getWatchedMangaList } from "./dataProcessor";
 import { getMangaStats } from "./statistics";
 import { mangaStore } from "./store/mangaStore";
 import {
@@ -98,6 +98,20 @@ router.post(
       }
 
       let filteredManga = await filterMangaList(filters);
+
+      // Filter by watchlist status if specified
+      if (req.body.hideWatched && req.body.hideWatched.length > 0) {
+        const watchlist = await getWatchedMangaList();
+        if (watchlist) {
+          filteredManga = filteredManga.filter(
+            (manga) =>
+              !watchlist.manga[manga.mal_id.toString()] ||
+              !req.body.hideWatched.includes(
+                watchlist.manga[manga.mal_id.toString()].status
+              )
+          );
+        }
+      }
 
       // Sort if requested
       if (sortBy && MANGA_NUMERIC_FIELDS.includes(sortBy)) {

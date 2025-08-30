@@ -19,8 +19,11 @@ import {
 } from "./types/manga";
 import {
   WatchlistData,
+  MangaWatchlistData,
   WatchedAnime,
+  WatchedManga,
   UserAnimeListItem as WatchlistUserAnimeItem,
+  UserMangaListItem as WatchlistUserMangaItem,
 } from "./types/watchlist";
 import { animeStore } from "./store/animeStore";
 import { mangaStore } from "./store/mangaStore";
@@ -363,6 +366,48 @@ export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
     return await loadWatchlist();
   } catch (error) {
     console.error("Error reading watched anime list:", error);
+    return null;
+  }
+}
+
+// Manga watchlist functions
+async function loadMangaWatchlist(): Promise<MangaWatchlistData> {
+  const data = await readJsonFile<MangaWatchlistData>(FILE_PATHS.userMangaWatchList);
+  if (!data) {
+    throw new Error("Manga watchlist data not found");
+  }
+  return data;
+}
+
+export async function addMangaToWatched(
+  mal_ids: string[],
+  status: WatchStatus
+): Promise<void> {
+  try {
+    const { user, manga } = await loadMangaWatchlist();
+
+    for (const mal_id of mal_ids) {
+      if (manga[mal_id]) {
+        manga[mal_id].status = status;
+        console.log(`Updated manga ${mal_id} status to ${status}`);
+      } else {
+        manga[mal_id] = { id: mal_id, status };
+        console.log(`Added manga ${mal_id} with status ${status}`);
+      }
+    }
+
+    await writeJsonFile(FILE_PATHS.userMangaWatchList, { user, manga });
+  } catch (error) {
+    console.error("Error adding manga to watched list:", error);
+    throw error;
+  }
+}
+
+export async function getWatchedMangaList(): Promise<MangaWatchlistData | null> {
+  try {
+    return await loadMangaWatchlist();
+  } catch (error) {
+    console.error("Error reading watched manga list:", error);
     return null;
   }
 }

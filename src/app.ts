@@ -12,6 +12,8 @@ import {
   filterAnimeList,
   getWatchedAnimeList,
   storeUserWatchedDataInFile,
+  addMangaToWatched,
+  getWatchedMangaList,
 } from "./dataProcessor";
 import mangaRoutes from "./mangaRoutes";
 import { loadAnimeData, loadMangaData } from "./services/dataLoader";
@@ -161,81 +163,58 @@ app.get(
 );
 
 app.get(
-  `${routes.base}${routes.watchlist}`,
+  SERVER_CONFIG.routes.watchlist,
   catcher(async (req: Request, res: Response) => {
-    const status = req.query.status as WatchStatus | undefined;
     const watchlist = await getWatchedAnimeList();
-    const fullAnime = animeStore.getAnimeList();
-
     if (!watchlist) {
       res.status(404).json({ error: "Watchlist not found" });
       return;
     }
-
-    Object.keys(watchlist.anime).map((mal_id) => {
-      const fullAnimeData = fullAnime.find(
-        (fullAnime) => fullAnime.mal_id.toString() === mal_id
-      );
-      if (!fullAnimeData) return;
-      watchlist.anime[mal_id] = {
-        title: fullAnimeData.title,
-        link: fullAnimeData.url,
-        ...watchlist.anime[mal_id],
-      };
-    });
-
-    let filteredAnime = watchlist.anime;
-    if (status) {
-      filteredAnime = Object.fromEntries(
-        Object.entries(watchlist.anime).filter(
-          ([_, anime]) => anime.status?.toLowerCase() === status.toLowerCase()
-        )
-      );
-    }
-
-    const animeList = Object.values(filteredAnime);
-
-    const stats = animeList.reduce((acc, anime) => {
-      acc[anime.status] = (acc[anime.status] || 0) + 1;
-      acc["Total"] = (acc["Total"] || 0) + 1;
-      return acc;
-    }, {} as Record<WatchStatus | string, number>);
-
-    const completeAnimeList = animeList
-      .map((anime) => {
-        const fullAnime = animeStore
-          .getAnimeList()
-          .find((a) => a.mal_id.toString() === anime.id);
-        if (!fullAnime) return null;
-        return {
-          ...fullAnime,
-          status: anime.status,
-          id: anime.id,
-        };
-      })
-      .filter((anime) => anime !== null);
-
-    res.json({
-      stats: status ? undefined : stats,
-      animeStats: await getAnimeStats(completeAnimeList),
-      anime: animeList,
-    });
+    res.json(watchlist);
   })
 );
 
 app.post(
-  `${routes.base}${routes.add_to_watched}`,
+  SERVER_CONFIG.routes.add_to_watched,
   catcher(async (req: Request, res: Response) => {
-    const validationResult = validateWatchedListPayload(req.body);
-
-    if (!validationResult.isValid) {
-      res.status(400).json({ error: validationResult.errors });
+    const { mal_ids, status } = req.body;
+    if (!mal_ids || !Array.isArray(mal_ids) || !status) {
+      res.status(400).json({
+        error: "Missing required fields: mal_ids (array) and status",
+      });
       return;
     }
 
-    const { mal_ids, status } = req.body;
-    await addAnimeToWatched(mal_ids, status);
+    await addAnimeToWatched(mal_ids, status as WatchStatus);
     res.json({ success: true, message: "Anime added to watched list" });
+  })
+);
+
+app.post(
+  SERVER_CONFIG.routes.add_manga_to_watched,
+  catcher(async (req: Request, res: Response) => {
+    const { mal_ids, status } = req.body;
+    if (!mal_ids || !Array.isArray(mal_ids) || !status) {
+      res.status(400).json({
+        error: "Missing required fields: mal_ids (array) and status",
+      });
+      return;
+    }
+
+    await addMangaToWatched(mal_ids, status as WatchStatus);
+    res.json({ success: true, message: "Manga added to watched list" });
+  })
+);
+
+app.get(
+  SERVER_CONFIG.routes.manga_watchlist,
+  catcher(async (req: Request, res: Response) => {
+    const watchlist = await getWatchedMangaList();
+    if (!watchlist) {
+      res.status(404).json({ error: "Manga watchlist not found" });
+      return;
+    }
+    res.json(watchlist);
   })
 );
 
