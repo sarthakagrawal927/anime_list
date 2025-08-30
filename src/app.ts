@@ -11,14 +11,10 @@ import {
   addAnimeToWatched,
   filterAnimeList,
   getWatchedAnimeList,
-  storeUserWatchedDataInFile,
-  addMangaToWatched,
-  getWatchedMangaList,
 } from "./dataProcessor";
 import mangaRoutes from "./mangaRoutes";
 import { loadAnimeData, loadMangaData } from "./services/dataLoader";
 import { getAnimeStats } from "./statistics";
-import { animeStore } from "./store/animeStore";
 import {
   ARRAY_ACTIONS,
   ARRAY_FIELDS,
@@ -31,7 +27,6 @@ import {
 import { catcher } from "./utils/functional";
 import { getScoreSortedList } from "./utils/statistics";
 import { validateField, validateFilters } from "./validators/animeFilters";
-import { validateWatchedListPayload } from "./validators/watchedList";
 
 interface FilterRequestBody {
   filters: Filter[];
@@ -187,42 +182,6 @@ app.post(
 
     await addAnimeToWatched(mal_ids, status as WatchStatus);
     res.json({ success: true, message: "Anime added to watched list" });
-  })
-);
-
-app.post(
-  SERVER_CONFIG.routes.add_manga_to_watched,
-  catcher(async (req: Request, res: Response) => {
-    const { mal_ids, status } = req.body;
-    if (!mal_ids || !Array.isArray(mal_ids) || !status) {
-      res.status(400).json({
-        error: "Missing required fields: mal_ids (array) and status",
-      });
-      return;
-    }
-
-    await addMangaToWatched(mal_ids, status as WatchStatus);
-    res.json({ success: true, message: "Manga added to watched list" });
-  })
-);
-
-app.get(
-  SERVER_CONFIG.routes.manga_watchlist,
-  catcher(async (req: Request, res: Response) => {
-    const watchlist = await getWatchedMangaList();
-    if (!watchlist) {
-      res.status(404).json({ error: "Manga watchlist not found" });
-      return;
-    }
-    res.json(watchlist);
-  })
-);
-
-app.post(
-  `${routes.base}${routes.init_user_anime_list}`,
-  catcher(async (_req: Request, res: Response) => {
-    await storeUserWatchedDataInFile();
-    res.json({ message: "XML data received successfully" });
   })
 );
 

@@ -44,7 +44,7 @@ POST http://localhost:3000/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["59452"],
+    "mal_ids": ["59189"],
     "status": "BRR"
 }
 

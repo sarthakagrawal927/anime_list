@@ -5,42 +5,37 @@ Content-Type: application/json
 {
     "filters": [
         {
-            "field": "year",
-            "value": 2010,
-            "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
-        },
-        {
             "field": "genres",
             "value": ["Boys Love"],
-            "action": "EXCLUDES",
-            "score_multiplier": {}
-        }, {
-            "field": "genres",
-            "value": ["Fantasy"],
-            "action": "INCLUDES_ANY",
-            "score_multiplier": {}
+            "action": "EXCLUDES"
         },
         {
             "field": "genres",
-            "value": ["Action", "Comedy"],
-            "action": "INCLUDES_ANY",
-            "score_multiplier": {}
+            "value": ["Comedy", "Action"],
+            "action": "INCLUDES_ALL"
+        },
+        {
+            "field": "genres",
+            "value": ["Fantasy", "Mystery", "Supernatural"],
+            "action": "INCLUDES_ANY"
+        },
+        {
+            "field": "type",
+            "value": "Manhwa",
+            "action": "EQUALS"
         },
         {
             "field": "status",
             "value": "Finished",
-            "action": "EQUALS",
-            "score_multiplier": 1
-        }
-        ,{
-            "field": "type",
-            "value": "Manhwa",
-            "action": "EQUALS",
-            "score_multiplier": 1.1
+            "action": "EQUALS"
+        },
+        {
+            "field": "themes",
+            "value": ["Villainess"],
+            "action": "EXCLUDES"
         }
     ],
-    "hideWatched": ["Completed", "Avoiding"],
+    "hideWatched": ["Completed", "Watching", "BRR"],
     "pagesize": 50,
     "sortBy": "score"
 }
@@ -48,55 +43,14 @@ Content-Type: application/json
 ### Get Manga Statistics
 GET http://localhost:3000/api/manga/stats
 
-### Get Available Manga Fields
-GET http://localhost:3000/api/manga/fields
-
-### Get Available Filter Actions
-GET http://localhost:3000/api/manga/filters
-
-### Get Top Manga by Score
-GET http://localhost:3000/api/manga/top?limit=50
-
-### Get All Available Genres
-GET http://localhost:3000/api/manga/genres
-
 ### Get Manga Watchlist
 GET http://localhost:3000/api/manga/watchlist
-
-### Add Manga to Watchlist
-POST http://localhost:3000/api/manga/watched/add
-Content-Type: application/json
-
-{
-    "mal_ids": ["1", "2", "3"],
-    "status": "Watching"
-}
 
 ### Add Manga to Watchlist - Completed
 POST http://localhost:3000/api/manga/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["4", "5"],
-    "status": "Completed"
-}
-
-### Add Manga to Watchlist - Deferred
-POST http://localhost:3000/api/manga/watched/add
-Content-Type: application/json
-
-{
-    "mal_ids": ["6"],
-    "status": "Deferred"
-}
-
-### Search Manga with Watchlist Filter Only
-POST http://localhost:3000/api/manga/search
-Content-Type: application/json
-
-{
-    "filters": [],
-    "hideWatched": ["Completed", "Deferred", "Avoiding"],
-    "pagesize": 20,
-    "sortBy": "score"
+    "mal_ids": ["99177"],
+    "status": "Watching"
 }

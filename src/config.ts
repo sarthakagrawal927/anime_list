@@ -149,10 +149,7 @@ export const SERVER_CONFIG = {
     fields: "/fields",
     search: "/search",
     watchlist: "/watchlist",
-    init_user_anime_list: "/init_user_anime_list",
     add_to_watched: "/watched/add",
-    manga_watchlist: "/manga/watchlist",
-    add_manga_to_watched: "/manga/watched/add",
   },
 } as const;
 

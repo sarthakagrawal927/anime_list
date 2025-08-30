@@ -1,6 +1,11 @@
 import express, { Request, Response } from "express";
-import { FilterAction, WatchStatus } from "./config";
-import { filterMangaList, getMangaFieldValue, getWatchedMangaList } from "./dataProcessor";
+import { FilterAction, WatchStatus, SERVER_CONFIG } from "./config";
+import {
+  addMangaToWatched,
+  filterMangaList,
+  getMangaFieldValue,
+  getWatchedMangaList,
+} from "./dataProcessor";
 import { getMangaStats } from "./statistics";
 import { mangaStore } from "./store/mangaStore";
 import {
@@ -135,50 +140,37 @@ router.post(
   )
 );
 
-// GET /manga/top - Get top manga by score
-router.get(
-  "/top",
+router.post(
+  SERVER_CONFIG.routes.add_to_watched,
   catcher(async (req: Request, res: Response) => {
-    const limit = parseInt(req.query.limit as string) || 50;
-    const mangaList = mangaStore.getMangaList();
-
-    if (!mangaList || mangaList.length === 0) {
-      res.status(404).json({ error: "No manga data found" });
+    const { mal_ids, status } = req.body;
+    if (
+      !mal_ids ||
+      !Array.isArray(mal_ids) ||
+      !status ||
+      !Object.values(WatchStatus).includes(status as WatchStatus)
+    ) {
+      res.status(400).json({
+        error:
+          "Missing or invalid required fields: mal_ids (array) and status (Watching, Completed, Deferred, Avoiding, BRR)",
+      });
       return;
     }
 
-    const topManga = mangaList
-      .filter((manga) => manga.score && manga.score > 0)
-      .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, limit);
-
-    res.json({
-      manga: topManga,
-      total: topManga.length,
-    });
+    await addMangaToWatched(mal_ids, status as WatchStatus);
+    res.json({ success: true, message: "Manga added to watched list" });
   })
 );
 
-// GET /manga/genres - Get all available genres
 router.get(
-  "/genres",
-  catcher(async (_req: Request, res: Response) => {
-    const mangaList = mangaStore.getMangaList();
-
-    if (!mangaList || mangaList.length === 0) {
-      res.status(404).json({ error: "No manga data found" });
+  "/watchlist",
+  catcher(async (req: Request, res: Response) => {
+    const watchlist = await getWatchedMangaList();
+    if (!watchlist) {
+      res.status(404).json({ error: "Manga watchlist not found" });
       return;
     }
-
-    const genres = new Set<string>();
-    mangaList.forEach((manga) => {
-      Object.keys(manga.genres || {}).forEach((genre) => genres.add(genre));
-    });
-
-    res.json({
-      genres: Array.from(genres).sort(),
-      count: genres.size,
-    });
+    res.json(watchlist);
   })
 );
 
