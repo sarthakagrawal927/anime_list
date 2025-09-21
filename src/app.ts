@@ -142,6 +142,7 @@ app.post(
             status: anime.status,
             genres: Object.keys(anime.genres),
             themes: Object.keys(anime.themes),
+            type: anime.type,
           };
         }),
       stats,

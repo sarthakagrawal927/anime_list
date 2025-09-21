@@ -190,6 +190,7 @@ const normalizeValue = (
 
     case AnimeField.Year: {
       const currentYear = new Date().getFullYear();
+      return 1;
       // Simple normalization with slight recency bias
       return Math.pow((value - minScore) / (currentYear - minScore), 0.8) * 10;
     }
