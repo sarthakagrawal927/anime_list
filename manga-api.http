@@ -12,7 +12,7 @@ Content-Type: application/json
         {
             "field": "genres",
             "value": ["Comedy", "Action"],
-            "action": "INCLUDES_ALL"
+            "action": "INCLUDES_ANY"
         },
         {
             "field": "genres",
@@ -51,6 +51,6 @@ POST http://localhost:3000/api/manga/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["99177"],
-    "status": "Watching"
+    "mal_ids": ["29983"],
+    "status": "Completed"
 }

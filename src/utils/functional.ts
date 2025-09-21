@@ -1,22 +1,23 @@
 import { NextFunction, Request, Response } from "express";
+import { logger } from "./logger";
 
-type AsyncRequestHandler = (
-  req: Request,
+type AsyncRequestHandler<Req extends Request = Request> = (
+  req: Req,
   res: Response,
   next: NextFunction
 ) => Promise<void>;
 
-export function catcher(fn: AsyncRequestHandler) {
+export function catcher<Req extends Request>(fn: AsyncRequestHandler<Req>) {
   return async (
     req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      await fn(req, res, next);
+      await fn(req as Req, res, next);
     } catch (err: Error | any) {
-      console.error(err.message);
-      res.status(500).json({ message: err.message });
+      logger.error({ err }, "Request handler failed");
+      next(err instanceof Error ? err : new Error("Unexpected error"));
     }
   };
 }

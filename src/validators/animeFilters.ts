@@ -1,215 +1,181 @@
-import { AnimeField, FilterAction, Genre, Theme } from "../config";
-import {
-  Filter,
-  NUMERIC_FIELDS,
-  ARRAY_FIELDS,
-  STRING_FIELDS,
-  COMPARISON_ACTIONS,
-  ARRAY_ACTIONS,
-  TEXT_SEARCH_ACTIONS,
-  NumericField,
-  ArrayField,
-  StringField,
-} from "../types/anime";
+import { z } from "zod";
+import { AnimeField, FilterAction, Genre, Theme, WatchStatus } from "../config";
+import { Filter, NumericField } from "../types/anime";
 
-// Types
-type ValidationSuccess = { isValid: true };
-type ValidationError = { isValid: false; errors: string[] };
-export type ValidationResult = ValidationSuccess | ValidationError;
+const numericFieldSchema = z.enum([
+  AnimeField.Score,
+  AnimeField.ScoredBy,
+  AnimeField.Rank,
+  AnimeField.Popularity,
+  AnimeField.Members,
+  AnimeField.Favorites,
+  AnimeField.Year,
+  AnimeField.Episodes,
+] as const);
 
-type FieldType = {
-  numeric: { type: "numeric"; actions: typeof COMPARISON_ACTIONS };
-  array: { type: "array"; actions: typeof ARRAY_ACTIONS };
-  string: { type: "string"; actions: typeof TEXT_SEARCH_ACTIONS };
+const arrayFieldSchema = z.enum([
+  AnimeField.Genres,
+  AnimeField.Themes,
+  AnimeField.Demographics,
+] as const);
+
+const stringFieldSchema = z.enum([
+  AnimeField.Title,
+  AnimeField.TitleEnglish,
+  AnimeField.Type,
+  AnimeField.Season,
+  AnimeField.Synopsis,
+] as const);
+
+const comparisonActionSchema = z.enum([
+  FilterAction.Equals,
+  FilterAction.GreaterThan,
+  FilterAction.GreaterThanOrEquals,
+  FilterAction.LessThan,
+  FilterAction.LessThanOrEquals,
+] as const);
+
+const arrayActionIncludesSchema = z.enum([
+  FilterAction.IncludesAll,
+  FilterAction.IncludesAny,
+] as const);
+
+const textSearchActionSchema = z.enum([
+  FilterAction.Equals,
+  FilterAction.Contains,
+] as const);
+
+const getValidCategories = (field: AnimeField): Set<string> => {
+  if (field === AnimeField.Genres) return new Set<string>(Object.values(Genre));
+  if (field === AnimeField.Themes) return new Set<string>(Object.values(Theme));
+  return new Set();
 };
 
-// Utilities
-const success: ValidationSuccess = { isValid: true };
-const error = (message: string): ValidationError => ({
-  isValid: false,
-  errors: [message],
-});
-
-const getFieldType = (field: AnimeField): keyof FieldType => {
-  if (NUMERIC_FIELDS.includes(field as NumericField)) return "numeric";
-  if (ARRAY_FIELDS.includes(field as ArrayField)) return "array";
-  if (STRING_FIELDS.includes(field as StringField)) return "string";
-  throw new Error(`Unknown field type for ${field}`);
-};
-
-const getValidCategories = (field: AnimeField) =>
-  field === AnimeField.Genres
-    ? new Set(Object.values(Genre))
-    : field === AnimeField.Themes
-    ? new Set(Object.values(Theme))
-    : new Set();
-
-const validateArrayValues = (
+const ensureValidCategories = (
   field: AnimeField,
-  values: string[]
-): ValidationResult => {
+  values: string[],
+  ctx: z.RefinementCtx,
+  path: (string | number)[]
+): void => {
   const validCategories = getValidCategories(field);
+  if (validCategories.size === 0) {
+    return;
+  }
+
   const invalidValues = values.filter(
-    (value) => !validCategories.has(value as any)
+    (value) => !validCategories.has(value as Genre | Theme)
   );
 
   if (invalidValues.length > 0) {
-    return error(
-      `Invalid ${field} values: ${invalidValues.join(
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid ${field} values: ${invalidValues.join(", ")}`,
+      path,
+    });
+  }
+};
+
+const ensureValidMultiplierCategories = (
+  field: AnimeField,
+  multiplier: Record<string, number>,
+  ctx: z.RefinementCtx
+): void => {
+  const validCategories = getValidCategories(field);
+  if (validCategories.size === 0) {
+    return;
+  }
+
+  const invalidKeys = Object.keys(multiplier).filter(
+    (key) => !validCategories.has(key as Genre | Theme)
+  );
+
+  if (invalidKeys.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Invalid categories in score_multiplier: ${invalidKeys.join(
         ", "
-      )}. Must be valid ${field} categories.`
-    );
+      )}`,
+      path: ["score_multiplier"],
+    });
   }
-
-  return success;
 };
 
-const fieldValidators = {
-  numeric: {
-    action: (action: FilterAction): ValidationResult =>
-      COMPARISON_ACTIONS.includes(action as (typeof COMPARISON_ACTIONS)[number])
-        ? success
-        : error(
-            `Invalid action: ${action}. Must be one of: ${COMPARISON_ACTIONS.join(
-              ", "
-            )}`
-          ),
-    value: (value: unknown): ValidationResult =>
-      typeof value === "number"
-        ? success
-        : error(`Invalid value type: ${typeof value}. Must be a number`),
-    multiplier: (multiplier: unknown): ValidationResult =>
-      typeof multiplier === "number" || multiplier === undefined
-        ? success
-        : error(
-            `Invalid multiplier type: ${typeof multiplier}. Must be a number`
-          ),
-  },
-  array: {
-    action: (action: FilterAction): ValidationResult =>
-      ARRAY_ACTIONS.includes(action as (typeof ARRAY_ACTIONS)[number])
-        ? success
-        : error(
-            `Invalid action: ${action}. Must be one of: ${ARRAY_ACTIONS.join(
-              ", "
-            )}`
-          ),
-    value: (
-      value: unknown,
-      action: FilterAction,
-      field: AnimeField
-    ): ValidationResult => {
-      if (action === FilterAction.Excludes) {
-        if (typeof value !== "string") {
-          return error(`Invalid value type: ${typeof value}. Must be a string`);
-        }
-        // For Excludes, validate single value against valid categories
-        return validateArrayValues(field, [value]);
-      }
+const numericFilterSchema = z.object({
+  field: numericFieldSchema,
+  action: comparisonActionSchema,
+  value: z.number(),
+  score_multiplier: z.number().optional(),
+});
 
-      if (!Array.isArray(value) || !value.every((v) => typeof v === "string")) {
-        return error(
-          `Invalid value type: ${typeof value}. Must be an array of strings`
-        );
-      }
+const arrayFilterIncludesSchema = z
+  .object({
+    field: arrayFieldSchema,
+    action: arrayActionIncludesSchema,
+    value: z.array(z.string().min(1)).nonempty(),
+    score_multiplier: z.record(z.number()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    ensureValidCategories(data.field, data.value, ctx, ["value"]);
+    if (data.score_multiplier) {
+      ensureValidMultiplierCategories(data.field, data.score_multiplier, ctx);
+    }
+  });
 
-      // For IncludesAll/IncludesAny, validate all values against valid categories
-      return validateArrayValues(field, value);
-    },
-    multiplier: (
-      multiplier: unknown,
-      field: AnimeField,
-      value: unknown
-    ): ValidationResult => {
-      if (!multiplier) return success;
-      if (!Array.isArray(value)) return success;
-      if (typeof multiplier !== "object" || multiplier === null) {
-        return error(
-          `Invalid multiplier type: ${typeof multiplier}. Must be an object mapping categories to numbers`
-        );
-      }
+const arrayFilterExcludesSchema = z
+  .object({
+    field: arrayFieldSchema,
+    action: z.literal(FilterAction.Excludes),
+    value: z.string().min(1),
+    score_multiplier: z.record(z.number()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    ensureValidCategories(data.field, [data.value], ctx, ["value"]);
+  });
 
-      const validCategories = getValidCategories(field);
-      const entries = Object.entries(multiplier as Record<string, unknown>);
-      const invalidKeys = entries.filter(
-        ([key]) => !validCategories.has(key as any)
-      );
-      const invalidValues = entries.filter(
-        ([_, val]) => typeof val !== "number"
-      );
+const stringTextFilterSchema = z.object({
+  field: stringFieldSchema,
+  action: textSearchActionSchema,
+  value: z.string().min(1),
+  score_multiplier: z.number().optional(),
+});
 
-      if (invalidKeys.length > 0) {
-        return error(
-          `Invalid categories: ${invalidKeys.map(([key]) => key).join(", ")}`
-        );
-      }
+const stringIncludesFilterSchema = z.object({
+  field: stringFieldSchema,
+  action: arrayActionIncludesSchema,
+  value: z.array(z.string().min(1)).nonempty(),
+  score_multiplier: z.number().optional(),
+});
 
-      return invalidValues.length > 0
-        ? error("All multiplier values must be numbers")
-        : success;
-    },
-  },
-  string: {
-    action: (action: FilterAction): ValidationResult =>
-      TEXT_SEARCH_ACTIONS.includes(action as any)
-        ? success
-        : error(
-            `Invalid action: ${action}. Must be one of: ${TEXT_SEARCH_ACTIONS.join(
-              ", "
-            )}`
-          ),
-    value: (value: unknown): ValidationResult =>
-      typeof value === "string"
-        ? success
-        : error(`Invalid value type: ${typeof value}. Must be a string`),
-    multiplier: (multiplier: unknown): ValidationResult =>
-      typeof multiplier === "number" || multiplier === undefined
-        ? success
-        : error(
-            `Invalid multiplier type: ${typeof multiplier}. Must be a number`
-          ),
-  },
+const stringExcludesFilterSchema = z.object({
+  field: stringFieldSchema,
+  action: z.literal(FilterAction.Excludes),
+  value: z.string().min(1),
+  score_multiplier: z.number().optional(),
+});
+
+export const filterSchema = z.union([
+  numericFilterSchema,
+  arrayFilterIncludesSchema,
+  arrayFilterExcludesSchema,
+  stringTextFilterSchema,
+  stringIncludesFilterSchema,
+  stringExcludesFilterSchema,
+]) as z.ZodType<Filter>;
+
+export const filtersSchema = z.array(filterSchema);
+
+const airingSchema = z.enum(["yes", "no", "any"] as const);
+
+export const filterRequestSchema = z.object({
+  filters: filtersSchema,
+  hideWatched: z.array(z.nativeEnum(WatchStatus)).default([]),
+  pagesize: z.number().int().min(1).default(20),
+  sortBy: numericFieldSchema.optional(),
+  airing: airingSchema.default("any"),
+});
+
+export type FilterRequestBody = z.infer<typeof filterRequestSchema> & {
+  sortBy?: NumericField;
 };
 
-export const validateField = (field: AnimeField): ValidationResult =>
-  Object.values(AnimeField).includes(field)
-    ? success
-    : error(
-        `Invalid field: ${field}. Must be one of: ${Object.values(
-          AnimeField
-        ).join(", ")}`
-      );
-
-export const validateFilter = (filter: Filter): ValidationResult => {
-  const { field, action, value, score_multiplier } = filter;
-
-  const fieldValidation = validateField(field);
-  if (!fieldValidation.isValid) return fieldValidation;
-
-  const fieldType = getFieldType(field);
-  const validator = fieldValidators[fieldType];
-
-  const validations = [
-    validator.action(action),
-    validator.value(value, action, field),
-    validator.multiplier(score_multiplier, field, value),
-  ];
-
-  const errors = validations
-    .filter((result): result is ValidationError => !result.isValid)
-    .flatMap((error) => error.errors);
-
-  return errors.length > 0 ? { isValid: false, errors } : success;
-};
-
-export const validateFilters = (filters: Filter[]): ValidationResult => {
-  if (!Array.isArray(filters)) {
-    return { isValid: false, errors: ["Invalid filters: expected an array"] };
-  }
-  const errors = filters
-    .map(validateFilter)
-    .filter((result): result is ValidationError => !result.isValid)
-    .flatMap((error) => error.errors);
-
-  return errors.length > 0 ? { isValid: false, errors } : success;
-};
+export type FiltersPayload = z.infer<typeof filtersSchema>;

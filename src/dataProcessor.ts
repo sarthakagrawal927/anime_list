@@ -212,7 +212,102 @@ const evaluateArrayFilter = (
   }
 };
 
-export const getFieldValue = (anime: AnimeItem, field: AnimeField): unknown => {
+const matchesStringFilter = (
+  value: unknown,
+  filterValue: unknown,
+  action: FilterAction
+): boolean => {
+  if (typeof value !== "string") return false;
+
+  if (action === FilterAction.Equals) {
+    return typeof filterValue === "string" && value === filterValue;
+  }
+
+  if (action === FilterAction.Contains) {
+    return (
+      typeof filterValue === "string" &&
+      value.toLowerCase().includes(filterValue.toLowerCase())
+    );
+  }
+
+  if (action === FilterAction.Excludes) {
+    return (
+      typeof filterValue === "string" &&
+      !value.toLowerCase().includes(filterValue.toLowerCase())
+    );
+  }
+
+  if (action === FilterAction.IncludesAll || action === FilterAction.IncludesAny) {
+    if (!Array.isArray(filterValue)) return false;
+    const haystack = value.toLowerCase();
+    const needles = filterValue.map((needle) =>
+      typeof needle === "string" ? needle.toLowerCase() : ""
+    );
+    return action === FilterAction.IncludesAll
+      ? needles.every((needle) => needle && haystack.includes(needle))
+      : needles.some((needle) => needle && haystack.includes(needle));
+  }
+
+  return false;
+};
+
+const matchesFilter = <
+  TItem,
+  TField,
+  TFilter extends { field: TField; value: unknown; action: FilterAction }
+>(
+  item: TItem,
+  filter: TFilter,
+  ctx: {
+    getFieldValue: (item: TItem, field: TField) => unknown;
+    isNumericField: (field: TField) => boolean;
+    isArrayField: (field: TField) => boolean;
+    isStringField: (field: TField) => boolean;
+  }
+): boolean => {
+  const value = ctx.getFieldValue(item, filter.field);
+  if (value === undefined) return false;
+
+  if (ctx.isNumericField(filter.field)) {
+    return evaluateNumericFilter(
+      value as number,
+      filter.value as number,
+      filter.action
+    );
+  }
+
+  if (ctx.isArrayField(filter.field)) {
+    return evaluateArrayFilter(
+      value as { [key: string]: number },
+      filter.value as string | string[],
+      filter.action
+    );
+  }
+
+  if (ctx.isStringField(filter.field)) {
+    return matchesStringFilter(value, filter.value, filter.action);
+  }
+
+  return false;
+};
+
+const filterCollection = <
+  TItem,
+  TField,
+  TFilter extends { field: TField; value: unknown; action: FilterAction }
+>(
+  items: TItem[],
+  filters: TFilter[],
+  ctx: {
+    getFieldValue: (item: TItem, field: TField) => unknown;
+    isNumericField: (field: TField) => boolean;
+    isArrayField: (field: TField) => boolean;
+    isStringField: (field: TField) => boolean;
+  }
+): TItem[] =>
+  items.filter((item) => filters.every((filter) => matchesFilter(item, filter, ctx)));
+
+const getAnimeFieldValue = (anime: AnimeItem, field: AnimeField): unknown => {
   switch (field) {
     case AnimeField.MalId:
       return anime.mal_id;
@@ -259,43 +354,12 @@ export const filterAnimeList = async (
   try {
     const animeList = animeStore.getAnimeList();
 
-    return animeList.filter((anime) =>
-      filters.every((filter) => {
-        const value = getFieldValue(anime, filter.field);
-        if (value === undefined) return false;
-
-        if (isNumericField(filter.field)) {
-          return evaluateNumericFilter(
-            value as number,
-            filter.value as number,
-            filter.action
-          );
-        }
-
-        if (isArrayField(filter.field)) {
-          return evaluateArrayFilter(
-            value as { [key: string]: number },
-            filter.value as string | string[],
-            filter.action
-          );
-        }
-
-        if (isStringField(filter.field)) {
-          if (filter.action === FilterAction.Equals) {
-            return value === filter.value;
-          } else if (filter.action === FilterAction.Contains) {
-            return (
-              typeof value === "string" &&
-              typeof filter.value === "string" &&
-              value.toLowerCase().includes(filter.value.toLowerCase())
-            );
-          }
-          return false;
-        }
-
-        return false;
-      })
-    );
+    return filterCollection(animeList, filters, {
+      getFieldValue: getAnimeFieldValue,
+      isNumericField,
+      isArrayField,
+      isStringField,
+    });
   } catch (error) {
     console.error("Error during filtering:", error);
     throw error;
@@ -372,7 +436,9 @@ export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
 
 // Manga watchlist functions
 async function loadMangaWatchlist(): Promise<MangaWatchlistData> {
-  const data = await readJsonFile<MangaWatchlistData>(FILE_PATHS.userMangaWatchList);
+  const data = await readJsonFile<MangaWatchlistData>(
+    FILE_PATHS.userMangaWatchList
+  );
   if (!data) {
     throw new Error("Manga watchlist data not found");
   }
@@ -473,43 +539,12 @@ export const filterMangaList = async (
   try {
     const mangaList = mangaStore.getMangaList();
 
-    return mangaList.filter((manga) =>
-      filters.every((filter) => {
-        const value = getMangaFieldValue(manga, filter.field);
-        if (value === undefined) return false;
-
-        if (isMangaNumericField(filter.field)) {
-          return evaluateNumericFilter(
-            value as number,
-            filter.value as number,
-            filter.action
-          );
-        }
-
-        if (isMangaArrayField(filter.field)) {
-          return evaluateArrayFilter(
-            value as { [key: string]: number },
-            filter.value as string | string[],
-            filter.action
-          );
-        }
-
-        if (isMangaStringField(filter.field)) {
-          if (filter.action === FilterAction.Equals) {
-            return value === filter.value;
-          } else if (filter.action === FilterAction.Contains) {
-            return (
-              typeof value === "string" &&
-              typeof filter.value === "string" &&
-              value.toLowerCase().includes(filter.value.toLowerCase())
-            );
-          }
-          return false;
-        }
-
-        return false;
-      })
-    );
+    return filterCollection(mangaList, filters, {
+      getFieldValue: getMangaFieldValue,
+      isNumericField: isMangaNumericField,
+      isArrayField: isMangaArrayField,
+      isStringField: isMangaStringField,
+    });
   } catch (error) {
     console.error("Error during manga filtering:", error);
     throw error;

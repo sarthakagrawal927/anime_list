@@ -133,12 +133,6 @@ export const FILE_PATHS = {
   userMangaWatchList: "user_manga_watchedlist_data.json",
 } as const;
 
-export const GENRE_FIELDS = [
-  AnimeField.Genres,
-  AnimeField.Themes,
-  AnimeField.Demographics,
-] as const;
-
 export const SERVER_CONFIG = {
   port: 3000,
   routes: {
@@ -171,23 +165,6 @@ export const ERROR_MESSAGES = {
   noDataFound: "No anime data found. Please run the fetch process first.",
 } as const;
 
-export const SUCCESS_MESSAGES = {
-  fetchStarted: "Fetch process started",
-  fetchCompleted: "Completed! Data saved",
-  cleaningCompleted: "Data cleaning completed!",
-} as const;
-
-export const LOG_MESSAGES = {
-  serverStart: "Anime stats server running at http://localhost:",
-  availableEndpoints: "Available endpoints:",
-  endpoints: {
-    stats: "- GET  /api/stats         - Get all anime statistics",
-    filter: "- POST /api/stats/filter  - Get filtered anime statistics",
-    fetch: "- POST /api/fetch         - Fetch new anime data",
-    filters: "- GET  /api/filters       - Get available filter options",
-  },
-} as const;
-
 export const DISTRIBUTION_RANGES = {
   score: [7, 8, 9],
   members: [100000, 1000000],
@@ -201,7 +178,3 @@ export const PERCENTILE_FIELDS = {
   favorites: AnimeField.Favorites,
   years: AnimeField.Year,
 } as const;
-
-// Export types
-export type AnimeFieldType = typeof AnimeField;
-export type GenreField = (typeof GENRE_FIELDS)[number];

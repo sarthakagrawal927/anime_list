@@ -6,32 +6,27 @@ Content-Type: application/json
     "filters": [
         {
             "field": "year",
-            "value": 2010,
+            "value": 2025,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
         {
             "field": "score",
-            "value": 6.62,
+            "value": 6.5,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
         {
             "field": "members",
-            "value": 8400,
+            "value": 10000,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
-        }, {
-            "field": "genres",
-            "value": ["Fantasy"],
-            "action": "INCLUDES_ANY",
-            "score_multiplier": {}
         },
         {
-            "field": "genres",
-            "value": ["Action", "Comedy"],
+            "field": "type",
+            "value": ["Movie"],
             "action": "INCLUDES_ANY",
-            "score_multiplier": {}
+            "score_multiplier": 1
         }
     ],
     "hideWatched": ["Completed", "Avoiding", "BRR"],
@@ -44,7 +39,7 @@ POST http://localhost:3000/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["59189"],
+    "mal_ids": ["38903"],
     "status": "BRR"
 }
 

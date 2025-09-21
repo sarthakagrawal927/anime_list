@@ -1,42 +1,15 @@
-import { ValidationResult } from "./animeFilters";
+import { z } from "zod";
 import { WatchStatus } from "../config";
 
-export interface WatchedListPayload {
-  mal_ids: string;
-  status: WatchStatus;
-}
+const malIdSchema = z
+  .union([z.string().min(1), z.number()])
+  .transform((value) => value.toString());
 
-export const validateWatchedListPayload = (
-  payload: unknown
-): ValidationResult => {
-  if (!payload || typeof payload !== "object") {
-    return {
-      isValid: false,
-      errors: ["Invalid payload: expected an object"],
-    };
-  }
+export const watchedListSchema = z.object({
+  mal_ids: z.array(malIdSchema).nonempty({
+    message: "mal_ids must contain at least one id",
+  }),
+  status: z.nativeEnum(WatchStatus),
+});
 
-  const { mal_ids, status } = payload as WatchedListPayload;
-
-  if (!mal_ids || !Array.isArray(mal_ids)) {
-    return {
-      isValid: false,
-      errors: ["Invalid mal_ids: expected an array"],
-    };
-  }
-
-  if (!status || !Object.values(WatchStatus).includes(status)) {
-    return {
-      isValid: false,
-      errors: [
-        `Invalid status: must be one of ${Object.values(WatchStatus).join(
-          ", "
-        )}`,
-      ],
-    };
-  }
-
-  return {
-    isValid: true,
-  };
-};
+export type WatchedListPayload = z.infer<typeof watchedListSchema>;
