@@ -240,12 +240,15 @@ const matchesStringFilter = (
   if (action === FilterAction.IncludesAll || action === FilterAction.IncludesAny) {
     if (!Array.isArray(filterValue)) return false;
     const haystack = value.toLowerCase();
-    const needles = filterValue.map((needle) =>
-      typeof needle === "string" ? needle.toLowerCase() : ""
-    );
+    const needles = filterValue
+      .filter((needle): needle is string => typeof needle === "string" && needle.length > 0)
+      .map((needle) => needle.toLowerCase());
+    if (needles.length === 0) {
+      return true;
+    }
     return action === FilterAction.IncludesAll
-      ? needles.every((needle) => needle && haystack.includes(needle))
-      : needles.some((needle) => needle && haystack.includes(needle));
+      ? needles.every((needle) => haystack.includes(needle))
+      : needles.some((needle) => haystack.includes(needle));
   }
 
   return false;

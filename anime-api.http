@@ -8,11 +8,11 @@ Content-Type: application/json
             "field": "year",
             "value": 2025,
             "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
+            "score_multiplier": 5
         },
         {
             "field": "score",
-            "value": 6.5,
+            "value": 7.5,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
@@ -24,9 +24,20 @@ Content-Type: application/json
         },
         {
             "field": "type",
-            "value": ["Movie"],
+            "value": ["TV"],
             "action": "INCLUDES_ANY",
             "score_multiplier": 1
+        },
+        {
+            "field": "genres",
+            "action": "INCLUDES_ANY",
+            "value": [],
+            "score_multiplier": {
+                "Action": 1.05,
+                "Drama": 0.9,
+                "Fantasy": 1.05,
+                "Comedy": 1.05
+            }
         }
     ],
     "hideWatched": ["Completed", "Avoiding", "BRR"],
@@ -39,7 +50,7 @@ POST http://localhost:3000/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["38903"],
+    "mal_ids": ["55997"],
     "status": "BRR"
 }
 

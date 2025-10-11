@@ -1,58 +1,30 @@
 import { z } from "zod";
-import { AnimeField, FilterAction, Genre, Theme, WatchStatus } from "../config";
-import { Filter, NumericField } from "../types/anime";
+import { AnimeField, Genre, Theme, WatchStatus } from "../config";
+import {
+  ARRAY_FIELDS,
+  ArrayField,
+  Filter,
+  NumericField,
+  NUMERIC_FIELDS,
+  STRING_FIELDS,
+  StringField,
+} from "../types/anime";
+import {
+  createArrayFilterSchemas,
+  createFilterUnion,
+  createFiltersArraySchema,
+  createNumericFilterSchema,
+  createStringFilterSchemas,
+} from "./commonFilters";
 
-const numericFieldSchema = z.enum([
-  AnimeField.Score,
-  AnimeField.ScoredBy,
-  AnimeField.Rank,
-  AnimeField.Popularity,
-  AnimeField.Members,
-  AnimeField.Favorites,
-  AnimeField.Year,
-  AnimeField.Episodes,
-] as const);
-
-const arrayFieldSchema = z.enum([
-  AnimeField.Genres,
-  AnimeField.Themes,
-  AnimeField.Demographics,
-] as const);
-
-const stringFieldSchema = z.enum([
-  AnimeField.Title,
-  AnimeField.TitleEnglish,
-  AnimeField.Type,
-  AnimeField.Season,
-  AnimeField.Synopsis,
-] as const);
-
-const comparisonActionSchema = z.enum([
-  FilterAction.Equals,
-  FilterAction.GreaterThan,
-  FilterAction.GreaterThanOrEquals,
-  FilterAction.LessThan,
-  FilterAction.LessThanOrEquals,
-] as const);
-
-const arrayActionIncludesSchema = z.enum([
-  FilterAction.IncludesAll,
-  FilterAction.IncludesAny,
-] as const);
-
-const textSearchActionSchema = z.enum([
-  FilterAction.Equals,
-  FilterAction.Contains,
-] as const);
-
-const getValidCategories = (field: AnimeField): Set<string> => {
+const getValidCategories = (field: ArrayField): Set<string> => {
   if (field === AnimeField.Genres) return new Set<string>(Object.values(Genre));
   if (field === AnimeField.Themes) return new Set<string>(Object.values(Theme));
   return new Set();
 };
 
 const ensureValidCategories = (
-  field: AnimeField,
+  field: ArrayField,
   values: string[],
   ctx: z.RefinementCtx,
   path: (string | number)[]
@@ -76,7 +48,7 @@ const ensureValidCategories = (
 };
 
 const ensureValidMultiplierCategories = (
-  field: AnimeField,
+  field: ArrayField,
   multiplier: Record<string, number>,
   ctx: z.RefinementCtx
 ): void => {
@@ -100,69 +72,33 @@ const ensureValidMultiplierCategories = (
   }
 };
 
-const numericFilterSchema = z.object({
-  field: numericFieldSchema,
-  action: comparisonActionSchema,
-  value: z.number(),
-  score_multiplier: z.number().optional(),
-});
+const numericFieldSchema = z.enum(NUMERIC_FIELDS as [NumericField, ...NumericField[]]);
+const arrayFieldSchema = z.enum(ARRAY_FIELDS as [ArrayField, ...ArrayField[]]);
+const stringFieldSchema = z.enum(STRING_FIELDS as [StringField, ...StringField[]]);
 
-const arrayFilterIncludesSchema = z
-  .object({
-    field: arrayFieldSchema,
-    action: arrayActionIncludesSchema,
-    value: z.array(z.string().min(1)).nonempty(),
-    score_multiplier: z.record(z.number()).optional(),
-  })
-  .superRefine((data, ctx) => {
-    ensureValidCategories(data.field, data.value, ctx, ["value"]);
-    if (data.score_multiplier) {
-      ensureValidMultiplierCategories(data.field, data.score_multiplier, ctx);
-    }
-  });
+const numericFilterSchema = createNumericFilterSchema(numericFieldSchema);
 
-const arrayFilterExcludesSchema = z
-  .object({
-    field: arrayFieldSchema,
-    action: z.literal(FilterAction.Excludes),
-    value: z.string().min(1),
-    score_multiplier: z.record(z.number()).optional(),
-  })
-  .superRefine((data, ctx) => {
-    ensureValidCategories(data.field, [data.value], ctx, ["value"]);
-  });
+const { includesSchema: arrayFilterIncludesSchema, excludesSchema: arrayFilterExcludesSchema } = createArrayFilterSchemas(
+  arrayFieldSchema,
+  {
+    validateValues: ensureValidCategories,
+    validateMultiplier: ensureValidMultiplierCategories,
+  }
+);
 
-const stringTextFilterSchema = z.object({
-  field: stringFieldSchema,
-  action: textSearchActionSchema,
-  value: z.string().min(1),
-  score_multiplier: z.number().optional(),
-});
+const { textSchema: stringTextFilterSchema, includesSchema: stringIncludesFilterSchema, excludesSchema: stringExcludesFilterSchema } =
+  createStringFilterSchemas(stringFieldSchema);
 
-const stringIncludesFilterSchema = z.object({
-  field: stringFieldSchema,
-  action: arrayActionIncludesSchema,
-  value: z.array(z.string().min(1)).nonempty(),
-  score_multiplier: z.number().optional(),
-});
-
-const stringExcludesFilterSchema = z.object({
-  field: stringFieldSchema,
-  action: z.literal(FilterAction.Excludes),
-  value: z.string().min(1),
-  score_multiplier: z.number().optional(),
-});
-
-export const filterSchema = z.union([
+export const filterSchema = createFilterUnion<Filter>([
   numericFilterSchema,
   arrayFilterIncludesSchema,
   arrayFilterExcludesSchema,
   stringTextFilterSchema,
   stringIncludesFilterSchema,
   stringExcludesFilterSchema,
-]) as z.ZodType<Filter>;
+]);
 
-export const filtersSchema = z.array(filterSchema);
+export const filtersSchema = createFiltersArraySchema(filterSchema);
 
 const airingSchema = z.enum(["yes", "no", "any"] as const);
 
