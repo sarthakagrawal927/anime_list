@@ -47,7 +47,7 @@ export const createArrayFilterSchemas = <Field extends string>(
     .object({
       field: fieldSchema,
       action: arrayIncludesActionSchema,
-      value: z.array(z.string().min(0)),
+      value: z.array(z.string().min(1)),
       score_multiplier: z.record(z.number()).optional(),
     })
     .superRefine((data, ctx) => {
@@ -62,12 +62,13 @@ export const createArrayFilterSchemas = <Field extends string>(
     .object({
       field: fieldSchema,
       action: z.literal(FilterAction.Excludes),
-      value: z.string().min(1),
+      value: z.union([z.string().min(1), z.array(z.string().min(1))]),
       score_multiplier: z.record(z.number()).optional(),
     })
     .superRefine((data, ctx) => {
       const field = data.field as Field;
-      validators?.validateValues?.(field, [data.value], ctx, ["value"]);
+      const values = Array.isArray(data.value) ? data.value : [data.value];
+      validators?.validateValues?.(field, values, ctx, ["value"]);
     });
 
   return { includesSchema, excludesSchema };
@@ -86,14 +87,14 @@ export const createStringFilterSchemas = <Field extends string>(
   const includesSchema = z.object({
     field: fieldSchema,
     action: arrayIncludesActionSchema,
-    value: z.array(z.string().min(0)),
+    value: z.array(z.string().min(1)),
     score_multiplier: z.number().optional(),
   });
 
   const excludesSchema = z.object({
     field: fieldSchema,
     action: z.literal(FilterAction.Excludes),
-    value: z.string().min(1),
+    value: z.union([z.string().min(1), z.array(z.string().min(1))]),
     score_multiplier: z.number().optional(),
   });
 

@@ -136,6 +136,7 @@ export const getPercentiles = (
     p99: getPercentile(99),
     p95: getPercentile(95),
     p90: getPercentile(90),
+    p75: getPercentile(75),
     median: getPercentile(50),
     mean: values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0,
     top100: values.length ? values.slice(-100)[0] : 0,

@@ -33,8 +33,13 @@ async function initAnimeData() {
 export async function loadAnimeData(): Promise<void> {
   let fileExists = existsSync(FILE_PATHS.cleanAnimeData);
   if (!fileExists) {
-    console.log("Anime data file not found. Initializing...");
-    return initAnimeData();
+    let fileExists = existsSync(FILE_PATHS.animeData);
+    if (!fileExists) {
+      console.log("Anime data file not found. Initializing...");
+      return initAnimeData();
+    } else {
+      await cleanExistingJsonFile();
+    }
   }
 
   let animeData;

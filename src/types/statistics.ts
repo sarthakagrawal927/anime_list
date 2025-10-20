@@ -12,6 +12,7 @@ export interface Percentiles {
   p99: number;
   p95: number;
   p90: number;
+  p75: number;
   median: number;
   mean: number;
   top100: number;

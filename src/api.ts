@@ -132,6 +132,7 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
       if (!data.pagination?.has_next_page) break;
       page++;
     }
+    console.log(`Season ${season} ${year} fetch completed in ${performance.now() - p0}ms`);
   }
 
   await writeJsonFile(FILE_PATHS.animeData, existingAnime);

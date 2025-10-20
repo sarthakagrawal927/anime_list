@@ -8,24 +8,12 @@ Content-Type: application/json
             "field": "year",
             "value": 2025,
             "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 5
-        },
-        {
-            "field": "score",
-            "value": 7.5,
-            "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
         {
             "field": "members",
-            "value": 10000,
+            "value": 100000,
             "action": "GREATER_THAN_OR_EQUALS",
-            "score_multiplier": 1
-        },
-        {
-            "field": "type",
-            "value": ["TV"],
-            "action": "INCLUDES_ANY",
             "score_multiplier": 1
         },
         {
@@ -33,16 +21,20 @@ Content-Type: application/json
             "action": "INCLUDES_ANY",
             "value": [],
             "score_multiplier": {
-                "Action": 1.05,
-                "Drama": 0.9,
-                "Fantasy": 1.05,
-                "Comedy": 1.05
+            }
+        },
+        {
+            "field": "themes",
+            "action": "INCLUDES_ANY",
+            "value": [],
+            "score_multiplier": {
             }
         }
     ],
     "hideWatched": ["Completed", "Avoiding", "BRR"],
     "pagesize": 50,
-    "airing": "no"
+    "airing": "no",
+    "sortBy": "score"
 }
 
 ### Add Anime to Watched List
@@ -50,8 +42,8 @@ POST http://localhost:3000/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["55997"],
-    "status": "BRR"
+    "mal_ids": ["44940", "59459", "40907"],
+    "status": "Completed"
 }
 
 ### Get Anime Statistics

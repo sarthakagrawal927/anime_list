@@ -86,7 +86,8 @@ export const cleanExistingJsonFile = async (): Promise<AnimeItem[] | null> => {
     }
 
     console.log("Cleaning data...");
-    const dataArray = Object.values(rawData);
+    const dataArray = Object.values(rawData)
+      // .filter(anime => anime.members && anime.members > 10000);
     const cleanedData = cleanAnimeData(dataArray);
     console.log(`Writing cleaned data to ${FILE_PATHS.cleanAnimeData}...`);
     await writeJsonFile(FILE_PATHS.cleanAnimeData, cleanedData);
@@ -231,10 +232,21 @@ const matchesStringFilter = (
   }
 
   if (action === FilterAction.Excludes) {
-    return (
-      typeof filterValue === "string" &&
-      !value.toLowerCase().includes(filterValue.toLowerCase())
-    );
+    if (typeof filterValue === "string") {
+      return !value.toLowerCase().includes(filterValue.toLowerCase());
+    }
+
+    if (Array.isArray(filterValue)) {
+      const needles = filterValue
+        .filter((needle): needle is string => typeof needle === "string" && needle.length > 0)
+        .map((needle) => needle.toLowerCase());
+      if (needles.length === 0) {
+        return true;
+      }
+      return needles.every((needle) => !value.toLowerCase().includes(needle));
+    }
+
+    return false;
   }
 
   if (action === FilterAction.IncludesAll || action === FilterAction.IncludesAny) {
