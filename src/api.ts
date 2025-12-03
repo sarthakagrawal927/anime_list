@@ -80,9 +80,9 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
   const currentYear = now.getFullYear();
 
   const getSeason = (month: number): string => {
-    if (month >= 12 || month <= 2) return "winter";
-    else if (month >= 3 && month <= 5) return "spring";
-    else if (month >= 6 && month <= 8) return "summer";
+    if (month >= 1 && month <= 3) return "winter";
+    else if (month >= 4 && month <= 6) return "spring";
+    else if (month >= 7 && month <= 9) return "summer";
     else return "fall";
   };
 
