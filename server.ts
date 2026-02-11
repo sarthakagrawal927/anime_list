@@ -8,13 +8,18 @@ const port = SERVER_CONFIG.port;
 async function main() {
   const app = createApp();
 
+  // Start listening immediately so Render health check passes
+  app.listen(port, () => {
+    console.log(`Server ready on http://localhost:${port}`);
+  });
+
+  // Load data in the background
   try {
     await loadAnimeData();
     await loadMangaData();
     console.log("Data loaded successfully");
   } catch (error) {
     console.error("Failed to load data:", error);
-    process.exit(1);
   }
 
   // Daily data refresh at 3 AM
@@ -27,10 +32,6 @@ async function main() {
     } catch (error) {
       console.error("Scheduled refresh failed:", error);
     }
-  });
-
-  app.listen(port, () => {
-    console.log(`Server ready on http://localhost:${port}`);
   });
 }
 
