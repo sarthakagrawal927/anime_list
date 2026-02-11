@@ -28,10 +28,10 @@ router.post(
 
 router.get(`${routes.base}${routes.stats}`, catcher(getStats));
 
-router.get(routes.watchlist, catcher(getWatchlist));
+router.get(`${routes.base}${routes.watchlist}`, catcher(getWatchlist));
 
 router.post(
-  routes.add_to_watched,
+  `${routes.base}${routes.add_to_watched}`,
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addToWatchlist)
 );

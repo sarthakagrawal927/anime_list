@@ -124,14 +124,16 @@ export const API_CONFIG = {
   totalPages: 10000,
 } as const;
 
+const DATA_DIR = process.env.DATA_DIR || ".";
+
 export const FILE_PATHS = {
-  animeData: "anime_data.json",
-  cleanAnimeData: "cleaned_anime_data.json",
-  userWatchList: "user_watchedlist_data.json",
-  mangaData: "manga_data.json",
-  cleanMangaData: "cleaned_manga_data.json",
-  userMangaWatchList: "user_manga_watchedlist_data.json",
-} as const;
+  animeData: `${DATA_DIR}/anime_data.json`,
+  cleanAnimeData: `${DATA_DIR}/cleaned_anime_data.json`,
+  userWatchList: `${DATA_DIR}/user_watchedlist_data.json`,
+  mangaData: `${DATA_DIR}/manga_data.json`,
+  cleanMangaData: `${DATA_DIR}/cleaned_manga_data.json`,
+  userMangaWatchList: `${DATA_DIR}/user_manga_watchedlist_data.json`,
+};
 
 export const SERVER_CONFIG = {
   port: 3000,

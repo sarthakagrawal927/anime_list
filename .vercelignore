@@ -1,0 +1,11 @@
+*data.json
+*.xml
+dist
+.next
+src
+server.ts
+Dockerfile
+fly.toml
+render.yaml
+.dockerignore
+*.http

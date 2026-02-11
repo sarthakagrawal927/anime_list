@@ -1,0 +1,14 @@
+app = "mal-web"
+primary_region = "bom"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+
+[mounts]
+  source = "mal_data"
+  destination = "/data"
+
+[env]
+  DATA_DIR = "/data"
+  NODE_ENV = "production"

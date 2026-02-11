@@ -25,14 +25,14 @@ Content-Type: application/json
             "action": "EQUALS"
         },
         {
-            "field": "status",
-            "value": "Finished",
-            "action": "EQUALS"
-        },
-        {
             "field": "themes",
             "value": ["Villainess"],
             "action": "EXCLUDES"
+        },
+        {
+            "field": "chapters",
+            "value": 100,
+            "action": "GREATER_THAN_OR_EQUALS"
         }
     ],
     "hideWatched": ["Completed", "Watching", "BRR"],
@@ -51,6 +51,6 @@ POST http://localhost:3000/api/manga/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["29983"],
+    "mal_ids": ["132214"],
     "status": "Completed"
 }

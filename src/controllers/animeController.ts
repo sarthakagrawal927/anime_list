@@ -17,6 +17,7 @@ import { getScoreSortedList } from "../utils/statistics";
 import { FilterRequestBody } from "../validators/animeFilters";
 import { WatchedListPayload } from "../validators/watchedList";
 import { hideWatchedItems, takeFirst } from "./helpers";
+import { WatchedAnime } from '../types/watchlist';
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -85,10 +86,21 @@ export const getStats = async (_req: Request, res: Response) => {
 
 export const getWatchlist = async (_req: Request, res: Response) => {
   const watchlist = await getWatchedAnimeList();
+  const status = _req.query.status as WatchStatus;
+  
   if (!watchlist) {
     res.status(404).json({ error: "Watchlist not found" });
     return;
   }
+  
+  if (status) {
+    const filteredAnime = Object.values(watchlist.anime).filter(
+      (item: WatchedAnime) => item.status === status
+    );
+    res.json(filteredAnime);
+    return;
+  }
+  
   res.json(watchlist);
 };
 

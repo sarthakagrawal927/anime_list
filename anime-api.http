@@ -12,7 +12,13 @@ Content-Type: application/json
         },
         {
             "field": "members",
-            "value": 100000,
+            "value": 50000,
+            "action": "GREATER_THAN_OR_EQUALS",
+            "score_multiplier": 1
+        },
+        {
+            "field": "score",
+            "value": 7.5,
             "action": "GREATER_THAN_OR_EQUALS",
             "score_multiplier": 1
         },
@@ -22,27 +28,19 @@ Content-Type: application/json
             "value": [],
             "score_multiplier": {
             }
-        },
-        {
-            "field": "themes",
-            "action": "INCLUDES_ANY",
-            "value": [],
-            "score_multiplier": {
-            }
         }
     ],
-    "hideWatched": ["Completed", "Avoiding", "BRR"],
+    "hideWatched": ["Completed", "BRR"],
     "pagesize": 50,
-    "airing": "no",
     "sortBy": "score"
 }
 
 ### Add Anime to Watched List
-POST http://localhost:3000/watched/add
+POST http://localhost:3000/api/watched/add
 Content-Type: application/json
 
 {
-    "mal_ids": ["44940", "59459", "40907"],
+    "mal_ids": ["59192"],
     "status": "Completed"
 }
 
@@ -56,4 +54,4 @@ GET http://localhost:3000/api/fields
 GET http://localhost:3000/api/filters
 
 ### Get Watchlist by Status
-GET http://localhost:3000/api/watchlist?status=Completed
+GET http://localhost:3000/api/watchlist?status=Avoiding
