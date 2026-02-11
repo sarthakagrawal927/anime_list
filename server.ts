@@ -1,12 +1,18 @@
+import "dotenv/config";
 import cron from "node-cron";
 import { createApp } from "./src/app";
 import { SERVER_CONFIG } from "./src/config";
 import { loadAnimeData, loadMangaData } from "./src/services/dataLoader";
+import { initWatchlistTables } from "./src/db/watchlist";
 
 const port = SERVER_CONFIG.port;
 
 async function main() {
   const app = createApp();
+
+  // Init Turso watchlist tables
+  await initWatchlistTables();
+  console.log("Watchlist tables initialized");
 
   // Start listening immediately so Render health check passes
   app.listen(port, () => {

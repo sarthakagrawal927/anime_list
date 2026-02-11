@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@libsql/client": "^0.17.0",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/compression": "^1.7.5",
     "@types/cors": "^2.8.17",

@@ -382,7 +382,8 @@ export const filterAnimeList = async (
 };
 
 async function loadWatchlist(): Promise<WatchlistData> {
-  const data = await readJsonFile<WatchlistData>(FILE_PATHS.userWatchList);
+  const { getAnimeWatchlist } = await import("./db/watchlist");
+  const data = await getAnimeWatchlist();
   if (!data) {
     throw new Error("Watchlist data not found");
   }
@@ -420,20 +421,8 @@ export async function addAnimeToWatched(
   status: WatchStatus
 ): Promise<void> {
   try {
-    const { user, anime } = await loadWatchlist();
-
-    for (const mal_id of mal_ids) {
-      if (anime[mal_id]) {
-        anime[mal_id].status = status;
-      } else {
-        anime[mal_id] = {
-          id: mal_id,
-          status,
-        };
-      }
-    }
-
-    await writeJsonFile(FILE_PATHS.userWatchList, { user, anime });
+    const { upsertAnimeWatchlist } = await import("./db/watchlist");
+    await upsertAnimeWatchlist(mal_ids, status);
   } catch (error) {
     console.error("Error adding anime to watched list:", error);
     throw error;
@@ -442,7 +431,8 @@ export async function addAnimeToWatched(
 
 export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
   try {
-    return await loadWatchlist();
+    const { getAnimeWatchlist } = await import("./db/watchlist");
+    return await getAnimeWatchlist();
   } catch (error) {
     console.error("Error reading watched anime list:", error);
     return null;
@@ -450,34 +440,14 @@ export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
 }
 
 // Manga watchlist functions
-async function loadMangaWatchlist(): Promise<MangaWatchlistData> {
-  const data = await readJsonFile<MangaWatchlistData>(
-    FILE_PATHS.userMangaWatchList
-  );
-  if (!data) {
-    throw new Error("Manga watchlist data not found");
-  }
-  return data;
-}
 
 export async function addMangaToWatched(
   mal_ids: string[],
   status: WatchStatus
 ): Promise<void> {
   try {
-    const { user, manga } = await loadMangaWatchlist();
-
-    for (const mal_id of mal_ids) {
-      if (manga[mal_id]) {
-        manga[mal_id].status = status;
-        console.log(`Updated manga ${mal_id} status to ${status}`);
-      } else {
-        manga[mal_id] = { id: mal_id, status };
-        console.log(`Added manga ${mal_id} with status ${status}`);
-      }
-    }
-
-    await writeJsonFile(FILE_PATHS.userMangaWatchList, { user, manga });
+    const { upsertMangaWatchlist } = await import("./db/watchlist");
+    await upsertMangaWatchlist(mal_ids, status);
   } catch (error) {
     console.error("Error adding manga to watched list:", error);
     throw error;
@@ -486,7 +456,8 @@ export async function addMangaToWatched(
 
 export async function getWatchedMangaList(): Promise<MangaWatchlistData | null> {
   try {
-    return await loadMangaWatchlist();
+    const { getMangaWatchlist } = await import("./db/watchlist");
+    return await getMangaWatchlist();
   } catch (error) {
     console.error("Error reading watched manga list:", error);
     return null;
