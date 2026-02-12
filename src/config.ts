@@ -136,7 +136,7 @@ export const FILE_PATHS = {
 };
 
 export const SERVER_CONFIG = {
-  port: parseInt(process.env.PORT || "3001"),
+  port: parseInt(process.env.PORT || "8080"),
   routes: {
     base: "/api",
     stats: "/stats",
