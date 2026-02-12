@@ -7,6 +7,9 @@ async function seed() {
   await initWatchlistTables();
   const db = getDb();
 
+  const userId = process.argv[2] || "default";
+  console.log(`Seeding watchlist for user_id: ${userId}`);
+
   // Seed anime watchlist
   try {
     const animeData = JSON.parse(readFileSync("user_watchedlist_data.json", "utf-8"));
@@ -20,13 +23,13 @@ async function seed() {
 
     console.log(`Seeding ${entries.length} anime watchlist entries...`);
 
-    // Batch in chunks of 100 (Turso batch limit)
     for (let i = 0; i < entries.length; i += 100) {
       const chunk = entries.slice(i, i + 100);
       await db.batch(
         chunk.map((e) => ({
-          sql: `INSERT OR REPLACE INTO anime_watchlist (mal_id, status, title, type, episodes) VALUES (?, ?, ?, ?, ?)`,
+          sql: `INSERT OR REPLACE INTO anime_watchlist (user_id, mal_id, status, title, type, episodes) VALUES (?, ?, ?, ?, ?, ?)`,
           args: [
+            userId,
             e.id,
             e.status,
             e.title || null,
@@ -55,8 +58,8 @@ async function seed() {
 
     await db.batch(
       entries.map((e) => ({
-        sql: `INSERT OR REPLACE INTO manga_watchlist (mal_id, status) VALUES (?, ?)`,
-        args: [e.id, e.status],
+        sql: `INSERT OR REPLACE INTO manga_watchlist (user_id, mal_id, status) VALUES (?, ?, ?)`,
+        args: [userId, e.id, e.status],
       }))
     );
 
