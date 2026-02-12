@@ -13,31 +13,30 @@ Finding quality anime to watch is hard. MyAnimeList has thousands of titles, but
 - **Advanced Filtering**: Multi-dimensional search across score, year, genres, themes, demographics with powerful operators (includes all/any, excludes, numeric comparisons)
 - **Smart Ranking**: Custom algorithm balancing quality (MAL score) and popularity (members + favorites) using logarithmic scaling to give hidden gems a chance
 - **Personal Watchlists**: Track anime by status (Watching, Completed, Deferred, Avoiding, BRR) with Google authentication
-- **Rich Statistics**: Explore trends, score distributions, and popular genre combinations across 15,000+ titles
-- **High Performance**: Search through 18,000 items in ~100ms with in-memory caching and efficient pagination
+- **Rich Statistics**: Explore trends, score distributions, and popular genre combinations across 14,800+ titles with watchlist filtering
+- **Lightning Fast**: Sub-millisecond response times with stale-while-revalidate caching and Turso database
+- **Auto-Updates**: GitHub Actions automatically fetches latest anime seasons daily at midnight UTC
 
 ## Architecture
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
+    subgraph "Client Layer - Vercel"
         UI[Next.js Frontend<br/>React 19 + TailwindCSS]
-        Components[UI Components<br/>FilterBuilder, AnimeCard, etc.]
+        Components[UI Components<br/>FilterBuilder, AnimeCard, Stats]
         Cache[TanStack Query<br/>Client-side Cache]
     end
 
-    subgraph "API Layer"
+    subgraph "API Layer - Render"
         Express[Express.js Server<br/>TypeScript]
         Routes[API Routes<br/>/search /stats /watchlist]
         Controllers[Controllers<br/>Request Handlers]
-        Validators[Input Validators<br/>Zod Schemas]
-        Middleware[Auth Middleware<br/>JWT + Google OAuth]
+        Memory[In-Memory Cache<br/>14.8k Anime<br/>Stale-While-Revalidate]
     end
 
-    subgraph "Data Layer"
-        Memory[In-Memory Store<br/>18k Anime Cached]
-        Turso[(Turso Database<br/>libSQL)]
-        Files[JSON Data Files<br/>anime_data.json]
+    subgraph "Database - Turso"
+        AnimeDB[(Anime Data<br/>14,800+ titles)]
+        WatchlistDB[(User Watchlists<br/>Per-user tracking)]
     end
 
     subgraph "External Services"
@@ -45,8 +44,9 @@ graph TB
         Google[Google OAuth<br/>Authentication]
     end
 
-    subgraph "Background Jobs"
-        Cron[Cron Scheduler<br/>Daily 3 AM Refresh]
+    subgraph "Automation - GitHub Actions"
+        Cron[Daily Cron Job<br/>Midnight UTC]
+        Update[Update Script<br/>Fetch Latest Seasons]
     end
 
     UI --> Components
@@ -54,30 +54,31 @@ graph TB
     Cache --> Express
     Express --> Routes
     Routes --> Controllers
-    Controllers --> Validators
-    Controllers --> Middleware
-    Middleware --> Google
     Controllers --> Memory
-    Controllers --> Turso
-    Memory --> Files
-    Cron --> Jikan
-    Jikan --> Files
-    Files --> Memory
+    Memory -.1hr cache.-> AnimeDB
+    Controllers --> WatchlistDB
+    Controllers --> Google
+    Cron --> Update
+    Update --> Jikan
+    Jikan --> Update
+    Update --> AnimeDB
 
     style UI fill:#3b82f6
     style Express fill:#10b981
-    style Turso fill:#8b5cf6
+    style AnimeDB fill:#8b5cf6
     style Jikan fill:#f59e0b
     style Memory fill:#ef4444
+    style Cron fill:#06b6d4
 ```
 
 ### Key Components
 
-- **Frontend**: Next.js 15 with server-side rendering, TailwindCSS 4 + shadcn/ui components
-- **Backend**: Express.js API with TypeScript, in-memory data store for fast filtering
-- **Database**: Turso (libSQL) for user watchlists and authentication
+- **Frontend (Vercel)**: Next.js 15 with App Router, TailwindCSS 4 + shadcn/ui components
+- **Backend (Render)**: Express.js API with stale-while-revalidate in-memory cache for <1ms response times
+- **Database (Turso)**: libSQL database storing anime data (14,800+ titles) and user watchlists
+- **Caching Strategy**: 1-hour TTL with background refresh - 100% of requests served instantly from memory
+- **Automation (GitHub Actions)**: Daily cron at midnight UTC fetches latest anime seasons from Jikan API
 - **External APIs**: Jikan API for MyAnimeList data, Google OAuth for authentication
-- **Background Jobs**: Daily cron job refreshes anime data at 3 AM
 
 ## Quick Start
 
@@ -121,6 +122,8 @@ npm run dev:be     # Backend only
 npm run dev:fe     # Frontend only
 npm run build      # Build for production
 npm start          # Start production server
+npm run db:seed    # Seed Turso database from JSON (one-time)
+npm run db:update  # Update anime data from MAL API
 ```
 
 ## Deployment
@@ -129,11 +132,19 @@ npm start          # Start production server
 - Auto-deploys on push to main
 - Configure environment variables in Vercel dashboard
 
-**Backend (Docker)**
-```bash
-docker build -t mal-backend .
-docker run -p 8080:8080 --env-file .env mal-backend
-```
+**Backend (Render)**
+- Auto-deploys from `render.yaml` on push to main
+- Configure `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `JWT_SECRET`, `GOOGLE_CLIENT_ID` in environment variables
+
+**Database (Turso)**
+- Create database: `turso db create mal-watchlist`
+- Get credentials: `turso db show mal-watchlist`
+- Run migrations and seed: `npm run db:seed`
+
+**GitHub Actions (Automated)**
+- Add repository secrets: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`
+- Workflow runs automatically daily at midnight UTC
+- Manual trigger: Go to Actions tab → "Update Anime Data" → Run workflow
 
 ---
 

@@ -25,18 +25,20 @@ MAL Explorer is a full-stack anime discovery and tracking platform that enables 
 
 ### Primary Technologies
 - **Frontend**: Next.js 15 (React 19, App Router), TailwindCSS 4, shadcn/ui, TanStack Query v5
-- **Backend**: Express.js, TypeScript, Node.js
-- **Database**: Turso (libSQL) for user data, JSON files for anime/manga datasets
+- **Backend**: Express.js, TypeScript, Node.js with stale-while-revalidate in-memory caching
+- **Database**: Turso (libSQL) for anime data (14,800+ titles) and user watchlists
 - **Authentication**: Google OAuth 2.0 with JWT
 - **Data Source**: MyAnimeList via Jikan API v4
-- **Deployment**: Vercel (frontend + serverless), backend on port 8080
+- **Automation**: GitHub Actions for daily anime data updates (midnight UTC)
+- **Deployment**: Vercel (frontend), Render (backend), Turso (database)
 
 ### Key Statistics
-- Total commits: 67
+- Total commits: 90+
 - Lines of code: ~10,000+ (excluding node_modules)
-- Data size: ~100MB anime + ~80MB manga JSON files
-- Search performance: ~100ms for 18,000 items
-- Dataset: 15,000+ anime, 10,000+ manga titles
+- Database size: 14,842 anime titles in Turso
+- Search performance: <1ms (in-memory cache with stale-while-revalidate)
+- Dataset: 14,800+ anime, auto-updated daily via GitHub Actions
+- Cache strategy: 1-hour TTL, background refresh, 100% instant responses
 
 ### Project Evolution Timeline
 1. **Initial**: Node.js script for data fetching (`f766faa`)
@@ -83,11 +85,16 @@ MAL Explorer is a full-stack anime discovery and tracking platform that enables 
 │  │  Business Logic (dataProcessor, statistics)         │   │
 │  └───────────────────┬─────────────────────────────────┘   │
 │                      ▼                                      │
-│  ┌──────────────┐  ┌─────────────┐  ┌────────────────┐    │
-│  │ In-Memory    │  │  Turso DB   │  │  Jikan API     │    │
-│  │ Store        │  │  (libSQL)   │  │  Integration   │    │
-│  │ (JSON cache) │  │ (Watchlist) │  │  (Data Fetch)  │    │
-│  └──────────────┘  └─────────────┘  └────────────────┘    │
+│  ┌──────────────────────┐  ┌──────────────────────────┐    │
+│  │ In-Memory Cache      │  │  Turso Database          │    │
+│  │ - 14.8k anime        │  │  - Anime data (14.8k)    │    │
+│  │ - 1hr TTL            │  │  - User watchlists       │    │
+│  │ - Stale-while-       │  │  - Indexed queries       │    │
+│  │   revalidate         │  │  - Auto-updated daily    │    │
+│  └──────────────────────┘  └──────────────────────────┘    │
+│                                                             │
+│  External: Jikan API (MAL data) + Google OAuth             │
+│  Automation: GitHub Actions (daily cron at midnight UTC)   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -124,6 +131,34 @@ MAL Explorer is a full-stack anime discovery and tracking platform that enables 
 - **Commit 1f964af**: Color-coded watchlist tabs, skeleton loading
 
 **Pattern**: Consistent design system, progressive disclosure, perceived performance
+
+#### 5. Recent Major Improvements (Latest Commits)
+
+**Database Migration to Turso**
+- **Commits 6350f54, 190cb60, 3d37466**: Migrated anime data from JSON files to Turso database
+- Created `anime_data` table with 14,842 titles, indexed for fast queries
+- Implemented `upsertAnimeBatch()` for efficient bulk updates
+- Added migration system for schema management
+
+**Stale-While-Revalidate Caching**
+- **Commit 40af8b7**: Implemented zero-latency cache refresh pattern
+- Cache serves stale data instantly while refreshing in background
+- 1-hour TTL with automatic background updates
+- 100% of requests now <1ms (previously 0.1% suffered 1114ms Turso latency)
+
+**GitHub Actions Automation**
+- **Commits 68b6192, 6243ee4**: Daily cron job for anime data updates
+- Runs at midnight UTC, fetches latest two seasons from Jikan API
+- Directly updates Turso database (no Render dependency)
+- Workflow: GitHub Actions → Turso DB → Render auto-refreshes from DB
+
+**Stats Include-Only Filter Fix**
+- **Commit e9596f5**: Fixed stats filter to show only watchlisted items
+- Created `includeOnlyWatchedItems()` helper
+- Prevents non-watchlisted anime from appearing in filtered stats
+- Inverted UI logic from "exclude" to "include only" for clarity
+
+**Pattern**: Performance optimization through strategic caching, automation for zero-maintenance updates, database-first approach for persistence
 
 ---
 
