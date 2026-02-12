@@ -1,8 +1,10 @@
 import axios from "axios";
 import { delay, writeJsonFile, readJsonFile } from "./utils/file";
 import { API_CONFIG, FILE_PATHS } from "./config";
-import { BaseAnimeItem } from "./types/anime";
+import { BaseAnimeItem, AnimeItem } from "./types/anime";
 import { BaseMangaItem } from "./types/manga";
+import { upsertAnimeBatch } from "./db/animeData";
+import { transformRawAnime } from "./dataProcessor";
 
 type RawAnimeItem = BaseAnimeItem & {
   genres?: Array<{ name: string }>;
@@ -73,7 +75,7 @@ export const fetchAllAnimePages = async (): Promise<void> => {
   console.log(`Updated all anime again in ${performance.now() - p0}ms`);
 };
 
-// Fetch last 2 seasons and cleanup old data
+// Fetch last 2 seasons and update Turso database
 export const updateLatestTwoSeasonData = async (): Promise<void> => {
   const p0 = performance.now();
 
@@ -103,20 +105,15 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
   const currentSeason = getSeason(currentMonth);
   const previousSeasonData = getPreviousSeason(currentSeason, currentYear);
 
-  let existingAnime = await readJsonFile<Record<string, RawAnimeItem>>(
-    FILE_PATHS.animeData
-  );
-  if (!existingAnime) throw new Error("No data found in anime data file");
-
-  let newCount = 0,
-    updatedCount = 0;
   const seasonsToFetch = [
     { season: currentSeason, year: currentYear },
     { season: previousSeasonData.season, year: previousSeasonData.year },
   ];
 
+  const allFetchedAnime: AnimeItem[] = [];
+
   for (const { season, year } of seasonsToFetch) {
-    console.log(`Fetching ${season} ${year}`);
+    console.log(`Fetching ${season} ${year}...`);
     let page = 1;
     while (true) {
       const url = `${API_CONFIG.baseUrl}/seasons/${year}/${season}?page=${page}&limit=25`;
@@ -124,27 +121,28 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
 
       if (!data?.data || !Array.isArray(data.data)) break;
 
-      for (const anime of data.data) {
-        const key = anime.mal_id.toString();
-        if (!existingAnime[key]) newCount++;
-        else updatedCount++;
-        existingAnime[key] = anime;
+      // Transform and collect anime
+      for (const rawAnime of data.data) {
+        const anime = transformRawAnime(rawAnime);
+        // Only include anime with complete data
+        if (anime.score && anime.scored_by && anime.members && anime.favorites && anime.year) {
+          allFetchedAnime.push(anime);
+        }
       }
 
       if (!data.pagination?.has_next_page) break;
       page++;
     }
-    console.log(`Season ${season} ${year} fetch completed in ${performance.now() - p0}ms`);
+    console.log(`✓ ${season} ${year} - fetched ${allFetchedAnime.length} anime so far`);
   }
 
-  await writeJsonFile(FILE_PATHS.animeData, existingAnime);
-
-  if (newCount > 0 || updatedCount > 0) {
-    console.log(
-      `Added ${newCount} new anime, updated ${updatedCount} existing anime`
-    );
+  // Save to Turso database
+  if (allFetchedAnime.length > 0) {
+    console.log(`Saving ${allFetchedAnime.length} anime to database...`);
+    await upsertAnimeBatch(allFetchedAnime);
   }
-  console.log(`Season fetch completed in ${(performance.now() - p0) / 1000}s`);
+
+  console.log(`✓ Season update completed in ${(performance.now() - p0) / 1000}s`);
 };
 
 // Manga API functions

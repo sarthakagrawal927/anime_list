@@ -31,7 +31,7 @@ import { mangaStore } from "./store/mangaStore";
 const extractImageUrl = (images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } }): string | undefined =>
   images?.webp?.image_url || images?.jpg?.image_url || undefined;
 
-const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
+export const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   const arrayToMap = (
     arr?: Array<{ name: string }>
   ): { [key: string]: number } => {
@@ -372,7 +372,7 @@ export const filterAnimeList = async (
   filters: Filter[]
 ): Promise<AnimeItem[]> => {
   try {
-    const animeList = animeStore.getAnimeList();
+    const animeList = await animeStore.getAnimeList();
 
     return filterCollection(animeList, filters, {
       getFieldValue: getAnimeFieldValue,

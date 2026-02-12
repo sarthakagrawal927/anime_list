@@ -1,58 +1,43 @@
 import { existsSync } from "fs";
-import { stat } from "fs/promises";
 import {
-  fetchAllAnimePages,
   fetchAllMangaPages,
-  updateLatestTwoSeasonData,
 } from "../api";
 import { FILE_PATHS } from "../config";
 import {
-  cleanExistingJsonFile,
   cleanExistingMangaJsonFile,
 } from "../dataProcessor";
 import { animeStore } from "../store/animeStore";
 import { mangaStore } from "../store/mangaStore";
+import { runAllMigrations } from "../db/migrations";
+import { getAnimeCount } from "../db/animeData";
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-const THIRTY_DAYS_MS = 30 * ONE_DAY_MS;
-
-async function isFileOlderThan(
-  filePath: string,
-  ageMs: number
-): Promise<boolean> {
-  if (!existsSync(filePath)) return true;
-  const stats = await stat(filePath);
-  return Date.now() - stats.mtime.getTime() > ageMs;
-}
-
-async function initAnimeData() {
-  await fetchAllAnimePages();
-  animeStore.setAnimeList(await cleanExistingJsonFile());
-}
-
+/**
+ * Load anime data from Turso database into memory
+ */
 export async function loadAnimeData(): Promise<void> {
-  let fileExists = existsSync(FILE_PATHS.cleanAnimeData);
-  if (!fileExists) {
-    let fileExists = existsSync(FILE_PATHS.animeData);
-    if (!fileExists) {
-      console.log("Anime data file not found. Initializing...");
-      return initAnimeData();
-    } else {
-      await cleanExistingJsonFile();
-    }
-  }
+  try {
+    console.log("Loading anime data from database...");
 
-  let animeData;
-  if (await isFileOlderThan(FILE_PATHS.cleanAnimeData, THIRTY_DAYS_MS)) {
-    console.log("Monthly reclean starting in background");
-    initAnimeData();
-  } else if (await isFileOlderThan(FILE_PATHS.cleanAnimeData, ONE_DAY_MS)) {
-    console.log("Daily update starting");
-    await updateLatestTwoSeasonData();
-    animeData = await cleanExistingJsonFile();
+    // Ensure database tables exist
+    await runAllMigrations();
+
+    // Check if database has data
+    const count = await getAnimeCount();
+
+    if (count === 0) {
+      console.warn("⚠ No anime data in database. Run 'npm run db:seed' to import data.");
+      console.warn("  Or run 'npm run db:update' to fetch latest seasons.");
+      return;
+    }
+
+    // Load data into memory cache
+    await animeStore.setAnimeList();
+
+    console.log(`✓ Loaded ${count} anime from database`);
+  } catch (error) {
+    console.error("Error loading anime data:", error);
+    throw error;
   }
-  await animeStore.setAnimeList(animeData);
-  console.log("Anime data loaded successfully");
 }
 
 // Manga data loading functions

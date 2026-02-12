@@ -1,10 +1,11 @@
-import { FILE_PATHS } from "../config";
 import { AnimeItem } from "../types/anime";
-import { readJsonFile } from "../utils/file";
+import { getAllAnime } from "../db/animeData";
 
 class AnimeStore {
   private animeList: AnimeItem[] = [];
   private static instance: AnimeStore;
+  private lastLoadedAt: number = 0;
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
 
   private constructor() {}
 
@@ -16,19 +17,30 @@ class AnimeStore {
   }
 
   async setAnimeList(animeData?: AnimeItem[] | null): Promise<void> {
-    if (!animeData)
-      animeData = await readJsonFile<AnimeItem[]>(FILE_PATHS.cleanAnimeData);
-    if (!animeData) return console.error("No data found in anime data file");
-    console.log(`Loaded ${animeData.length} anime. You can now use the API`);
+    if (!animeData) {
+      // Load from Turso database
+      animeData = await getAllAnime();
+    }
+    if (!animeData || animeData.length === 0) {
+      return console.error("No anime data found in database");
+    }
+    console.log(`Loaded ${animeData.length} anime from database`);
     this.animeList = animeData;
+    this.lastLoadedAt = Date.now();
   }
 
-  getAnimeList(): AnimeItem[] {
+  async getAnimeList(): Promise<AnimeItem[]> {
+    // Auto-refresh cache if expired
+    if (Date.now() - this.lastLoadedAt > this.CACHE_TTL) {
+      console.log("Cache expired, reloading anime data...");
+      await this.setAnimeList();
+    }
     return this.animeList;
   }
 
   clearStore(): void {
     this.animeList = [];
+    this.lastLoadedAt = 0;
   }
 }
 

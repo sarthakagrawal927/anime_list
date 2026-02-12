@@ -90,7 +90,7 @@ export const getStats = async (req: AuthRequest, res: Response) => {
   const userId = req.user?.userId;
   const hideWatched = (req.query.hideWatched as string)?.split(',').filter(Boolean) || [];
 
-  let animeList = animeStore.getAnimeList();
+  let animeList = await animeStore.getAnimeList();
 
   if (userId && hideWatched.length > 0) {
     // Convert hideWatched to includeStatuses (invert the selection)
@@ -155,7 +155,7 @@ export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const allAnime = animeStore.getAnimeList();
+  const allAnime = await animeStore.getAnimeList();
   const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
 
   const items = Object.values(watchlist.anime).map((entry) => {
