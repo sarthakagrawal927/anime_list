@@ -21,9 +21,9 @@ function BarChart({
             <span className="text-xs text-muted-foreground w-28 shrink-0 text-right truncate">
               {item.label}
             </span>
-            <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+            <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary rounded"
+                className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
                 style={{ width: `${(item.value / max) * 100}%` }}
               />
             </div>
