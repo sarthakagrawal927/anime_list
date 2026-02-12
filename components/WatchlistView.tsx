@@ -5,6 +5,9 @@ import Image from "next/image";
 import type { EnrichedWatchlistItem } from "@/lib/types";
 import { getEnrichedWatchlist, addToWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const STATUSES = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
 
@@ -30,7 +33,7 @@ export default function WatchlistView() {
 
   useEffect(() => {
     if (user) load();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleStatusChange = async (malId: string, newStatus: string) => {
     try {
@@ -46,16 +49,16 @@ export default function WatchlistView() {
   if (!user) {
     return (
       <div className="text-center py-16 space-y-3">
-        <p className="text-gray-400 text-lg">Sign in to manage your watchlist</p>
-        <p className="text-gray-600 text-sm">
+        <p className="text-muted-foreground text-lg">Sign in to manage your watchlist</p>
+        <p className="text-muted-foreground/60 text-sm">
           Your watchlist is personal and synced across devices
         </p>
       </div>
     );
   }
 
-  if (loading) return <div className="text-gray-500">Loading watchlist...</div>;
-  if (error) return <div className="text-red-400">{error}</div>;
+  if (loading) return <p className="text-muted-foreground">Loading watchlist...</p>;
+  if (error) return <p className="text-destructive text-sm">{error}</p>;
 
   const filtered = items.filter((item) => item.watchStatus === activeTab);
 
@@ -65,32 +68,26 @@ export default function WatchlistView() {
         {STATUSES.map((status) => {
           const count = items.filter((item) => item.watchStatus === status).length;
           return (
-            <button
+            <Button
               key={status}
+              variant={activeTab === status ? "default" : "secondary"}
+              size="sm"
               onClick={() => setActiveTab(status)}
-              className={`px-3 py-1.5 text-sm rounded transition-colors ${
-                activeTab === status
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-              }`}
             >
               {status} ({count})
-            </button>
+            </Button>
           );
         })}
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-gray-500 py-8 text-center">
+        <div className="text-muted-foreground py-8 text-center">
           No items with status &ldquo;{activeTab}&rdquo;
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {filtered.map((item) => (
-            <div
-              key={item.mal_id}
-              className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden flex"
-            >
+            <Card key={item.mal_id} className="overflow-hidden flex flex-row p-0">
               {item.image ? (
                 <div className="relative w-[80px] min-h-[120px] shrink-0">
                   <Image
@@ -102,8 +99,8 @@ export default function WatchlistView() {
                   />
                 </div>
               ) : (
-                <div className="w-[80px] min-h-[120px] shrink-0 bg-gray-800 flex items-center justify-center">
-                  <span className="text-gray-600 text-xs">No img</span>
+                <div className="w-[80px] min-h-[120px] shrink-0 bg-muted flex items-center justify-center">
+                  <span className="text-muted-foreground text-xs">No img</span>
                 </div>
               )}
 
@@ -114,24 +111,24 @@ export default function WatchlistView() {
                       href={item.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-400 hover:underline font-semibold text-sm leading-tight truncate"
+                      className="text-primary hover:underline font-semibold text-sm leading-tight truncate"
                     >
                       {item.title}
                     </a>
                   ) : (
-                    <span className="text-sm text-gray-200 truncate">{item.title}</span>
+                    <span className="text-sm text-foreground truncate">{item.title}</span>
                   )}
                   {item.type && (
-                    <span className="text-xs bg-gray-800 px-2 py-0.5 rounded shrink-0">
+                    <Badge variant="secondary" className="shrink-0 text-xs">
                       {item.type}
-                    </span>
+                    </Badge>
                   )}
                 </div>
 
-                <div className="flex gap-3 text-xs text-gray-400">
+                <div className="flex gap-3 text-xs text-muted-foreground">
                   {item.score && (
                     <span>
-                      Score: <span className="text-yellow-400">{item.score}</span>
+                      Score: <span className="text-yellow-400 font-medium">{item.score}</span>
                     </span>
                   )}
                   {item.year && <span>{item.year}</span>}
@@ -144,12 +141,9 @@ export default function WatchlistView() {
                 {item.genres.length > 0 && (
                   <div className="flex flex-wrap gap-1">
                     {item.genres.slice(0, 4).map((g) => (
-                      <span
-                        key={g}
-                        className="text-xs bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded"
-                      >
+                      <Badge key={g} variant="outline" className="text-xs font-normal px-1.5 py-0">
                         {g}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
                 )}
@@ -160,7 +154,7 @@ export default function WatchlistView() {
                     onChange={(e) =>
                       handleStatusChange(item.mal_id, e.target.value)
                     }
-                    className="bg-gray-800 text-xs rounded px-2 py-1 border border-gray-700 text-gray-200"
+                    className="h-7 rounded-md border border-input bg-background px-2 text-xs"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -170,7 +164,7 @@ export default function WatchlistView() {
                   </select>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}

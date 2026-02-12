@@ -1,6 +1,9 @@
 "use client";
 
 import type { SearchFilter, FieldOptions, FilterActions } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 const GENRES = [
   "Comedy", "Action", "Fantasy", "Adventure", "Sci-Fi", "Drama", "Romance",
@@ -96,11 +99,11 @@ export default function FilterRow({
   };
 
   return (
-    <div className="flex items-start gap-2 bg-gray-900 p-3 rounded-lg border border-gray-800">
+    <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3">
       <select
         value={filter.field}
         onChange={(e) => handleFieldChange(e.target.value)}
-        className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200"
+        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
       >
         {allFields.map((f) => (
           <option key={f} value={f}>
@@ -112,7 +115,7 @@ export default function FilterRow({
       <select
         value={filter.action}
         onChange={(e) => onChange(index, { ...filter, action: e.target.value })}
-        className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200"
+        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
       >
         {availableActions.map((a) => (
           <option key={a} value={a}>
@@ -126,18 +129,14 @@ export default function FilterRow({
           {valueOptions.map((opt) => {
             const selected = Array.isArray(filter.value) && filter.value.includes(opt);
             return (
-              <button
+              <Badge
                 key={opt}
-                type="button"
+                variant={selected ? "default" : "outline"}
+                className="cursor-pointer text-xs font-normal"
                 onClick={() => handleValueChange(opt)}
-                className={`text-xs px-2 py-1 rounded transition-colors ${
-                  selected
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                }`}
               >
                 {opt}
-              </button>
+              </Badge>
             );
           })}
         </div>
@@ -145,7 +144,7 @@ export default function FilterRow({
         <select
           value={filter.value as string}
           onChange={(e) => handleValueChange(e.target.value)}
-          className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200 flex-1"
+          className="h-8 rounded-md border border-input bg-background px-2 text-sm flex-1"
         >
           <option value="">Select...</option>
           {valueOptions.map((opt) => (
@@ -155,21 +154,23 @@ export default function FilterRow({
           ))}
         </select>
       ) : (
-        <input
+        <Input
           type={fields.numeric.includes(filter.field) ? "number" : "text"}
           value={filter.value as string | number}
           onChange={(e) => handleValueChange(e.target.value)}
           placeholder="Value..."
-          className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200 flex-1"
+          className="h-8 flex-1"
         />
       )}
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => onRemove(index)}
-        className="text-red-400 hover:text-red-300 px-2 py-1.5 text-sm shrink-0"
+        className="text-destructive hover:text-destructive shrink-0 h-8"
       >
         Remove
-      </button>
+      </Button>
     </div>
   );
 }

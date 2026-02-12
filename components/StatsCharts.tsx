@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnimeStats, Distribution, FieldCount } from "@/lib/types";
+import { Card } from "@/components/ui/card";
 
 function BarChart({
   title,
@@ -12,27 +13,27 @@ function BarChart({
   const max = Math.max(...items.map((i) => i.value), 1);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">{title}</h3>
+    <Card className="p-4">
+      <h3 className="text-sm font-semibold text-foreground mb-3">{title}</h3>
       <div className="space-y-1.5">
         {items.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 w-28 shrink-0 text-right truncate">
+            <span className="text-xs text-muted-foreground w-28 shrink-0 text-right truncate">
               {item.label}
             </span>
-            <div className="flex-1 h-5 bg-gray-800 rounded overflow-hidden">
+            <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
               <div
-                className="h-full bg-blue-600 rounded"
+                className="h-full bg-primary rounded"
                 style={{ width: `${(item.value / max) * 100}%` }}
               />
             </div>
-            <span className="text-xs text-gray-500 w-14 shrink-0">
+            <span className="text-xs text-muted-foreground w-14 shrink-0">
               {item.value.toLocaleString()}
             </span>
           </div>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -47,11 +48,11 @@ function PercentileTable({
   const fields = Object.keys(percentiles[keys[0]]);
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 overflow-x-auto">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">Percentiles</h3>
+    <Card className="p-4 overflow-x-auto">
+      <h3 className="text-sm font-semibold text-foreground mb-3">Percentiles</h3>
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-gray-400 border-b border-gray-800">
+          <tr className="text-muted-foreground border-b border-border">
             <th className="text-left py-1 pr-4">Metric</th>
             {fields.map((f) => (
               <th key={f} className="text-right py-1 px-2">
@@ -62,10 +63,10 @@ function PercentileTable({
         </thead>
         <tbody>
           {keys.map((key) => (
-            <tr key={key} className="border-b border-gray-800/50">
-              <td className="py-1 pr-4 text-gray-300 font-medium">{key}</td>
+            <tr key={key} className="border-b border-border/50">
+              <td className="py-1 pr-4 text-foreground font-medium">{key}</td>
               {fields.map((f) => (
-                <td key={f} className="text-right py-1 px-2 text-gray-400">
+                <td key={f} className="text-right py-1 px-2 text-muted-foreground">
                   {Number(
                     (percentiles[key] as unknown as Record<string, number>)[f]
                   ).toLocaleString(undefined, { maximumFractionDigits: 1 })}
@@ -75,7 +76,7 @@ function PercentileTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </Card>
   );
 }
 
@@ -90,9 +91,9 @@ function fieldCountToItems(data: FieldCount[]) {
 export default function StatsCharts({ stats }: { stats: AnimeStats }) {
   return (
     <div className="space-y-4">
-      <div className="text-sm text-gray-400 mb-2">
+      <p className="text-sm text-muted-foreground">
         Total anime: {stats.totalAnime.toLocaleString()}
-      </div>
+      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BarChart

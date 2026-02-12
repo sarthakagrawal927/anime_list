@@ -10,6 +10,8 @@ import type {
 import { getFields, getFilterActions, searchAnime } from "@/lib/api";
 import FilterRow from "./FilterRow";
 import ResultsGrid from "./ResultsGrid";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const DEFAULT_FILTER: SearchFilter = {
   field: "score",
@@ -33,7 +35,6 @@ export default function FilterBuilder() {
       setFields(f);
       setActions(a);
     });
-    // Auto-search with default filters on first load
     handleSearch();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -71,78 +72,73 @@ export default function FilterBuilder() {
   };
 
   if (!fields || !actions) {
-    return <div className="text-gray-500">Loading filters...</div>;
+    return <p className="text-muted-foreground">Loading filters...</p>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        {filters.map((filter, i) => (
-          <FilterRow
-            key={i}
-            filter={filter}
-            index={i}
-            fields={fields}
-            actions={actions}
-            onChange={updateFilter}
-            onRemove={removeFilter}
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          onClick={addFilter}
-          className="text-sm px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700"
-        >
-          + Add Filter
-        </button>
-
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200"
-        >
-          <option value="">Sort by (default)</option>
-          {fields.numeric.map((f) => (
-            <option key={f} value={f}>
-              Sort: {f}
-            </option>
+      <Card className="p-4 space-y-3">
+        <div className="space-y-2">
+          {filters.map((filter, i) => (
+            <FilterRow
+              key={i}
+              filter={filter}
+              index={i}
+              fields={fields}
+              actions={actions}
+              onChange={updateFilter}
+              onRemove={removeFilter}
+            />
           ))}
-        </select>
+        </div>
 
-        <select
-          value={airing}
-          onChange={(e) => setAiring(e.target.value as "yes" | "no" | "any")}
-          className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200"
-        >
-          <option value="any">Airing: Any</option>
-          <option value="yes">Currently Airing</option>
-          <option value="no">Not Airing</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={addFilter}>
+            + Add Filter
+          </Button>
 
-        <select
-          value={pagesize}
-          onChange={(e) => setPagesize(Number(e.target.value))}
-          className="bg-gray-800 text-sm rounded px-2 py-1.5 border border-gray-700 text-gray-200"
-        >
-          {[10, 20, 50, 100].map((n) => (
-            <option key={n} value={n}>
-              Show {n}
-            </option>
-          ))}
-        </select>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="">Sort by (default)</option>
+            {fields.numeric.map((f) => (
+              <option key={f} value={f}>
+                Sort: {f}
+              </option>
+            ))}
+          </select>
 
-        <button
-          onClick={handleSearch}
-          disabled={loading}
-          className="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium disabled:opacity-50 transition-colors"
-        >
-          {loading ? "Searching..." : "Search"}
-        </button>
-      </div>
+          <select
+            value={airing}
+            onChange={(e) => setAiring(e.target.value as "yes" | "no" | "any")}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value="any">Airing: Any</option>
+            <option value="yes">Currently Airing</option>
+            <option value="no">Not Airing</option>
+          </select>
 
-      {error && <div className="text-red-400 text-sm">{error}</div>}
+          <select
+            value={pagesize}
+            onChange={(e) => setPagesize(Number(e.target.value))}
+            className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+          >
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                Show {n}
+              </option>
+            ))}
+          </select>
+
+          <Button onClick={handleSearch} disabled={loading} size="sm">
+            {loading ? "Searching..." : "Search"}
+          </Button>
+        </div>
+      </Card>
+
+      {error && <p className="text-destructive text-sm">{error}</p>}
 
       {results && <ResultsGrid results={results} />}
     </div>

@@ -5,6 +5,9 @@ import Image from "next/image";
 import type { AnimeSummary } from "@/lib/types";
 import { addToWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const STATUSES = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
 
@@ -26,9 +29,9 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
   };
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-lg overflow-hidden flex">
+    <Card className="overflow-hidden flex flex-row p-0">
       {anime.image ? (
-        <div className="relative w-[100px] min-h-[140px] shrink-0">
+        <div className="relative w-[100px] min-h-[150px] shrink-0">
           <Image
             src={anime.image}
             alt={anime.name}
@@ -38,30 +41,30 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
           />
         </div>
       ) : (
-        <div className="w-[100px] min-h-[140px] shrink-0 bg-gray-800 flex items-center justify-center">
-          <span className="text-gray-600 text-xs">No image</span>
+        <div className="w-[100px] min-h-[150px] shrink-0 bg-muted flex items-center justify-center">
+          <span className="text-muted-foreground text-xs">No image</span>
         </div>
       )}
 
-      <div className="flex-1 p-3 flex flex-col gap-1.5 min-w-0">
+      <div className="flex-1 p-3 flex flex-col gap-2 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <a
             href={anime.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-400 hover:underline font-semibold text-sm leading-tight truncate"
+            className="text-primary hover:underline font-semibold text-sm leading-tight truncate"
           >
             {anime.name}
           </a>
-          <span className="text-xs bg-gray-800 px-2 py-0.5 rounded shrink-0">
+          <Badge variant="secondary" className="shrink-0 text-xs">
             {anime.type || "?"}
-          </span>
+          </Badge>
         </div>
 
-        <div className="flex gap-3 text-xs text-gray-400">
+        <div className="flex gap-3 text-xs text-muted-foreground">
           {anime.score > 0 && (
             <span>
-              Score: <span className="text-yellow-400">{anime.score}</span>
+              Score: <span className="text-yellow-400 font-medium">{anime.score}</span>
             </span>
           )}
           {anime.year > 0 && <span>{anime.year}</span>}
@@ -69,48 +72,47 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
             <span>{(anime.members / 1000).toFixed(0)}k members</span>
           )}
           {anime.points > 0 && (
-            <span className="text-green-400">{anime.points} pts</span>
+            <span className="text-emerald-400">{anime.points} pts</span>
           )}
         </div>
 
         {anime.genres.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {anime.genres.map((g) => (
-              <span
-                key={g}
-                className="text-xs bg-blue-900/50 text-blue-300 px-1.5 py-0.5 rounded"
-              >
+              <Badge key={g} variant="outline" className="text-xs font-normal px-1.5 py-0">
                 {g}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
 
         {anime.synopsis && (
-          <p className="text-xs text-gray-500 line-clamp-2">{anime.synopsis}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2">{anime.synopsis}</p>
         )}
 
         {user && (
-          <div className="mt-auto pt-1.5 border-t border-gray-800">
+          <div className="mt-auto pt-2 border-t border-border">
             {added ? (
-              <span className="text-xs text-green-400">Added to watchlist</span>
+              <span className="text-xs text-emerald-400">Added to watchlist</span>
             ) : (
               <div className="flex gap-1 flex-wrap">
                 {STATUSES.map((s) => (
-                  <button
+                  <Button
                     key={s}
+                    variant="secondary"
+                    size="sm"
                     onClick={() => handleAdd(s)}
                     disabled={adding}
-                    className="text-xs px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-50 transition-colors"
+                    className="h-6 text-xs px-2"
                   >
                     {s}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
