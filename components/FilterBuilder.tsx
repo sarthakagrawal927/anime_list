@@ -49,9 +49,7 @@ export default function FilterBuilder() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
   const [hideWatched, setHideWatched] = useState<string[]>([]);
-  const [searchKey, setSearchKey] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [accumulatedPages, setAccumulatedPages] = useState<SearchResponse[]>([]);
+  const [currentOffset, setCurrentOffset] = useState(0);
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -100,29 +98,24 @@ export default function FilterBuilder() {
     };
   }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched]);
 
-  const { data: currentPage, isLoading: loading, error } = useQuery<SearchResponse>({
-    queryKey: ["search", searchKey],
-    queryFn: async () => {
-      const { filters: f, opts } = buildSearchOpts(0);
-      const data = await searchAnime(f, opts);
-      setAccumulatedPages([data]); // Reset to first page
-      return data;
+  // Create stable query key from filter params
+  const filterKey = JSON.stringify(buildSearchOpts(0));
+
+  const { data, isLoading: loading, error } = useQuery<SearchResponse>({
+    queryKey: ["search", filterKey, currentOffset],
+    queryFn: () => {
+      const { filters: f, opts } = buildSearchOpts(currentOffset);
+      return searchAnime(f, opts);
     },
   });
 
   const handleSearch = () => {
-    setSearchKey((k) => k + 1);
+    setCurrentOffset(0); // Reset to page 1
   };
 
-  const handleLoadMore = async () => {
-    setLoadingMore(true);
-    try {
-      const currentOffset = accumulatedPages.reduce((sum, page) => sum + page.filteredList.length, 0);
-      const { filters: f, opts } = buildSearchOpts(currentOffset);
-      const data = await searchAnime(f, opts);
-      setAccumulatedPages((prev) => [...prev, data]);
-    } finally {
-      setLoadingMore(false);
+  const handleLoadMore = () => {
+    if (data) {
+      setCurrentOffset((prev) => prev + data.filteredList.length);
     }
   };
 
@@ -168,10 +161,8 @@ export default function FilterBuilder() {
       return f.value !== "" && f.value !== undefined;
     }).length;
 
-  // Derive display values from accumulated pages
-  const allItems = accumulatedPages.flatMap((page) => page.filteredList);
-  const totalFiltered = currentPage?.totalFiltered || 0;
-  const hasMore = allItems.length < totalFiltered;
+  const totalFiltered = data?.totalFiltered || 0;
+  const hasMore = currentOffset + (data?.filteredList.length || 0) < totalFiltered;
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -248,7 +239,7 @@ export default function FilterBuilder() {
         </Button>
       </div>
 
-      {/* Quick genre chips + hide watched */}
+      {/* Quick genre chips */}
       <div className="flex flex-wrap gap-1.5">
         {QUICK_GENRES.map((genre) => {
           const selected = selectedGenres.includes(genre);
@@ -363,23 +354,22 @@ export default function FilterBuilder() {
 
       {loading ? (
         <ResultsGridSkeleton />
-      ) : allItems.length > 0 ? (
+      ) : data ? (
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Showing {allItems.length} of {totalFiltered.toLocaleString()} results
+              Showing {currentOffset + data.filteredList.length} of {totalFiltered.toLocaleString()} results
             </p>
           </div>
-          <ResultsGrid results={{ filteredList: allItems, totalFiltered, stats: currentPage?.stats || {} as SearchResponse["stats"] }} />
+          <ResultsGrid results={data} />
           {hasMore && (
             <div className="flex justify-center pt-2 pb-8">
               <Button
                 onClick={handleLoadMore}
-                disabled={loadingMore}
                 variant="outline"
                 className="px-8"
               >
-                {loadingMore ? "Loading..." : `Load More (${(totalFiltered - allItems.length).toLocaleString()} remaining)`}
+                Load More ({(totalFiltered - currentOffset - data.filteredList.length).toLocaleString()} remaining)
               </Button>
             </div>
           )}
