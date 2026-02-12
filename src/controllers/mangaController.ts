@@ -20,7 +20,7 @@ import {
 } from "../types/manga";
 import { MangaFilterRequestBody } from "../validators/mangaFilters";
 import { WatchedListPayload } from "../validators/watchedList";
-import { hideWatchedItems, takeFirst } from "./helpers";
+import { hideWatchedItems, takePage } from "./helpers";
 import { AuthRequest } from "../middleware/auth";
 
 const sortManga = (
@@ -78,7 +78,7 @@ export const searchManga = async (
   const sorted = sortManga(filtered, sortBy);
 
   res.json({
-    manga: takeFirst(sorted, pagesize),
+    manga: takePage(sorted, pagesize),
     total: filtered.length,
     pagesize,
     hasMore: filtered.length > pagesize,

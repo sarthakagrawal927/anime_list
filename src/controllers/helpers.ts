@@ -17,6 +17,6 @@ export const hideWatchedItems = async <T extends { mal_id: number }, TWatchlist>
   });
 };
 
-export const takeFirst = <T>(items: T[], count: number): T[] =>
-  items.slice(0, count);
+export const takePage = <T>(items: T[], count: number, offset = 0): T[] =>
+  items.slice(offset, offset + count);
 

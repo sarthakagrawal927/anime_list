@@ -46,6 +46,7 @@ export function searchAnime(
   filters: SearchFilter[],
   opts: {
     pagesize?: number;
+    offset?: number;
     sortBy?: string;
     airing?: "yes" | "no" | "any";
     hideWatched?: string[];
@@ -57,6 +58,7 @@ export function searchAnime(
     body: JSON.stringify({
       filters,
       pagesize: opts.pagesize ?? 20,
+      offset: opts.offset ?? 0,
       sortBy: opts.sortBy,
       airing: opts.airing ?? "any",
       hideWatched: opts.hideWatched ?? [],

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
   SearchFilter,
   SearchResponse,
+  AnimeSummary,
 } from "@/lib/types";
 import { getFields, getFilterActions, searchAnime } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import FilterRow from "./FilterRow";
 import ResultsGrid, { ResultsGridSkeleton } from "./ResultsGrid";
 import { Button } from "@/components/ui/button";
@@ -34,7 +36,12 @@ const SORT_OPTIONS = [
   { value: "favorites", label: "Favorites" },
 ];
 
+const HIDE_WATCHED_OPTIONS = [
+  "Watching", "Completed", "Deferred", "Avoiding", "BRR",
+];
+
 export default function FilterBuilder() {
+  const { user } = useAuth();
   const [filters, setFilters] = useState<SearchFilter[]>([{ ...DEFAULT_FILTER }]);
   const [pagesize, setPagesize] = useState(20);
   const [sortBy, setSortBy] = useState<string>("");
@@ -42,7 +49,15 @@ export default function FilterBuilder() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [hideWatched, setHideWatched] = useState<string[]>([]);
   const [searchKey, setSearchKey] = useState(0);
+
+  // Pagination: accumulated results across pages
+  const [allItems, setAllItems] = useState<AnimeSummary[]>([]);
+  const [offset, setOffset] = useState(0);
+  const [totalFiltered, setTotalFiltered] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const isLoadMore = useRef(false);
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -54,10 +69,7 @@ export default function FilterBuilder() {
     queryFn: getFilterActions,
   });
 
-  const buildFilters = useCallback((): {
-    filters: SearchFilter[];
-    opts: { pagesize: number; sortBy?: string; airing: "yes" | "no" | "any" };
-  } => {
+  const buildSearchOpts = useCallback((forOffset = 0) => {
     const allFilters: SearchFilter[] = [];
 
     if (selectedGenres.length > 0) {
@@ -84,23 +96,54 @@ export default function FilterBuilder() {
 
     return {
       filters: allFilters,
-      opts: { pagesize, sortBy: sortBy || undefined, airing },
+      opts: {
+        pagesize,
+        offset: forOffset,
+        sortBy: sortBy || undefined,
+        airing,
+        hideWatched,
+      },
     };
-  }, [filters, pagesize, sortBy, airing, selectedGenres, searchText]);
+  }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched]);
 
-  const { data: results, isLoading: loading, error } = useQuery<SearchResponse>({
+  const { isLoading: loading, error } = useQuery<SearchResponse>({
     queryKey: ["search", searchKey],
-    queryFn: () => {
-      const { filters: f, opts } = buildFilters();
-      return searchAnime(f, opts);
+    queryFn: async () => {
+      const { filters: f, opts } = buildSearchOpts(0);
+      const data = await searchAnime(f, opts);
+      setAllItems(data.filteredList);
+      setOffset(data.filteredList.length);
+      setTotalFiltered(data.totalFiltered);
+      return data;
     },
   });
 
-  const handleSearch = () => setSearchKey((k) => k + 1);
+  const handleSearch = () => {
+    isLoadMore.current = false;
+    setSearchKey((k) => k + 1);
+  };
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const { filters: f, opts } = buildSearchOpts(offset);
+      const data = await searchAnime(f, opts);
+      setAllItems((prev) => [...prev, ...data.filteredList]);
+      setOffset((prev) => prev + data.filteredList.length);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
+    );
+  };
+
+  const toggleHideWatched = (status: string) => {
+    setHideWatched((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
     );
   };
 
@@ -122,15 +165,19 @@ export default function FilterBuilder() {
     setFilters([{ ...DEFAULT_FILTER }]);
     setSortBy("");
     setAiring("any");
+    setHideWatched([]);
   };
 
   const activeFilterCount =
     selectedGenres.length +
     (searchText ? 1 : 0) +
+    hideWatched.length +
     filters.filter((f) => {
       if (Array.isArray(f.value)) return f.value.length > 0;
       return f.value !== "" && f.value !== undefined;
     }).length;
+
+  const hasMore = offset < totalFiltered;
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -207,7 +254,7 @@ export default function FilterBuilder() {
         </Button>
       </div>
 
-      {/* Quick genre chips */}
+      {/* Quick genre chips + hide watched */}
       <div className="flex flex-wrap gap-1.5">
         {QUICK_GENRES.map((genre) => {
           const selected = selectedGenres.includes(genre);
@@ -251,6 +298,30 @@ export default function FilterBuilder() {
           </button>
         )}
       </div>
+
+      {/* Hide watched (only when logged in) */}
+      {user && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Hide watched:</span>
+          {HIDE_WATCHED_OPTIONS.map((status) => {
+            const active = hideWatched.includes(status);
+            return (
+              <button
+                key={status}
+                onClick={() => toggleHideWatched(status)}
+                className={cn(
+                  "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
+                  active
+                    ? "bg-destructive/15 text-destructive border-destructive/30"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                )}
+              >
+                {status}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Selected genre badges */}
       {selectedGenres.length > 0 && (
@@ -296,7 +367,30 @@ export default function FilterBuilder() {
 
       {error && <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Search failed"}</p>}
 
-      {loading ? <ResultsGridSkeleton /> : results && <ResultsGrid results={results} />}
+      {loading ? (
+        <ResultsGridSkeleton />
+      ) : allItems.length > 0 ? (
+        <>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              Showing {allItems.length} of {totalFiltered.toLocaleString()} results
+            </p>
+          </div>
+          <ResultsGrid results={{ filteredList: allItems, totalFiltered, stats: {} as SearchResponse["stats"] }} />
+          {hasMore && (
+            <div className="flex justify-center pt-2 pb-8">
+              <Button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                variant="outline"
+                className="px-8"
+              >
+                {loadingMore ? "Loading..." : `Load More (${(totalFiltered - offset).toLocaleString()} remaining)`}
+              </Button>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }

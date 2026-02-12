@@ -106,6 +106,7 @@ export const filterRequestSchema = z.object({
   filters: filtersSchema,
   hideWatched: z.array(z.nativeEnum(WatchStatus)).default([]),
   pagesize: z.number().int().min(1).default(20),
+  offset: z.number().int().min(0).default(0),
   sortBy: numericFieldSchema.optional(),
   airing: airingSchema.default("any"),
 });

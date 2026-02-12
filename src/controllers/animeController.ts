@@ -16,7 +16,7 @@ import { getAnimeStats } from "../statistics";
 import { getScoreSortedList } from "../utils/statistics";
 import { FilterRequestBody } from "../validators/animeFilters";
 import { WatchedListPayload } from "../validators/watchedList";
-import { hideWatchedItems, takeFirst } from "./helpers";
+import { hideWatchedItems, takePage } from "./helpers";
 import { WatchedAnime } from '../types/watchlist';
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
@@ -67,7 +67,7 @@ export const searchAnime = async (
   req: AuthRequest & Request<{}, {}, FilterRequestBody>,
   res: Response
 ) => {
-  const { filters, sortBy, airing, hideWatched, pagesize } = req.body;
+  const { filters, sortBy, airing, hideWatched, pagesize, offset } = req.body;
   const userId = req.user?.userId;
 
   let filtered = await filterAnimeList(filters);
@@ -81,7 +81,7 @@ export const searchAnime = async (
 
   res.json({
     totalFiltered: filtered.length,
-    filteredList: takeFirst(sorted, pagesize).map(toSummary),
+    filteredList: takePage(sorted, pagesize, offset).map(toSummary),
     stats,
   });
 };
