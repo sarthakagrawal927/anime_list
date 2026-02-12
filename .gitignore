@@ -1,5 +1,7 @@
 node_modules
 *data.json
+!cleaned_anime_data.json
+!cleaned_manga_data.json
 *.xml
 dist
 .next

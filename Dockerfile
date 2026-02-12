@@ -5,5 +5,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 COPY src/ ./src/
 COPY server.ts ./
+COPY cleaned_anime_data.json cleaned_manga_data.json ./
 EXPOSE 3000
 CMD ["npx", "tsx", "server.ts"]
