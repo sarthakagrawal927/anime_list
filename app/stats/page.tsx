@@ -7,19 +7,25 @@ import { getStats } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-const HIDE_OPTIONS = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
+const STATUS_OPTIONS = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
 
 export default function StatsPage() {
   const { user } = useAuth();
-  const [hideWatched, setHideWatched] = useState<string[]>([]);
+  const [includeStatuses, setIncludeStatuses] = useState<string[]>([]);
+
+  // When logged in and statuses selected, hide everything EXCEPT selected statuses
+  // This means hideWatched = all statuses NOT in includeStatuses
+  const hideWatched = user && includeStatuses.length > 0
+    ? STATUS_OPTIONS.filter((s) => !includeStatuses.includes(s))
+    : [];
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ["stats", hideWatched],
     queryFn: () => getStats(hideWatched),
   });
 
-  const toggleHideWatched = (status: string) => {
-    setHideWatched((prev) =>
+  const toggleIncludeStatus = (status: string) => {
+    setIncludeStatuses((prev) =>
       prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
     );
   };
@@ -35,17 +41,17 @@ export default function StatsPage() {
 
       {user && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Exclude from stats:</span>
-          {HIDE_OPTIONS.map((status) => {
-            const active = hideWatched.includes(status);
+          <span className="text-xs text-muted-foreground">Include only from:</span>
+          {STATUS_OPTIONS.map((status) => {
+            const active = includeStatuses.includes(status);
             return (
               <button
                 key={status}
-                onClick={() => toggleHideWatched(status)}
+                onClick={() => toggleIncludeStatus(status)}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
                   active
-                    ? "bg-destructive/15 text-destructive border-destructive/30"
+                    ? "bg-primary/20 text-primary border-primary/40"
                     : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
                 )}
               >
@@ -53,6 +59,14 @@ export default function StatsPage() {
               </button>
             );
           })}
+          {includeStatuses.length > 0 && (
+            <button
+              onClick={() => setIncludeStatuses([])}
+              className="text-xs px-2.5 py-1 rounded-full text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Clear
+            </button>
+          )}
         </div>
       )}
 
