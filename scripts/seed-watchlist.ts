@@ -2,12 +2,38 @@ import "dotenv/config";
 import { readFileSync } from "fs";
 import { getDb } from "../src/db/client";
 import { initWatchlistTables } from "../src/db/watchlist";
+import { initUsersTable } from "../src/db/users";
+
+async function resolveUserId(db: ReturnType<typeof getDb>, emailOrId: string): Promise<string> {
+  // If it looks like an email, look up or create the user
+  if (emailOrId.includes("@")) {
+    const existing = await db.execute({
+      sql: "SELECT id FROM users WHERE email = ?",
+      args: [emailOrId],
+    });
+    if (existing.rows.length > 0) {
+      console.log(`Found existing user for ${emailOrId}: ${existing.rows[0].id}`);
+      return existing.rows[0].id as string;
+    }
+    // Create a placeholder user (will be linked to Google on first login)
+    const id = crypto.randomUUID();
+    await db.execute({
+      sql: "INSERT INTO users (id, google_id, email, name) VALUES (?, ?, ?, ?)",
+      args: [id, `pending_${id}`, emailOrId, emailOrId.split("@")[0]],
+    });
+    console.log(`Created placeholder user for ${emailOrId}: ${id}`);
+    return id;
+  }
+  return emailOrId;
+}
 
 async function seed() {
+  await initUsersTable();
   await initWatchlistTables();
   const db = getDb();
 
-  const userId = process.argv[2] || "default";
+  const input = process.argv[2] || "default";
+  const userId = await resolveUserId(db, input);
   console.log(`Seeding watchlist for user_id: ${userId}`);
 
   // Seed anime watchlist
@@ -56,12 +82,16 @@ async function seed() {
 
     console.log(`Seeding ${entries.length} manga watchlist entries...`);
 
-    await db.batch(
-      entries.map((e) => ({
-        sql: `INSERT OR REPLACE INTO manga_watchlist (user_id, mal_id, status) VALUES (?, ?, ?)`,
-        args: [userId, e.id, e.status],
-      }))
-    );
+    for (let i = 0; i < entries.length; i += 100) {
+      const chunk = entries.slice(i, i + 100);
+      await db.batch(
+        chunk.map((e) => ({
+          sql: `INSERT OR REPLACE INTO manga_watchlist (user_id, mal_id, status) VALUES (?, ?, ?)`,
+          args: [userId, e.id, e.status],
+        }))
+      );
+      console.log(`  ${Math.min(i + 100, entries.length)}/${entries.length}`);
+    }
 
     console.log("Manga watchlist seeded.");
   } catch (e) {
