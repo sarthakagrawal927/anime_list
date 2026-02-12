@@ -1,6 +1,5 @@
 node_modules
 *data.json
-!cleaned_anime_data.json
 !cleaned_manga_data.json
 *.xml
 dist
@@ -8,3 +7,8 @@ dist
 next-env.d.ts
 .vercel
 .env
+
+# Anime data now stored in Turso (not JSON)
+# Keep cleaned_anime_data.json locally for seed script only
+anime_data.json
+cleaned_anime_data.json

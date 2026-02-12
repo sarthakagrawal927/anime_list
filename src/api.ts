@@ -1,5 +1,5 @@
 import axios from "axios";
-import { delay, writeJsonFile, readJsonFile } from "./utils/file";
+import { delay, writeJsonFile } from "./utils/file";
 import { API_CONFIG, FILE_PATHS } from "./config";
 import { BaseAnimeItem, AnimeItem } from "./types/anime";
 import { BaseMangaItem } from "./types/manga";
@@ -44,12 +44,13 @@ const fetchFromApi = async <T>(url: string): Promise<T | null> => {
   }
 };
 
-// Monthly reclean - fetch top anime and update existing entries
+// Monthly full refresh - fetch all top anime and update Turso database
 export const fetchAllAnimePages = async (): Promise<void> => {
-  const fetchedAnime: RawAnimeItem[] = [];
+  const p0 = performance.now();
+  const allAnime: AnimeItem[] = [];
   let page = 1;
 
-  const p0 = performance.now();
+  console.log("Starting full anime database refresh...");
 
   while (page <= API_CONFIG.totalPages) {
     const url = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.topAnime}?page=${page}&limit=20`;
@@ -60,19 +61,25 @@ export const fetchAllAnimePages = async (): Promise<void> => {
       break;
     }
 
-    fetchedAnime.push(...data.data);
+    // Transform and collect anime
+    for (const rawAnime of data.data) {
+      const anime = transformRawAnime(rawAnime);
+      // Only include anime with complete data
+      if (anime.score && anime.scored_by && anime.members && anime.favorites && anime.year) {
+        allAnime.push(anime);
+      }
+    }
+
     if (!data.pagination?.has_next_page) break;
-    if (page % 10 === 0) console.log(`Fetched page ${page}`);
+    if (page % 10 === 0) console.log(`✓ Fetched ${page} pages (${allAnime.length} anime)`);
     page++;
   }
 
-  let existingAnime: Record<string, RawAnimeItem> = {};
-  for (const anime of fetchedAnime) {
-    existingAnime[anime.mal_id.toString()] = anime;
-  }
+  // Save to Turso database
+  console.log(`Saving ${allAnime.length} anime to database...`);
+  await upsertAnimeBatch(allAnime);
 
-  await writeJsonFile(FILE_PATHS.animeData, existingAnime);
-  console.log(`Updated all anime again in ${performance.now() - p0}ms`);
+  console.log(`✓ Full refresh completed in ${(performance.now() - p0) / 1000}s`);
 };
 
 // Fetch last 2 seasons and update Turso database

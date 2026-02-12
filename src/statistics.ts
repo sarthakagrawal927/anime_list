@@ -1,7 +1,6 @@
 import {
   AnimeField,
   DISTRIBUTION_RANGES,
-  FILE_PATHS,
   PERCENTILE_FIELDS,
 } from "./config";
 import { AnimeItem } from "./types/anime";
@@ -13,7 +12,6 @@ import {
   Percentiles,
   TypeDistribution,
 } from "./types/statistics";
-import { readJsonFile } from "./utils/file";
 import {
   getDistribution,
   getFieldCounts,
@@ -22,12 +20,9 @@ import {
 } from "./utils/statistics";
 
 export const getAnimeStats = async (
-  animeList: AnimeItem[] | null = null
+  animeList: AnimeItem[]
 ): Promise<AnimeStats> => {
-  const data =
-    animeList ||
-    ((await readJsonFile(FILE_PATHS.cleanAnimeData)) as AnimeItem[]) ||
-    [];
+  const data = animeList;
 
   const percentiles: Record<string, Percentiles> = {};
   Object.entries(PERCENTILE_FIELDS).forEach(([key, field]) => {
