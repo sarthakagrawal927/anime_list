@@ -5,6 +5,8 @@ dist
 !package.json
 !package-lock.json
 !tsconfig.json
+!cleaned_anime_data.json
+!cleaned_manga_data.json
 app
 components
 lib
