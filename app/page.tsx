@@ -6,7 +6,7 @@ export default function SearchPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Discover Anime</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Build filters to find anime matching your criteria
+          Search and filter across 15,000+ anime titles
         </p>
       </div>
       <FilterBuilder />

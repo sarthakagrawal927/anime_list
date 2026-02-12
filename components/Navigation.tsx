@@ -12,9 +12,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import GoogleSignInButton from "./GoogleSignInButton";
+import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/", label: "Search" },
+  { href: "/", label: "Discover" },
   { href: "/stats", label: "Stats" },
   { href: "/watchlist", label: "Watchlist" },
 ];
@@ -24,7 +25,7 @@ export default function Navigation() {
   const { user, loading, logout } = useAuth();
 
   return (
-    <nav className="border-b border-border bg-card">
+    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center h-14 gap-6">
         <Link href="/" className="text-lg font-bold text-primary">
           MAL Explorer
@@ -33,14 +34,18 @@ export default function Navigation() {
           {links.map((link) => {
             const active = pathname === link.href;
             return (
-              <Button
+              <Link
                 key={link.href}
-                variant={active ? "default" : "ghost"}
-                size="sm"
-                asChild
+                href={link.href}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                  active
+                    ? "bg-primary/15 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
               >
-                <Link href={link.href}>{link.label}</Link>
-              </Button>
+                {link.label}
+              </Link>
             );
           })}
         </div>
@@ -51,7 +56,7 @@ export default function Navigation() {
                 <Button variant="ghost" size="sm" className="gap-2">
                   <Avatar className="h-6 w-6">
                     {user.picture && <AvatarImage src={user.picture} alt={user.name} />}
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="text-xs bg-primary/20 text-primary">
                       {user.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
