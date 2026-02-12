@@ -33,7 +33,9 @@ export default function FilterBuilder() {
       setFields(f);
       setActions(a);
     });
-  }, []);
+    // Auto-search with default filters on first load
+    handleSearch();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSearch = async () => {
     const validFilters = filters.filter((f) => {

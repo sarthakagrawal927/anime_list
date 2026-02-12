@@ -81,8 +81,13 @@ export default function WatchlistView() {
             >
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-gray-200 truncate">
-                  ID: {item.id || key}
+                  {item.title || `ID: ${item.id || key}`}
                 </div>
+                {item.type && (
+                  <div className="text-xs text-gray-500">
+                    {item.type}{item.episodes ? ` - ${item.episodes} eps` : ""}
+                  </div>
+                )}
               </div>
               <select
                 value={item.status}

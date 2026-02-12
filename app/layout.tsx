@@ -5,6 +5,18 @@ import Navigation from "@/components/Navigation";
 export const metadata: Metadata = {
   title: "MAL Explorer",
   description: "Anime discovery, statistics, and watchlist management",
+  openGraph: {
+    title: "MAL Explorer",
+    description: "Discover anime with powerful filters, statistics, and watchlist tracking",
+    type: "website",
+    url: "https://mal-eosin.vercel.app",
+  },
+  twitter: {
+    card: "summary",
+    title: "MAL Explorer",
+    description: "Discover anime with powerful filters, statistics, and watchlist tracking",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
