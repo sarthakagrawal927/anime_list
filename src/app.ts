@@ -12,7 +12,7 @@ import { logger } from "./utils/logger";
 const { routes } = SERVER_CONFIG;
 
 const ALLOWED_ORIGINS = [
-  "https://anime-explorer.vercel.app",
+  "https://anime-explorer-mal.vercel.app",
   process.env.NODE_ENV !== "production" && "http://localhost:3000",
 ].filter(Boolean) as string[];
 

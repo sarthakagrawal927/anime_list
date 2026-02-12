@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     title: "MAL Explorer",
     description: "Discover anime with powerful filters, statistics, and watchlist tracking",
     type: "website",
-    url: "https://anime-explorer.vercel.app",
+    url: "https://anime-explorer-mal.vercel.app",
   },
   twitter: {
     card: "summary",
