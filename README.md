@@ -1,33 +1,89 @@
 # MAL Explorer
 
-A modern anime discovery platform that helps you find your next favorite show. Search through 15,000+ anime titles with powerful filtering, explore statistics, and track your watchlist with Google sign-in.
+A modern anime discovery platform that helps you find your next favorite show.
 
 **Live Demo**: [anime-explorer-mal.vercel.app](https://anime-explorer-mal.vercel.app)
 
-## What It Does
+## The Problem
 
-- **Smart Search**: Filter anime by score, year, genres, themes, and more with an intuitive filter builder
-- **Rich Statistics**: Explore trends, distributions, and popular genre combinations across the entire dataset
-- **Personal Watchlists**: Track what you're watching, completed, or planning to watch with Google authentication
-- **Custom Ranking**: Results sorted by a balanced algorithm that considers both quality and popularity
+Finding quality anime to watch is hard. MyAnimeList has thousands of titles, but the platform lacks advanced filtering, intelligent ranking, and personal tracking across multiple dimensions. Most discovery tools either overwhelm with options or oversimplify with basic genre filters.
 
-## Tech Stack
+## Features
 
-**Frontend**
-- Next.js 15 with React 19
-- TailwindCSS 4 + shadcn/ui components
-- TanStack Query for data caching
+- **Advanced Filtering**: Multi-dimensional search across score, year, genres, themes, demographics with powerful operators (includes all/any, excludes, numeric comparisons)
+- **Smart Ranking**: Custom algorithm balancing quality (MAL score) and popularity (members + favorites) using logarithmic scaling to give hidden gems a chance
+- **Personal Watchlists**: Track anime by status (Watching, Completed, Deferred, Avoiding, BRR) with Google authentication
+- **Rich Statistics**: Explore trends, score distributions, and popular genre combinations across 15,000+ titles
+- **High Performance**: Search through 18,000 items in ~100ms with in-memory caching and efficient pagination
 
-**Backend**
-- Express.js with TypeScript
-- Turso (libSQL) database
-- MyAnimeList data via Jikan API
+## Architecture
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        UI[Next.js Frontend<br/>React 19 + TailwindCSS]
+        Components[UI Components<br/>FilterBuilder, AnimeCard, etc.]
+        Cache[TanStack Query<br/>Client-side Cache]
+    end
+
+    subgraph "API Layer"
+        Express[Express.js Server<br/>TypeScript]
+        Routes[API Routes<br/>/search /stats /watchlist]
+        Controllers[Controllers<br/>Request Handlers]
+        Validators[Input Validators<br/>Zod Schemas]
+        Middleware[Auth Middleware<br/>JWT + Google OAuth]
+    end
+
+    subgraph "Data Layer"
+        Memory[In-Memory Store<br/>18k Anime Cached]
+        Turso[(Turso Database<br/>libSQL)]
+        Files[JSON Data Files<br/>anime_data.json]
+    end
+
+    subgraph "External Services"
+        Jikan[Jikan API<br/>MyAnimeList Data]
+        Google[Google OAuth<br/>Authentication]
+    end
+
+    subgraph "Background Jobs"
+        Cron[Cron Scheduler<br/>Daily 3 AM Refresh]
+    end
+
+    UI --> Components
+    Components --> Cache
+    Cache --> Express
+    Express --> Routes
+    Routes --> Controllers
+    Controllers --> Validators
+    Controllers --> Middleware
+    Middleware --> Google
+    Controllers --> Memory
+    Controllers --> Turso
+    Memory --> Files
+    Cron --> Jikan
+    Jikan --> Files
+    Files --> Memory
+
+    style UI fill:#3b82f6
+    style Express fill:#10b981
+    style Turso fill:#8b5cf6
+    style Jikan fill:#f59e0b
+    style Memory fill:#ef4444
+```
+
+### Key Components
+
+- **Frontend**: Next.js 15 with server-side rendering, TailwindCSS 4 + shadcn/ui components
+- **Backend**: Express.js API with TypeScript, in-memory data store for fast filtering
+- **Database**: Turso (libSQL) for user watchlists and authentication
+- **External APIs**: Jikan API for MyAnimeList data, Google OAuth for authentication
+- **Background Jobs**: Daily cron job refreshes anime data at 3 AM
 
 ## Quick Start
 
 ### Prerequisites
 - Node.js 18+
-- A Turso account (free tier works great)
+- Turso account (free tier)
 - Google OAuth credentials
 
 ### Setup
@@ -39,7 +95,7 @@ cd mal
 npm install
 ```
 
-2. Create a `.env` file:
+2. Create `.env` file:
 ```env
 TURSO_DATABASE_URL=your-database-url
 TURSO_AUTH_TOKEN=your-auth-token
@@ -48,53 +104,16 @@ GOOGLE_CLIENT_ID=your-google-client-id
 PORT=8080
 ```
 
-3. Start the development server:
+3. Start development server:
 ```bash
 npm run dev
 ```
 
-This runs both the backend (port 8080) and frontend (port 3000) concurrently.
+Both backend (port 8080) and frontend (port 3000) will start concurrently.
 
-4. Open http://localhost:3000 in your browser
+4. Open http://localhost:3000
 
-## Usage
-
-### Searching for Anime
-1. Use the filter builder to add conditions (e.g., "Score >= 8", "Genres include Action")
-2. Click quick genre chips for instant filters
-3. Toggle between currently airing and finished anime
-4. Click "Search" to see results
-
-### Managing Your Watchlist
-1. Sign in with Google (top-right corner)
-2. Hover over any anime card and click the status button
-3. Choose: Watching, Completed, Deferred, Avoiding, or BRR (Bad Rating Ratio)
-4. Visit the Watchlist page to view all your anime organized by status
-
-### Viewing Statistics
-1. Navigate to the Stats page
-2. Toggle "Include only" to focus on specific watchlist categories
-3. Explore score distributions, popular genres, and trending combinations
-
-## Project Structure
-
-```
-mal/
-├── app/              # Next.js pages (search, stats, watchlist)
-├── components/       # React UI components
-├── lib/              # Frontend utilities
-├── src/              # Backend code
-│   ├── controllers/  # API request handlers
-│   ├── db/          # Database operations
-│   ├── routes/      # API routes
-│   └── validators/  # Input validation
-├── server.ts        # Backend entry point
-└── package.json     # Dependencies and scripts
-```
-
-## Development
-
-### Available Scripts
+### Available Commands
 
 ```bash
 npm run dev        # Run both backend and frontend
@@ -104,68 +123,24 @@ npm run build      # Build for production
 npm start          # Start production server
 ```
 
-### Testing the API
-
-Use the provided `.http` files with a REST Client:
-- `anime-api.http` - Test anime endpoints
-- `manga-api.http` - Test manga endpoints
-
 ## Deployment
 
-### Frontend (Vercel)
-- Automatically deploys when you push to the main branch
-- Set environment variables in Vercel dashboard
+**Frontend (Vercel)**
+- Auto-deploys on push to main
+- Configure environment variables in Vercel dashboard
 
-### Backend (Docker)
+**Backend (Docker)**
 ```bash
 docker build -t mal-backend .
 docker run -p 8080:8080 --env-file .env mal-backend
 ```
 
-## Features in Detail
+---
 
-### Advanced Filtering
-- Numeric comparisons (score, year, members, favorites, episodes)
-- Array operations (genres/themes: includes all, includes any, excludes)
-- Text search (title, synopsis)
-- Multiple filters that work together
+**Note**: This project uses MyAnimeList data via the Jikan API. Not affiliated with MyAnimeList.net.
 
-### Smart Sorting
-Results are ranked using a custom algorithm that:
-- Balances quality (MAL score) with popularity (members + favorites)
-- Uses logarithmic scaling to give smaller anime a fair chance
-- Prevents mega-popular shows from dominating every search
-
-### Performance
-- Search through 18,000 items in ~100ms
-- Data cached in memory for instant filtering
-- Pagination for smooth browsing
-- React Query caching for fast navigation
-
-## Contributing
-
-This is a personal project, but feedback and suggestions are welcome! Feel free to:
-- Open issues for bugs or feature requests
-- Share interesting filter combinations
-- Suggest new features
-
-## Roadmap
-
-- Recommendations based on watchlist
-- Enhanced scoring algorithm using watch history
-- More visualizations and statistics
-- Social features (share filters, compare watchlists)
+**For Developers**: See [AGENTS.md](AGENTS.md) for comprehensive technical documentation.
 
 ## License
 
-ISC
-
-## Author
-
-Sarthak Agrawal
-
----
-
-**Note**: This project uses MyAnimeList data via the Jikan API. It is not affiliated with or endorsed by MyAnimeList.net.
-
-**For AI Agents**: See [AGENTS.md](AGENTS.md) for comprehensive development documentation including architecture, patterns, and technical decisions.
+ISC - Sarthak Agrawal
