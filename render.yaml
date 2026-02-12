@@ -11,10 +11,11 @@ services:
   - type: cron
     name: mal-anime-updater
     runtime: docker
-    plan: free
     region: singapore
     schedule: "0 0 * * *"  # Daily at midnight UTC
     dockerCommand: npm run db:update
+    repo: https://github.com/sarthakagrawal927/anime_list
+    branch: main
     envVars:
       - key: NODE_ENV
         value: production
