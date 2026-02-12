@@ -211,16 +211,6 @@ export default function FilterBuilder() {
         </select>
 
         <select
-          value={airing}
-          onChange={(e) => setAiring(e.target.value as "yes" | "no" | "any")}
-          className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
-        >
-          <option value="any">All</option>
-          <option value="yes">Airing</option>
-          <option value="no">Finished</option>
-        </select>
-
-        <select
           value={pagesize}
           onChange={(e) => setPagesize(Number(e.target.value))}
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
@@ -261,6 +251,36 @@ export default function FilterBuilder() {
             </button>
           );
         })}
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border" />
+
+        {/* Airing status tags */}
+        <button
+          onClick={() => setAiring(airing === "yes" ? "any" : "yes")}
+          className={cn(
+            "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
+            airing === "yes"
+              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+              : "bg-secondary text-secondary-foreground hover:bg-accent"
+          )}
+        >
+          Airing
+        </button>
+        <button
+          onClick={() => setAiring(airing === "no" ? "any" : "no")}
+          className={cn(
+            "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
+            airing === "no"
+              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+              : "bg-secondary text-secondary-foreground hover:bg-accent"
+          )}
+        >
+          Finished
+        </button>
+
+        {/* Separator */}
+        <div className="w-px h-6 bg-border" />
 
         <button
           onClick={() => setShowAdvanced(!showAdvanced)}
