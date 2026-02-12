@@ -1,123 +1,171 @@
-# Anime Statistics API
+# MAL Explorer
 
-A TypeScript-based REST API for analyzing anime data from MyAnimeList. The API provides statistical insights about anime, including score distributions, popularity metrics, and genre analysis.
+A modern anime discovery platform that helps you find your next favorite show. Search through 15,000+ anime titles with powerful filtering, explore statistics, and track your watchlist with Google sign-in.
 
-## Features
+**Live Demo**: [anime-explorer-mal.vercel.app](https://anime-explorer-mal.vercel.app)
 
-- **Data Collection**: Fetches anime data from MyAnimeList API
-- **Statistical Analysis**:
-  - Score and popularity distributions
-  - Member and favorite counts
-  - Genre, theme, and demographic analysis
-  - Year and type distributions
-  - Popular genre combinations
-- **Filtering System**: Advanced filtering capabilities with:
-  - Numeric comparisons (>, >=, <, <=, =)
-  - Array operations (includes, excludes)
-  - String matching
+## What It Does
+
+- **Smart Search**: Filter anime by score, year, genres, themes, and more with an intuitive filter builder
+- **Rich Statistics**: Explore trends, distributions, and popular genre combinations across the entire dataset
+- **Personal Watchlists**: Track what you're watching, completed, or planning to watch with Google authentication
+- **Custom Ranking**: Results sorted by a balanced algorithm that considers both quality and popularity
+
+## Tech Stack
+
+**Frontend**
+- Next.js 15 with React 19
+- TailwindCSS 4 + shadcn/ui components
+- TanStack Query for data caching
+
+**Backend**
+- Express.js with TypeScript
+- Turso (libSQL) database
+- MyAnimeList data via Jikan API
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+
+- A Turso account (free tier works great)
+- Google OAuth credentials
+
+### Setup
+
+1. Clone and install:
+```bash
+git clone <repository-url>
+cd mal
+npm install
+```
+
+2. Create a `.env` file:
+```env
+TURSO_DATABASE_URL=your-database-url
+TURSO_AUTH_TOKEN=your-auth-token
+JWT_SECRET=your-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+PORT=8080
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+This runs both the backend (port 8080) and frontend (port 3000) concurrently.
+
+4. Open http://localhost:3000 in your browser
+
+## Usage
+
+### Searching for Anime
+1. Use the filter builder to add conditions (e.g., "Score >= 8", "Genres include Action")
+2. Click quick genre chips for instant filters
+3. Toggle between currently airing and finished anime
+4. Click "Search" to see results
+
+### Managing Your Watchlist
+1. Sign in with Google (top-right corner)
+2. Hover over any anime card and click the status button
+3. Choose: Watching, Completed, Deferred, Avoiding, or BRR (Bad Rating Ratio)
+4. Visit the Watchlist page to view all your anime organized by status
+
+### Viewing Statistics
+1. Navigate to the Stats page
+2. Toggle "Include only" to focus on specific watchlist categories
+3. Explore score distributions, popular genres, and trending combinations
 
 ## Project Structure
 
 ```
-src/
-├── controllers/     # Route handlers
-├── types/          # TypeScript interfaces and types
-├── validators/     # Input validation logic
-├── routes/         # API route definitions
-├── api.ts          # External API integration
-├── config.ts       # Configuration and constants
-├── statistics.ts   # Statistical calculations
-└── app.ts          # Main application entry
+mal/
+├── app/              # Next.js pages (search, stats, watchlist)
+├── components/       # React UI components
+├── lib/              # Frontend utilities
+├── src/              # Backend code
+│   ├── controllers/  # API request handlers
+│   ├── db/          # Database operations
+│   ├── routes/      # API routes
+│   └── validators/  # Input validation
+├── server.ts        # Backend entry point
+└── package.json     # Dependencies and scripts
 ```
 
-## Getting Started
+## Development
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Available Scripts
 
-2. Run in development mode:
-   ```bash
-   npm run dev
-   ```
-
-3. Build for production:
-   ```bash
-   npm run build
-   npm run start
-   ```
-
-## API Endpoints
-
-- `GET /api/stats`: Get all anime statistics
-- `POST /api/stats/filter`: Get filtered anime statistics
-- `POST /api/fetch`: Fetch new anime data
-- `GET /api/filters`: Get available filter options
-
-## Example Filter
-
-```json
-{
-  "filters": [
-    {
-      "field": "year",
-      "value": 2020,
-      "action": "GREATER_THAN_OR_EQUALS"
-    },
-    {
-      "field": "score",
-      "value": 7,
-      "action": "GREATER_THAN_OR_EQUALS"
-    },
-    {
-      "field": "genres",
-      "value": ["Action"],
-      "action": "INCLUDES_ALL"
-    }
-  ]
-}
+```bash
+npm run dev        # Run both backend and frontend
+npm run dev:be     # Backend only
+npm run dev:fe     # Frontend only
+npm run build      # Build for production
+npm start          # Start production server
 ```
 
-## Scripts
+### Testing the API
 
-- `npm run dev`: Start development server with hot reloading
-- `npm run build`: Build TypeScript to JavaScript
-- `npm run start`: Run the built application
-- `npm run lint`: Run ESLint
-- `npm run test`: Run tests
-- `npm run clean`: Clean build directory
+Use the provided `.http` files with a REST Client:
+- `anime-api.http` - Test anime endpoints
+- `manga-api.http` - Test manga endpoints
 
-## Technologies
+## Deployment
 
-- TypeScript
-- Express.js
-- Node.js
-- MyAnimeList API
+### Frontend (Vercel)
+- Automatically deploys when you push to the main branch
+- Set environment variables in Vercel dashboard
 
+### Backend (Docker)
+```bash
+docker build -t mal-backend .
+docker run -p 8080:8080 --env-file .env mal-backend
+```
 
-## Future Improvements
+## Features in Detail
 
-- While calculating score, also consider user's past watching history with given filters
-- Make a web version to better visualize the statistics
-- Improve formulae to allow representation of smaller anime
-- Filter/Sort based on user's list (including its status)
-- Optimise new fetch logic
-- Use an actual DB, once multi user support is added
-- Integrate with [web](https://lovable.dev/projects/5bb8d65f-b1ff-4281-900e-55330c69b13a)
+### Advanced Filtering
+- Numeric comparisons (score, year, members, favorites, episodes)
+- Array operations (genres/themes: includes all, includes any, excludes)
+- Text search (title, synopsis)
+- Multiple filters that work together
 
-## Some random Idea I had 3yrs back
-Algorithm that provides movies that are most similar to what you have inputted, considers genres and tags as shared my IMDb.
-We can make a extensive list of common tags for all movies then take an array of binary for tags. For example we decide to go with 50 tags , and movie A has only first 3 tags attached to it.
-Then string for it would be
-1110000......
+### Smart Sorting
+Results are ranked using a custom algorithm that:
+- Balances quality (MAL score) with popularity (members + favorites)
+- Uses logarithmic scaling to give smaller anime a fair chance
+- Prevents mega-popular shows from dominating every search
 
-Similarly we can do it for genres (maybe instead of 1 we can keep it in order of dominance)
-I think this should let me implement a real fast algorithm for this app. XOR op.
+### Performance
+- Search through 18,000 items in ~100ms
+- Data cached in memory for instant filtering
+- Pagination for smooth browsing
+- React Query caching for fast navigation
 
-Keep all the titles in a sorted (simple string sort might do ? ) array, when fetching new titles add them according to thier rank. This will give the results blazingly fast.
+## Contributing
 
-An app that takes movie name and gets its information and computes whether I should watch or not.
+This is a personal project, but feedback and suggestions are welcome! Feel free to:
+- Open issues for bugs or feature requests
+- Share interesting filter combinations
+- Suggest new features
 
-Subpart: an app that shows shared films between 2 actors.
+## Roadmap
 
+- Recommendations based on watchlist
+- Enhanced scoring algorithm using watch history
+- More visualizations and statistics
+- Social features (share filters, compare watchlists)
+
+## License
+
+ISC
+
+## Author
+
+Sarthak Agrawal
+
+---
+
+**Note**: This project uses MyAnimeList data via the Jikan API. It is not affiliated with or endorsed by MyAnimeList.net.
+
+**For AI Agents**: See [AGENTS.md](AGENTS.md) for comprehensive development documentation including architecture, patterns, and technical decisions.
