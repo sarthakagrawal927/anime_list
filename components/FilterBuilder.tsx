@@ -80,11 +80,14 @@ export default function FilterBuilder() {
       });
     }
 
-    const validAdvanced = filters.filter((f) => {
-      if (Array.isArray(f.value)) return f.value.length > 0;
-      return f.value !== "" && f.value !== undefined;
-    });
-    allFilters.push(...validAdvanced);
+    // Only apply advanced filters if the section is expanded
+    if (showAdvanced) {
+      const validAdvanced = filters.filter((f) => {
+        if (Array.isArray(f.value)) return f.value.length > 0;
+        return f.value !== "" && f.value !== undefined;
+      });
+      allFilters.push(...validAdvanced);
+    }
 
     return {
       filters: allFilters,
@@ -96,7 +99,7 @@ export default function FilterBuilder() {
         hideWatched,
       },
     };
-  }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched]);
+  }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched, showAdvanced]);
 
   // Create stable query key from filter params
   const filterKey = JSON.stringify(buildSearchOpts(0));
@@ -156,10 +159,10 @@ export default function FilterBuilder() {
     selectedGenres.length +
     (searchText ? 1 : 0) +
     hideWatched.length +
-    filters.filter((f) => {
+    (showAdvanced ? filters.filter((f) => {
       if (Array.isArray(f.value)) return f.value.length > 0;
       return f.value !== "" && f.value !== undefined;
-    }).length;
+    }).length : 0);
 
   const totalFiltered = data?.totalFiltered || 0;
   const hasMore = currentOffset + (data?.filteredList.length || 0) < totalFiltered;
