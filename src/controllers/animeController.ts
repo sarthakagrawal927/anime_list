@@ -16,7 +16,7 @@ import { getAnimeStats } from "../statistics";
 import { getScoreSortedList } from "../utils/statistics";
 import { FilterRequestBody } from "../validators/animeFilters";
 import { WatchedListPayload } from "../validators/watchedList";
-import { hideWatchedItems, takePage } from "./helpers";
+import { hideWatchedItems, includeOnlyWatchedItems, takePage } from "./helpers";
 import { WatchedAnime } from '../types/watchlist';
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
@@ -93,9 +93,21 @@ export const getStats = async (req: AuthRequest, res: Response) => {
   let animeList = animeStore.getAnimeList();
 
   if (userId && hideWatched.length > 0) {
-    animeList = await hideWatchedItems(
+    // Convert hideWatched to includeStatuses (invert the selection)
+    const allStatuses: WatchStatus[] = [
+      WatchStatus.Watching,
+      WatchStatus.Completed,
+      WatchStatus.Deferred,
+      WatchStatus.Avoiding,
+      WatchStatus.BadRatingRatio,
+    ];
+    const includeStatuses = allStatuses.filter(
+      (status) => !hideWatched.includes(status)
+    );
+
+    animeList = await includeOnlyWatchedItems(
       animeList,
-      hideWatched as WatchStatus[],
+      includeStatuses,
       () => getWatchedAnimeList(userId),
       (list) => list.anime
     );
