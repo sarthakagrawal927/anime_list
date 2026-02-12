@@ -18,6 +18,8 @@ import { FilterRequestBody } from "../validators/animeFilters";
 import { WatchedListPayload } from "../validators/watchedList";
 import { hideWatchedItems, takeFirst } from "./helpers";
 import { WatchedAnime } from '../types/watchlist';
+import { AuthRequest } from "../middleware/auth";
+import { animeStore } from "../store/animeStore";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -35,6 +37,7 @@ const toSummary = (anime: ScoredAnime) => ({
   genres: Object.keys(anime.genres),
   themes: Object.keys(anime.themes),
   type: anime.type,
+  image: anime.image,
 });
 
 const applyAiringFilter = (
@@ -61,14 +64,17 @@ export const getFilterActions = async (_req: Request, res: Response) => {
 };
 
 export const searchAnime = async (
-  req: Request<{}, {}, FilterRequestBody>,
+  req: AuthRequest & Request<{}, {}, FilterRequestBody>,
   res: Response
 ) => {
   const { filters, sortBy, airing, hideWatched, pagesize } = req.body;
+  const userId = req.user?.userId;
 
   let filtered = await filterAnimeList(filters);
   filtered = applyAiringFilter(airing, filtered);
-  filtered = await hideWatchedItems(filtered, hideWatched, getWatchedAnimeList, (list) => list.anime);
+  if (userId) {
+    filtered = await hideWatchedItems(filtered, hideWatched, () => getWatchedAnimeList(userId), (list) => list.anime);
+  }
 
   const sorted = getScoreSortedList(filtered, filters, sortBy);
   const stats = await getAnimeStats(filtered);
@@ -84,15 +90,16 @@ export const getStats = async (_req: Request, res: Response) => {
   res.json(await getAnimeStats());
 };
 
-export const getWatchlist = async (_req: Request, res: Response) => {
-  const watchlist = await getWatchedAnimeList();
-  const status = _req.query.status as WatchStatus;
-  
+export const getWatchlist = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const watchlist = await getWatchedAnimeList(userId);
+  const status = req.query.status as WatchStatus;
+
   if (!watchlist) {
     res.status(404).json({ error: "Watchlist not found" });
     return;
   }
-  
+
   if (status) {
     const filteredAnime = Object.values(watchlist.anime).filter(
       (item: WatchedAnime) => item.status === status
@@ -100,14 +107,48 @@ export const getWatchlist = async (_req: Request, res: Response) => {
     res.json(filteredAnime);
     return;
   }
-  
+
   res.json(watchlist);
 };
 
 export const addToWatchlist = async (
-  req: Request<{}, {}, WatchedListPayload>,
+  req: AuthRequest & Request<{}, {}, WatchedListPayload>,
   res: Response
 ) => {
-  await addAnimeToWatched(req.body.mal_ids, req.body.status);
+  const userId = req.user!.userId;
+  await addAnimeToWatched(req.body.mal_ids, req.body.status, userId);
   res.json({ success: true, message: "Anime added to watched list" });
+};
+
+export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const watchlist = await getWatchedAnimeList(userId);
+
+  if (!watchlist) {
+    res.json({ items: [] });
+    return;
+  }
+
+  const allAnime = animeStore.getAnimeList();
+  const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
+
+  const items = Object.values(watchlist.anime).map((entry) => {
+    const anime = animeMap.get(entry.id);
+    return {
+      mal_id: entry.id,
+      watchStatus: entry.status,
+      title: anime?.title || entry.title || `ID: ${entry.id}`,
+      image: anime?.image,
+      score: anime?.score,
+      year: anime?.year,
+      type: anime?.type,
+      episodes: anime?.episodes,
+      members: anime?.members,
+      genres: anime ? Object.keys(anime.genres) : [],
+      synopsis: anime?.synopsis,
+      url: anime?.url,
+    };
+  });
+
+  res.json({ items });
 };

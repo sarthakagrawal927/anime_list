@@ -21,6 +21,7 @@ import {
 import { MangaFilterRequestBody } from "../validators/mangaFilters";
 import { WatchedListPayload } from "../validators/watchedList";
 import { hideWatchedItems, takeFirst } from "./helpers";
+import { AuthRequest } from "../middleware/auth";
 
 const sortManga = (
   list: Awaited<ReturnType<typeof filterMangaList>>,
@@ -63,13 +64,16 @@ export const getMangaStatistics = async (_req: Request, res: Response) => {
 };
 
 export const searchManga = async (
-  req: Request<{}, {}, MangaFilterRequestBody>,
+  req: AuthRequest & Request<{}, {}, MangaFilterRequestBody>,
   res: Response
 ) => {
   const { filters, hideWatched, pagesize, sortBy } = req.body;
+  const userId = req.user?.userId;
 
   let filtered = await filterMangaList(filters);
-  filtered = await hideWatchedItems(filtered, hideWatched, getWatchedMangaList, (list) => list.manga);
+  if (userId) {
+    filtered = await hideWatchedItems(filtered, hideWatched, () => getWatchedMangaList(userId), (list) => list.manga);
+  }
 
   const sorted = sortManga(filtered, sortBy);
 
@@ -82,15 +86,17 @@ export const searchManga = async (
 };
 
 export const addMangaToWatchlistHandler = async (
-  req: Request<{}, {}, WatchedListPayload>,
+  req: AuthRequest & Request<{}, {}, WatchedListPayload>,
   res: Response
 ) => {
-  await addMangaToWatched(req.body.mal_ids, req.body.status);
+  const userId = req.user!.userId;
+  await addMangaToWatched(req.body.mal_ids, req.body.status, userId);
   res.json({ success: true, message: "Manga added to watched list" });
 };
 
-export const getMangaWatchlist = async (_req: Request, res: Response) => {
-  const watchlist = await getWatchedMangaList();
+export const getMangaWatchlist = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const watchlist = await getWatchedMangaList(userId);
   if (!watchlist) {
     res.status(404).json({ error: "Manga watchlist not found" });
     return;

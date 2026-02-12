@@ -18,6 +18,7 @@ export interface BaseMangaItem {
   favorites?: number;
   synopsis?: string;
   year?: number;
+  image?: string;
   has_colored?: boolean;
   is_completed?: boolean;
   available_in_english?: boolean;
@@ -34,6 +35,7 @@ export type RawMangaData = ({
   genres?: Array<{ name: string }>;
   themes?: Array<{ name: string }>;
   demographics?: Array<{ name: string }>;
+  images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } };
 } & BaseMangaItem)[];
 
 export enum MangaField {

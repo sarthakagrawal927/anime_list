@@ -18,6 +18,7 @@ export interface BaseAnimeItem {
   synopsis?: string;
   year?: number;
   season?: string;
+  image?: string;
 }
 
 export interface AnimeItem extends BaseAnimeItem {
@@ -30,6 +31,7 @@ export type RawAnimeData = ({
   genres?: Array<{ name: string }>;
   themes?: Array<{ name: string }>;
   demographics?: Array<{ name: string }>;
+  images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } };
 } & BaseAnimeItem)[];
 
 export type ScoreMultiplier<T> = T extends string[]

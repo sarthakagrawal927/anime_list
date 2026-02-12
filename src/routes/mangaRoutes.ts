@@ -4,6 +4,7 @@ import { catcher } from "../utils/functional";
 import { validate } from "../middleware/validation";
 import { mangaFilterRequestSchema } from "../validators/mangaFilters";
 import { watchedListSchema } from "../validators/watchedList";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 import {
   addMangaToWatchlistHandler,
   getMangaFields,
@@ -23,6 +24,7 @@ router.get("/stats", catcher(getMangaStatistics));
 
 router.post(
   "/search",
+  optionalAuth,
   validate(mangaFilterRequestSchema, {
     errorMessage: "Invalid manga search payload",
   }),
@@ -31,10 +33,11 @@ router.post(
 
 router.post(
   SERVER_CONFIG.routes.add_to_watched,
+  requireAuth,
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addMangaToWatchlistHandler)
 );
 
-router.get("/watchlist", catcher(getMangaWatchlist));
+router.get("/watchlist", requireAuth, catcher(getMangaWatchlist));
 
 export default router;

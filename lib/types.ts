@@ -12,6 +12,7 @@ export interface AnimeSummary {
   genres: string[];
   themes: string[];
   type: string;
+  image?: string;
 }
 
 export interface SearchResponse {
@@ -88,4 +89,23 @@ export interface WatchedAnime {
 export interface WatchlistData {
   user: { id: string; name: string };
   anime: Record<string, WatchedAnime>;
+}
+
+export interface EnrichedWatchlistItem {
+  mal_id: string;
+  watchStatus: string;
+  title: string;
+  image?: string;
+  score?: number;
+  year?: number;
+  type?: string;
+  episodes?: number;
+  members?: number;
+  genres: string[];
+  synopsis?: string;
+  url?: string;
+}
+
+export interface EnrichedWatchlistResponse {
+  items: EnrichedWatchlistItem[];
 }

@@ -8,12 +8,14 @@ type RawAnimeItem = BaseAnimeItem & {
   genres?: Array<{ name: string }>;
   themes?: Array<{ name: string }>;
   demographics?: Array<{ name: string }>;
+  images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } };
 };
 
 type RawMangaItem = BaseMangaItem & {
   genres?: Array<{ name: string }>;
   themes?: Array<{ name: string }>;
   demographics?: Array<{ name: string }>;
+  images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } };
 };
 
 interface ApiResponse<T> {

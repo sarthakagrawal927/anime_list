@@ -6,12 +6,13 @@ import rateLimit from "express-rate-limit";
 import { ERROR_MESSAGES, SERVER_CONFIG } from "./config";
 import mangaRoutes from "./routes/mangaRoutes";
 import animeRoutes from "./routes/animeRoutes";
+import authRoutes from "./routes/authRoutes";
 import { logger } from "./utils/logger";
 
 const { routes } = SERVER_CONFIG;
 
 const ALLOWED_ORIGINS = [
-  "https://mal-eosin.vercel.app",
+  "https://anime-explorer.vercel.app",
   process.env.NODE_ENV !== "production" && "http://localhost:3000",
 ].filter(Boolean) as string[];
 
@@ -25,6 +26,7 @@ export function createApp() {
     cors({
       origin: ALLOWED_ORIGINS,
       methods: ["GET", "POST"],
+      allowedHeaders: ["Content-Type", "Authorization"],
     })
   );
   app.use(
@@ -36,6 +38,7 @@ export function createApp() {
     })
   );
 
+  app.use(routes.base, authRoutes);
   app.use(`${routes.base}/manga`, mangaRoutes);
   app.use(animeRoutes);
 

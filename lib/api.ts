@@ -5,10 +5,28 @@ import type {
   SearchFilter,
   AnimeStats,
   WatchlistData,
+  EnrichedWatchlistResponse,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 const BASE = `${API_URL}/api`;
+
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const saved = localStorage.getItem("mal_auth");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.token || null;
+    }
+  } catch {}
+  return null;
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
@@ -35,7 +53,7 @@ export function searchAnime(
 ): Promise<SearchResponse> {
   return fetchJson(`${BASE}/search`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({
       filters,
       pagesize: opts.pagesize ?? 20,
@@ -52,7 +70,7 @@ export function getStats(): Promise<AnimeStats> {
 
 export function getWatchlist(status?: string): Promise<WatchlistData> {
   const url = status ? `${BASE}/watchlist?status=${status}` : `${BASE}/watchlist`;
-  return fetchJson(url);
+  return fetchJson(url, { headers: authHeaders() });
 }
 
 export function addToWatchlist(
@@ -61,7 +79,11 @@ export function addToWatchlist(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watched/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ mal_ids: malIds, status }),
   });
+}
+
+export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
+  return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
 }

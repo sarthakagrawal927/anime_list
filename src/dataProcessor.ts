@@ -28,6 +28,9 @@ import {
 import { animeStore } from "./store/animeStore";
 import { mangaStore } from "./store/mangaStore";
 
+const extractImageUrl = (images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } }): string | undefined =>
+  images?.webp?.image_url || images?.jpg?.image_url || undefined;
+
 const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   const arrayToMap = (
     arr?: Array<{ name: string }>
@@ -56,6 +59,7 @@ const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
     year: rawAnime.year || Number(rawAnime.aired?.from?.slice(0, 4)),
     season: rawAnime.season,
     status: rawAnime.status,
+    image: extractImageUrl(rawAnime.images),
     genres: arrayToMap(rawAnime.genres),
     themes: arrayToMap(rawAnime.themes),
     demographics: arrayToMap(rawAnime.demographics),
@@ -128,6 +132,7 @@ const transformRawManga = (rawManga: RawMangaData[0]): MangaItem => {
     synopsis: rawManga.synopsis,
     year: rawManga.year || Number(rawManga.published?.from?.slice(0, 4)),
     status: rawManga.status,
+    image: extractImageUrl(rawManga.images),
     genres: arrayToMap(rawManga.genres),
     themes: arrayToMap(rawManga.themes),
     demographics: arrayToMap(rawManga.demographics),
@@ -418,21 +423,22 @@ export const storeUserWatchedDataInFile = async (): Promise<void> => {
 
 export async function addAnimeToWatched(
   mal_ids: string[],
-  status: WatchStatus
+  status: WatchStatus,
+  userId: string = "default"
 ): Promise<void> {
   try {
     const { upsertAnimeWatchlist } = await import("./db/watchlist");
-    await upsertAnimeWatchlist(mal_ids, status);
+    await upsertAnimeWatchlist(mal_ids, status, userId);
   } catch (error) {
     console.error("Error adding anime to watched list:", error);
     throw error;
   }
 }
 
-export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
+export async function getWatchedAnimeList(userId: string = "default"): Promise<WatchlistData | null> {
   try {
     const { getAnimeWatchlist } = await import("./db/watchlist");
-    return await getAnimeWatchlist();
+    return await getAnimeWatchlist(userId);
   } catch (error) {
     console.error("Error reading watched anime list:", error);
     return null;
@@ -443,21 +449,22 @@ export async function getWatchedAnimeList(): Promise<WatchlistData | null> {
 
 export async function addMangaToWatched(
   mal_ids: string[],
-  status: WatchStatus
+  status: WatchStatus,
+  userId: string = "default"
 ): Promise<void> {
   try {
     const { upsertMangaWatchlist } = await import("./db/watchlist");
-    await upsertMangaWatchlist(mal_ids, status);
+    await upsertMangaWatchlist(mal_ids, status, userId);
   } catch (error) {
     console.error("Error adding manga to watched list:", error);
     throw error;
   }
 }
 
-export async function getWatchedMangaList(): Promise<MangaWatchlistData | null> {
+export async function getWatchedMangaList(userId: string = "default"): Promise<MangaWatchlistData | null> {
   try {
     const { getMangaWatchlist } = await import("./db/watchlist");
-    return await getMangaWatchlist();
+    return await getMangaWatchlist(userId);
   } catch (error) {
     console.error("Error reading watched manga list:", error);
     return null;

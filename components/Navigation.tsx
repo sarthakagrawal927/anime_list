@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth";
+import GoogleSignInButton from "./GoogleSignInButton";
 
 const links = [
   { href: "/", label: "Search" },
@@ -11,6 +14,7 @@ const links = [
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { user, loading, logout } = useAuth();
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800">
@@ -18,7 +22,7 @@ export default function Navigation() {
         <Link href="/" className="text-lg font-bold text-blue-400">
           MAL Explorer
         </Link>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-1">
           {links.map((link) => {
             const active = pathname === link.href;
             return (
@@ -35,6 +39,31 @@ export default function Navigation() {
               </Link>
             );
           })}
+        </div>
+        <div className="flex items-center gap-3">
+          {loading ? null : user ? (
+            <div className="flex items-center gap-2">
+              {user.picture && (
+                <Image
+                  src={user.picture}
+                  alt={user.name}
+                  width={28}
+                  height={28}
+                  className="rounded-full"
+                  unoptimized
+                />
+              )}
+              <span className="text-sm text-gray-300 hidden sm:inline">{user.name}</span>
+              <button
+                onClick={logout}
+                className="text-xs px-2 py-1 rounded bg-gray-800 hover:bg-gray-700 text-gray-400 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <GoogleSignInButton />
+          )}
         </div>
       </div>
     </nav>

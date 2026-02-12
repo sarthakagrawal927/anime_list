@@ -4,8 +4,10 @@ import { catcher } from "../utils/functional";
 import { validate } from "../middleware/validation";
 import { filterRequestSchema } from "../validators/animeFilters";
 import { watchedListSchema } from "../validators/watchedList";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 import {
   addToWatchlist,
+  getEnrichedWatchlist,
   getFieldOptions,
   getFilterActions,
   getStats,
@@ -22,16 +24,20 @@ router.get(`${routes.base}${routes.filters}`, catcher(getFilterActions));
 
 router.post(
   `${routes.base}${routes.search}`,
+  optionalAuth,
   validate(filterRequestSchema, { errorMessage: "Invalid search payload" }),
   catcher(searchAnime)
 );
 
 router.get(`${routes.base}${routes.stats}`, catcher(getStats));
 
-router.get(`${routes.base}${routes.watchlist}`, catcher(getWatchlist));
+router.get(`${routes.base}${routes.watchlist}`, requireAuth, catcher(getWatchlist));
+
+router.get(`${routes.base}/watchlist/enriched`, requireAuth, catcher(getEnrichedWatchlist));
 
 router.post(
   `${routes.base}${routes.add_to_watched}`,
+  requireAuth,
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addToWatchlist)
 );
