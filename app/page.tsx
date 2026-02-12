@@ -4,8 +4,8 @@ export default function SearchPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-100">Discover Anime</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Discover Anime</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Build filters to find anime matching your criteria
         </p>
       </div>

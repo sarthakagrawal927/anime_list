@@ -20,21 +20,21 @@ export default function StatsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-100">Statistics</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Statistics</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Anime database distributions and percentiles
         </p>
       </div>
       {loading ? (
-        <div className="text-gray-500">Loading statistics...</div>
+        <p className="text-muted-foreground">Loading statistics...</p>
       ) : error ? (
-        <div className="text-red-400">{error}</div>
+        <p className="text-destructive text-sm">{error}</p>
       ) : stats ? (
         <StatsCharts stats={stats} />
       ) : (
-        <div className="text-gray-500">
+        <p className="text-muted-foreground">
           Unable to load statistics. Make sure anime data has been fetched.
-        </div>
+        </p>
       )}
     </div>
   );
