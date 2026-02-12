@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { AuthProvider } from "@/lib/auth";
+import { QueryProvider } from "@/lib/query-provider";
 
 export const metadata: Metadata = {
   title: {
@@ -43,10 +44,12 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen antialiased">
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-        <AuthProvider>
-          <Navigation />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
-        </AuthProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <Navigation />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+          </AuthProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type {
   SearchFilter,
-  FieldOptions,
-  FilterActions,
   SearchResponse,
 } from "@/lib/types";
 import { getFields, getFilterActions, searchAnime } from "@/lib/api";
@@ -36,70 +35,68 @@ const SORT_OPTIONS = [
 ];
 
 export default function FilterBuilder() {
-  const [fields, setFields] = useState<FieldOptions | null>(null);
-  const [actions, setActions] = useState<FilterActions | null>(null);
   const [filters, setFilters] = useState<SearchFilter[]>([{ ...DEFAULT_FILTER }]);
   const [pagesize, setPagesize] = useState(20);
   const [sortBy, setSortBy] = useState<string>("");
   const [airing, setAiring] = useState<"yes" | "no" | "any">("any");
-  const [results, setResults] = useState<SearchResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [searchKey, setSearchKey] = useState(0);
 
-  useEffect(() => {
-    Promise.all([getFields(), getFilterActions()]).then(([f, a]) => {
-      setFields(f);
-      setActions(a);
-    });
-    handleSearch();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data: fields } = useQuery({
+    queryKey: ["fields"],
+    queryFn: getFields,
+  });
 
-  const handleSearch = useCallback(async () => {
+  const { data: actions } = useQuery({
+    queryKey: ["filterActions"],
+    queryFn: getFilterActions,
+  });
+
+  const buildFilters = useCallback((): {
+    filters: SearchFilter[];
+    opts: { pagesize: number; sortBy?: string; airing: "yes" | "no" | "any" };
+  } => {
     const allFilters: SearchFilter[] = [];
 
-    // Add genre filters from quick-select
     if (selectedGenres.length > 0) {
       allFilters.push({
         field: "genres",
-        action: "CONTAINS_ALL",
+        action: "INCLUDES_ALL",
         value: selectedGenres,
       });
     }
 
-    // Add text search filter
     if (searchText.trim()) {
       allFilters.push({
-        field: "name",
+        field: "title",
         action: "CONTAINS",
         value: searchText.trim(),
       });
     }
 
-    // Add advanced filters
     const validAdvanced = filters.filter((f) => {
       if (Array.isArray(f.value)) return f.value.length > 0;
       return f.value !== "" && f.value !== undefined;
     });
     allFilters.push(...validAdvanced);
 
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await searchAnime(allFilters, {
-        pagesize,
-        sortBy: sortBy || undefined,
-        airing,
-      });
-      setResults(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Search failed");
-    } finally {
-      setLoading(false);
-    }
+    return {
+      filters: allFilters,
+      opts: { pagesize, sortBy: sortBy || undefined, airing },
+    };
   }, [filters, pagesize, sortBy, airing, selectedGenres, searchText]);
+
+  const { data: results, isLoading: loading, error } = useQuery<SearchResponse>({
+    queryKey: ["search", searchKey],
+    queryFn: () => {
+      const { filters: f, opts } = buildFilters();
+      return searchAnime(f, opts);
+    },
+  });
+
+  const handleSearch = () => setSearchKey((k) => k + 1);
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
@@ -297,7 +294,7 @@ export default function FilterBuilder() {
         </div>
       )}
 
-      {error && <p className="text-destructive text-sm">{error}</p>}
+      {error && <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Search failed"}</p>}
 
       {loading ? <ResultsGridSkeleton /> : results && <ResultsGrid results={results} />}
     </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EnrichedWatchlistItem } from "@/lib/types";
 import { getEnrichedWatchlist, addToWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -53,36 +54,24 @@ function WatchlistSkeleton() {
 
 export default function WatchlistView() {
   const { user, loading: authLoading } = useAuth();
-  const [items, setItems] = useState<EnrichedWatchlistItem[]>([]);
   const [activeTab, setActiveTab] = useState("Watching");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getEnrichedWatchlist();
-      setItems(data.items);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load watchlist");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["watchlist", "enriched"],
+    queryFn: () => getEnrichedWatchlist(),
+    enabled: !!user,
+  });
 
-  useEffect(() => {
-    if (user) load();
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+  const statusMutation = useMutation({
+    mutationFn: ({ malId, status }: { malId: string; status: string }) =>
+      addToWatchlist([Number(malId)], status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
 
-  const handleStatusChange = async (malId: string, newStatus: string) => {
-    try {
-      await addToWatchlist([Number(malId)], newStatus);
-      await load();
-    } catch {
-      alert("Failed to update status");
-    }
-  };
+  const items: EnrichedWatchlistItem[] = data?.items ?? [];
 
   if (authLoading) return null;
 
@@ -102,8 +91,8 @@ export default function WatchlistView() {
     );
   }
 
-  if (loading) return <WatchlistSkeleton />;
-  if (error) return <p className="text-destructive text-sm">{error}</p>;
+  if (isLoading) return <WatchlistSkeleton />;
+  if (error) return <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Failed to load watchlist"}</p>;
 
   const filtered = items.filter((item) => item.watchStatus === activeTab);
 
@@ -208,7 +197,7 @@ export default function WatchlistView() {
                 <div className="mt-auto pt-1">
                   <select
                     value={item.watchStatus}
-                    onChange={(e) => handleStatusChange(item.mal_id, e.target.value)}
+                    onChange={(e) => statusMutation.mutate({ malId: item.mal_id, status: e.target.value })}
                     className="h-7 rounded-lg border border-input bg-secondary px-2 text-xs"
                   >
                     {STATUSES.map((s) => (

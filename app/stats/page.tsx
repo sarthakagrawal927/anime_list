@@ -1,21 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import StatsCharts from "@/components/StatsCharts";
 import { getStats } from "@/lib/api";
-import type { AnimeStats } from "@/lib/types";
 
 export default function StatsPage() {
-  const [stats, setStats] = useState<AnimeStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getStats()
-      .then(setStats)
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load stats"))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: stats, isLoading, error } = useQuery({
+    queryKey: ["stats"],
+    queryFn: getStats,
+  });
 
   return (
     <div className="space-y-6">
@@ -25,10 +18,12 @@ export default function StatsPage() {
           Anime database distributions and percentiles
         </p>
       </div>
-      {loading ? (
+      {isLoading ? (
         <p className="text-muted-foreground">Loading statistics...</p>
       ) : error ? (
-        <p className="text-destructive text-sm">{error}</p>
+        <p className="text-destructive text-sm">
+          {error instanceof Error ? error.message : "Failed to load stats"}
+        </p>
       ) : stats ? (
         <StatsCharts stats={stats} />
       ) : (

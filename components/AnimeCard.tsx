@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AnimeSummary } from "@/lib/types";
 import { addToWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -18,22 +19,22 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
-  const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const handleAdd = async (status: string) => {
-    setAdding(true);
-    setShowMenu(false);
-    try {
-      await addToWatchlist([anime.id], status);
+  const mutation = useMutation({
+    mutationFn: (status: string) => addToWatchlist([anime.id], status),
+    onSuccess: () => {
       setAdded(true);
-    } catch {
-      alert("Failed to add to watchlist. Are you signed in?");
-    } finally {
-      setAdding(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
+
+  const handleAdd = (status: string) => {
+    setShowMenu(false);
+    mutation.mutate(status);
   };
 
   const scoreColor =
@@ -138,7 +139,7 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
                 e.preventDefault();
                 setShowMenu(!showMenu);
               }}
-              disabled={adding}
+              disabled={mutation.isPending}
               className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg leading-none shadow-lg hover:scale-110 transition-transform"
             >
               +
