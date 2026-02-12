@@ -29,7 +29,7 @@ router.post(
   catcher(searchAnime)
 );
 
-router.get(`${routes.base}${routes.stats}`, catcher(getStats));
+router.get(`${routes.base}${routes.stats}`, optionalAuth, catcher(getStats));
 
 router.get(`${routes.base}${routes.watchlist}`, requireAuth, catcher(getWatchlist));
 

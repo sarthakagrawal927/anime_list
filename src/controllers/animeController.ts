@@ -86,8 +86,22 @@ export const searchAnime = async (
   });
 };
 
-export const getStats = async (_req: Request, res: Response) => {
-  res.json(await getAnimeStats());
+export const getStats = async (req: AuthRequest, res: Response) => {
+  const userId = req.user?.userId;
+  const hideWatched = (req.query.hideWatched as string)?.split(',').filter(Boolean) || [];
+
+  let animeList = animeStore.getAnimeList();
+
+  if (userId && hideWatched.length > 0) {
+    animeList = await hideWatchedItems(
+      animeList,
+      hideWatched as WatchStatus[],
+      () => getWatchedAnimeList(userId),
+      (list) => list.anime
+    );
+  }
+
+  res.json(await getAnimeStats(animeList));
 };
 
 export const getWatchlist = async (req: AuthRequest, res: Response) => {

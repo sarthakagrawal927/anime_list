@@ -66,8 +66,9 @@ export function searchAnime(
   });
 }
 
-export function getStats(): Promise<AnimeStats> {
-  return fetchJson(`${BASE}/stats`);
+export function getStats(hideWatched: string[] = []): Promise<AnimeStats> {
+  const params = hideWatched.length > 0 ? `?hideWatched=${hideWatched.join(',')}` : '';
+  return fetchJson(`${BASE}/stats${params}`, { headers: authHeaders() });
 }
 
 export function getWatchlist(status?: string): Promise<WatchlistData> {

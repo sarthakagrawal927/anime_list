@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type {
   SearchFilter,
   SearchResponse,
-  AnimeSummary,
 } from "@/lib/types";
 import { getFields, getFilterActions, searchAnime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -51,13 +50,8 @@ export default function FilterBuilder() {
   const [searchText, setSearchText] = useState("");
   const [hideWatched, setHideWatched] = useState<string[]>([]);
   const [searchKey, setSearchKey] = useState(0);
-
-  // Pagination: accumulated results across pages
-  const [allItems, setAllItems] = useState<AnimeSummary[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [totalFiltered, setTotalFiltered] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const isLoadMore = useRef(false);
+  const [accumulatedPages, setAccumulatedPages] = useState<SearchResponse[]>([]);
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -106,30 +100,27 @@ export default function FilterBuilder() {
     };
   }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched]);
 
-  const { isLoading: loading, error } = useQuery<SearchResponse>({
+  const { data: currentPage, isLoading: loading, error } = useQuery<SearchResponse>({
     queryKey: ["search", searchKey],
     queryFn: async () => {
       const { filters: f, opts } = buildSearchOpts(0);
       const data = await searchAnime(f, opts);
-      setAllItems(data.filteredList);
-      setOffset(data.filteredList.length);
-      setTotalFiltered(data.totalFiltered);
+      setAccumulatedPages([data]); // Reset to first page
       return data;
     },
   });
 
   const handleSearch = () => {
-    isLoadMore.current = false;
     setSearchKey((k) => k + 1);
   };
 
   const handleLoadMore = async () => {
     setLoadingMore(true);
     try {
-      const { filters: f, opts } = buildSearchOpts(offset);
+      const currentOffset = accumulatedPages.reduce((sum, page) => sum + page.filteredList.length, 0);
+      const { filters: f, opts } = buildSearchOpts(currentOffset);
       const data = await searchAnime(f, opts);
-      setAllItems((prev) => [...prev, ...data.filteredList]);
-      setOffset((prev) => prev + data.filteredList.length);
+      setAccumulatedPages((prev) => [...prev, data]);
     } finally {
       setLoadingMore(false);
     }
@@ -177,7 +168,10 @@ export default function FilterBuilder() {
       return f.value !== "" && f.value !== undefined;
     }).length;
 
-  const hasMore = offset < totalFiltered;
+  // Derive display values from accumulated pages
+  const allItems = accumulatedPages.flatMap((page) => page.filteredList);
+  const totalFiltered = currentPage?.totalFiltered || 0;
+  const hasMore = allItems.length < totalFiltered;
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -376,7 +370,7 @@ export default function FilterBuilder() {
               Showing {allItems.length} of {totalFiltered.toLocaleString()} results
             </p>
           </div>
-          <ResultsGrid results={{ filteredList: allItems, totalFiltered, stats: {} as SearchResponse["stats"] }} />
+          <ResultsGrid results={{ filteredList: allItems, totalFiltered, stats: currentPage?.stats || {} as SearchResponse["stats"] }} />
           {hasMore && (
             <div className="flex justify-center pt-2 pb-8">
               <Button
@@ -385,7 +379,7 @@ export default function FilterBuilder() {
                 variant="outline"
                 className="px-8"
               >
-                {loadingMore ? "Loading..." : `Load More (${(totalFiltered - offset).toLocaleString()} remaining)`}
+                {loadingMore ? "Loading..." : `Load More (${(totalFiltered - allItems.length).toLocaleString()} remaining)`}
               </Button>
             </div>
           )}
