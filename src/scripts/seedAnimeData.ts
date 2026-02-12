@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "dotenv/config";
 import { readJsonFile } from "../utils/file";
 import { FILE_PATHS } from "../config";
 import { AnimeItem } from "../types/anime";

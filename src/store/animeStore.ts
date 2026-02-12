@@ -5,7 +5,9 @@ class AnimeStore {
   private animeList: AnimeItem[] = [];
   private static instance: AnimeStore;
   private lastLoadedAt: number = 0;
-  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+  // Production: Long cache since Turso is remote (1 hour)
+  // Cron job updates DB daily, manual refresh if needed
+  private readonly CACHE_TTL = 60 * 60 * 1000; // 1 hour cache
 
   private constructor() {}
 
