@@ -20,7 +20,6 @@ import { hideWatchedItems, includeOnlyWatchedItems, takePage } from "./helpers";
 import { WatchedAnime } from '../types/watchlist';
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
-import { updateLatestTwoSeasonData } from "../api";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 

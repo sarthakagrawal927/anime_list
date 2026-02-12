@@ -50,7 +50,9 @@
       "Bash(lsof:*)",
       "Bash(xargs:*)",
       "Bash(npm run db:seed:*)",
-      "Bash(tsx test:*)"
+      "Bash(tsx test:*)",
+      "Bash(gh secret set:*)",
+      "Bash(gh secret:*)"
     ],
     "deny": []
   }

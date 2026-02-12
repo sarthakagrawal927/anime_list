@@ -14,7 +14,6 @@ import {
   getWatchlist,
   searchAnime,
 } from "../controllers/animeController";
-import { triggerUpdate } from "../controllers/cronController";
 
 const router = Router();
 const { routes } = SERVER_CONFIG;
@@ -42,8 +41,5 @@ router.post(
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addToWatchlist)
 );
-
-// Cron endpoint for scheduled updates
-router.post(`${routes.base}${routes.fetch}`, catcher(triggerUpdate));
 
 export default router;

@@ -9,30 +9,31 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
-      - name: Trigger anime data update
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Update anime data
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
-          response=$(curl -X POST \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            -w "\nHTTP_STATUS:%{http_code}" \
-            -s \
-            https://mal-api.onrender.com/api/fetch)
-
-          http_status=$(echo "$response" | grep "HTTP_STATUS" | cut -d: -f2)
-          body=$(echo "$response" | sed '/HTTP_STATUS/d')
-
-          echo "Response: $body"
-
-          if [ "$http_status" -ne 200 ]; then
-            echo "Error: HTTP $http_status"
-            exit 1
-          fi
-
+          echo "Starting anime data update..."
+          npm run db:update
           echo "✓ Anime data updated successfully"
 
       - name: Notify on failure
         if: failure()
         run: |
-          echo "::error::Anime data update failed. Check Render logs."
+          echo "::error::Anime data update failed. Check workflow logs."
