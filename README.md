@@ -1,5 +1,8 @@
 # MAL Explorer
 
+![AI Generated](https://ai-percentage-pin.vercel.app/api/ai-percentage?value=60)
+![AI PRs Welcome](https://ai-percentage-pin.vercel.app/api/ai-prs?welcome=yes)
+
 A modern anime discovery platform that helps you find your next favorite show.
 
 **Live Demo**: [anime-explorer-mal.vercel.app](https://anime-explorer-mal.vercel.app)
