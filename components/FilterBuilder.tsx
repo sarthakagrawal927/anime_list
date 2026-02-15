@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger, parseAsJson } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import type {
@@ -55,6 +55,24 @@ export default function FilterBuilder() {
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
+
+  // Local input for instant UI, debounce URL param update
+  const [inputValue, setInputValue] = useState(searchText);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    // Sync local input when URL param changes externally (back/forward nav)
+    setInputValue(searchText);
+  }, [searchText]);
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSearchText(value);
+      setCurrentPage(1);
+    }, 300);
+  };
 
   // Auto-open advanced panel if URL contains non-default filters
   const hasCustomFilters = filters.length > 1 ||
@@ -162,6 +180,8 @@ export default function FilterBuilder() {
   };
 
   const clearAll = () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setInputValue("");
     setSelectedGenres([]);
     setSearchText("");
     setFilters([{ ...DEFAULT_FILTER }]);
@@ -210,9 +230,15 @@ export default function FilterBuilder() {
           </svg>
           <Input
             placeholder="Search anime..."
-            value={searchText}
-            onChange={(e) => { setSearchText(e.target.value); resetPage(); }}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            value={inputValue}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (debounceRef.current) clearTimeout(debounceRef.current);
+                setSearchText(inputValue);
+                resetPage();
+              }
+            }}
             className="pl-9 h-9 bg-secondary border-0"
           />
         </div>
