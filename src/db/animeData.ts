@@ -66,20 +66,6 @@ export async function upsertAnime(anime: AnimeItem): Promise<void> {
   });
 }
 
-/**
- * Get existing mal_ids from a list of ids
- */
-async function getExistingIds(malIds: number[]): Promise<Set<number>> {
-  const db = getDb();
-  if (malIds.length === 0) return new Set();
-  const placeholders = malIds.map(() => "?").join(",");
-  const result = await db.execute({
-    sql: `SELECT mal_id FROM anime_data WHERE mal_id IN (${placeholders})`,
-    args: malIds,
-  });
-  return new Set(result.rows.map((r) => r.mal_id as number));
-}
-
 export interface UpsertSummary {
   added: { mal_id: number; title: string }[];
   updated: { mal_id: number; title: string }[];
@@ -87,23 +73,14 @@ export interface UpsertSummary {
 
 /**
  * Bulk insert/update anime (more efficient for large batches)
+ * Uses created_at column to distinguish new inserts from updates:
+ * - INSERT sets both created_at and updated_at to now
+ * - ON CONFLICT only updates updated_at, leaving created_at unchanged
+ * After batch, rows where created_at == updated_at are newly added.
  */
 export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<UpsertSummary> {
   const db = getDb();
-  const batchSize = 100; // SQLite batch limit
-
-  const allIds = animeList.map((a) => a.mal_id);
-  const existingIds = await getExistingIds(allIds);
-
-  const summary: UpsertSummary = { added: [], updated: [] };
-  for (const anime of animeList) {
-    const entry = { mal_id: anime.mal_id, title: anime.title_english || anime.title };
-    if (existingIds.has(anime.mal_id)) {
-      summary.updated.push(entry);
-    } else {
-      summary.added.push(entry);
-    }
-  }
+  const batchSize = 100;
 
   for (let i = 0; i < animeList.length; i += batchSize) {
     const batch = animeList.slice(i, i + batchSize);
@@ -113,8 +90,8 @@ export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<UpsertSu
           mal_id, url, title, title_english, type, episodes,
           aired_from, aired_to, score, scored_by, rank, status,
           popularity, members, favorites, synopsis, year, season,
-          image, genres, themes, demographics, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+          image, genres, themes, demographics, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
         ON CONFLICT(mal_id) DO UPDATE SET
           url = excluded.url,
           title = excluded.title,
@@ -168,7 +145,29 @@ export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<UpsertSu
     await db.batch(statements, "write");
   }
 
-  console.log(`Upserted ${animeList.length} anime to database`);
+  // Query which of the upserted rows were new inserts vs updates
+  const malIds = animeList.map((a) => a.mal_id);
+  const placeholders = malIds.map(() => "?").join(",");
+  const result = await db.execute({
+    sql: `SELECT mal_id, title, title_english, created_at, updated_at
+          FROM anime_data WHERE mal_id IN (${placeholders})`,
+    args: malIds,
+  });
+
+  const summary: UpsertSummary = { added: [], updated: [] };
+  for (const row of result.rows) {
+    const entry = {
+      mal_id: row.mal_id as number,
+      title: (row.title_english as string) || (row.title as string),
+    };
+    if (row.created_at === row.updated_at) {
+      summary.added.push(entry);
+    } else {
+      summary.updated.push(entry);
+    }
+  }
+
+  console.log(`Upserted ${animeList.length} anime (${summary.added.length} new, ${summary.updated.length} updated)`);
   return summary;
 }
 
@@ -235,9 +234,9 @@ export async function getRecentChanges(limit = 100): Promise<
 > {
   const db = getDb();
   const result = await db.execute({
-    sql: `SELECT mal_id, title, title_english, type, DATE(updated_at) as update_date
+    sql: `SELECT mal_id, title, title_english, type, DATE(created_at) as update_date
           FROM anime_data
-          ORDER BY updated_at DESC
+          ORDER BY created_at DESC
           LIMIT ?`,
     args: [limit],
   });

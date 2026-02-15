@@ -117,9 +117,23 @@ export async function migrateWatchlistIndexes(): Promise<void> {
   console.log("Watchlist indexes created successfully");
 }
 
+export async function migrateAnimeCreatedAt(): Promise<void> {
+  const db = getDb();
+  const info = await db.execute("PRAGMA table_info(anime_data)");
+  const hasCreatedAt = info.rows.some((row) => row.name === "created_at");
+  if (hasCreatedAt) return;
+
+  console.log("Adding created_at column to anime_data...");
+  await db.execute("ALTER TABLE anime_data ADD COLUMN created_at TEXT DEFAULT (datetime('now'))");
+  // Backfill: set created_at = updated_at for existing rows
+  await db.execute("UPDATE anime_data SET created_at = updated_at WHERE created_at IS NULL");
+  console.log("created_at column added");
+}
+
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateAnimeDataTable();
   await migrateWatchlistIndexes();
+  await migrateAnimeCreatedAt();
   console.log("All migrations completed");
 }
