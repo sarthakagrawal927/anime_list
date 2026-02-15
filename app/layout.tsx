@@ -3,6 +3,7 @@ import Script from "next/script";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
 import { AuthProvider } from "@/lib/auth";
 import { QueryProvider } from "@/lib/query-provider";
 
@@ -80,6 +81,7 @@ export default function RootLayout({
             <AuthProvider>
               <Navigation />
               <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+              <Footer />
             </AuthProvider>
           </QueryProvider>
         </NuqsAdapter>

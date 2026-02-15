@@ -18,6 +18,7 @@ const links = [
   { href: "/", label: "Discover" },
   { href: "/stats", label: "Stats" },
   { href: "/watchlist", label: "Watchlist" },
+  { href: "/changelog", label: "Changelog" },
 ];
 
 export default function Navigation() {

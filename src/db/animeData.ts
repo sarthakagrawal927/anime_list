@@ -184,3 +184,35 @@ export async function getAnimeCount(): Promise<number> {
   const result = await db.execute("SELECT COUNT(*) as count FROM anime_data");
   return result.rows[0].count as number;
 }
+
+/**
+ * Get the most recent updated_at timestamp
+ */
+export async function getLastDataUpdate(): Promise<string | null> {
+  const db = getDb();
+  const result = await db.execute("SELECT MAX(updated_at) as last_updated FROM anime_data");
+  return (result.rows[0]?.last_updated as string) || null;
+}
+
+/**
+ * Get recently added/updated anime grouped by date
+ */
+export async function getRecentChanges(limit = 100): Promise<
+  { date: string; title: string; title_english: string | null; type: string | null; mal_id: number }[]
+> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT mal_id, title, title_english, type, DATE(updated_at) as update_date
+          FROM anime_data
+          ORDER BY updated_at DESC
+          LIMIT ?`,
+    args: [limit],
+  });
+  return result.rows.map((row) => ({
+    date: row.update_date as string,
+    title: row.title as string,
+    title_english: (row.title_english as string) || null,
+    type: (row.type as string) || null,
+    mal_id: row.mal_id as number,
+  }));
+}

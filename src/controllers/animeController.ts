@@ -20,6 +20,7 @@ import { hideWatchedItems, includeOnlyWatchedItems, takePage } from "./helpers";
 import { WatchedAnime } from '../types/watchlist';
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
+import { getLastDataUpdate, getRecentChanges } from "../db/animeData";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -176,4 +177,15 @@ export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
   });
 
   res.json({ items });
+};
+
+export const getLastUpdated = async (_req: Request, res: Response) => {
+  const lastUpdated = await getLastDataUpdate();
+  res.json({ lastUpdated });
+};
+
+export const getChangelog = async (req: Request, res: Response) => {
+  const limit = Math.min(Number(req.query.limit) || 200, 500);
+  const changes = await getRecentChanges(limit);
+  res.json({ changes });
 };

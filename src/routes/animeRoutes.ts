@@ -8,9 +8,11 @@ import { requireAuth, optionalAuth } from "../middleware/auth";
 import { userRateLimit } from "../middleware/rateLimit";
 import {
   addToWatchlist,
+  getChangelog,
   getEnrichedWatchlist,
   getFieldOptions,
   getFilterActions,
+  getLastUpdated,
   getStats,
   getWatchlist,
   searchAnime,
@@ -20,6 +22,10 @@ const router = Router();
 const { routes } = SERVER_CONFIG;
 
 router.get(`${routes.base}${routes.fields}`, catcher(getFieldOptions));
+
+router.get(`${routes.base}/last-updated`, catcher(getLastUpdated));
+
+router.get(`${routes.base}/changelog`, catcher(getChangelog));
 
 router.get(`${routes.base}${routes.filters}`, catcher(getFilterActions));
 

@@ -90,3 +90,19 @@ export function addToWatchlist(
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
   return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
 }
+
+export function getLastUpdated(): Promise<{ lastUpdated: string | null }> {
+  return fetchJson(`${BASE}/last-updated`);
+}
+
+export interface ChangelogEntry {
+  date: string;
+  title: string;
+  title_english: string | null;
+  type: string | null;
+  mal_id: number;
+}
+
+export function getChangelog(limit = 200): Promise<{ changes: ChangelogEntry[] }> {
+  return fetchJson(`${BASE}/changelog?limit=${limit}`);
+}
