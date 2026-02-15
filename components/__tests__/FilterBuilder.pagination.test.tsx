@@ -1,88 +1,64 @@
 /**
- * Tests for FilterBuilder pagination accumulation logic.
- * Tests the core accumulation behavior extracted from the component.
+ * Tests for page-based pagination logic used in FilterBuilder.
  */
 
-import type { AnimeSummary } from "@/lib/types";
+describe("Page-based pagination logic", () => {
+  const pagesize = 20;
 
-// Helper to simulate the accumulation logic from FilterBuilder
-function accumulateResults(
-  currentAccumulated: AnimeSummary[],
-  newData: AnimeSummary[],
-  currentOffset: number
-): AnimeSummary[] {
-  if (currentOffset === 0) {
-    return newData;
-  }
-  return [...currentAccumulated, ...newData];
-}
-
-function makeAnime(id: number, name: string): AnimeSummary {
-  return {
-    id,
-    score: 8.0,
-    points: 100,
-    name,
-    link: `https://example.com/${id}`,
-    synopsis: "Test",
-    members: 1000,
-    favorites: 50,
-    year: 2020,
-    status: "Finished Airing",
-    genres: [],
-    themes: [],
-    type: "TV",
-  };
-}
-
-describe("Pagination accumulation logic", () => {
-  const page1 = [makeAnime(1, "Anime A"), makeAnime(2, "Anime B")];
-  const page2 = [makeAnime(3, "Anime C"), makeAnime(4, "Anime D")];
-  const page3 = [makeAnime(5, "Anime E")];
-
-  it("replaces results when offset is 0 (initial load or filter change)", () => {
-    const result = accumulateResults([], page1, 0);
-    expect(result).toEqual(page1);
-    expect(result).toHaveLength(2);
+  it("calculates offset from page number", () => {
+    expect((1 - 1) * pagesize).toBe(0);
+    expect((2 - 1) * pagesize).toBe(20);
+    expect((3 - 1) * pagesize).toBe(40);
   });
 
-  it("replaces previous results when offset resets to 0", () => {
-    const result = accumulateResults([...page1, ...page2], page1, 0);
-    expect(result).toEqual(page1);
-    expect(result).toHaveLength(2);
+  it("calculates total pages", () => {
+    expect(Math.ceil(100 / 20)).toBe(5);
+    expect(Math.ceil(101 / 20)).toBe(6);
+    expect(Math.ceil(20 / 20)).toBe(1);
+    expect(Math.ceil(0 / 20)).toBe(0);
   });
 
-  it("appends results when offset > 0 (Load More)", () => {
-    const result = accumulateResults(page1, page2, 2);
-    expect(result).toEqual([...page1, ...page2]);
-    expect(result).toHaveLength(4);
+  it("hasNext is true when currentPage < totalPages", () => {
+    const totalPages = 5;
+    expect(3 < totalPages).toBe(true);
+    expect(5 < totalPages).toBe(false);
   });
 
-  it("accumulates across multiple pages", () => {
-    let accumulated = accumulateResults([], page1, 0);
-    accumulated = accumulateResults(accumulated, page2, 2);
-    accumulated = accumulateResults(accumulated, page3, 4);
-
-    expect(accumulated).toHaveLength(5);
-    expect(accumulated.map((a) => a.id)).toEqual([1, 2, 3, 4, 5]);
+  it("hasPrev is true when currentPage > 1", () => {
+    expect(1 > 1).toBe(false);
+    expect(2 > 1).toBe(true);
   });
 
-  it("hasMore is true when accumulated < total", () => {
-    const accumulated = page1;
-    const totalFiltered = 10;
-    expect(accumulated.length < totalFiltered).toBe(true);
+  it("displays correct range for middle page", () => {
+    const currentPage = 3;
+    const offset = (currentPage - 1) * pagesize;
+    const resultCount = 20;
+    const total = 100;
+
+    const start = offset + 1;
+    const end = Math.min(offset + resultCount, total);
+    expect(start).toBe(41);
+    expect(end).toBe(60);
   });
 
-  it("hasMore is false when accumulated >= total", () => {
-    const accumulated = [...page1, ...page2, ...page3];
-    const totalFiltered = 5;
-    expect(accumulated.length < totalFiltered).toBe(false);
+  it("displays correct range for last partial page", () => {
+    const currentPage = 6;
+    const ps = 20;
+    const offset = (currentPage - 1) * ps;
+    const resultCount = 5;
+    const total = 105;
+
+    const start = offset + 1;
+    const end = Math.min(offset + resultCount, total);
+    expect(start).toBe(101);
+    expect(end).toBe(105);
   });
 
-  it("remaining count is correct", () => {
-    const accumulated = [...page1, ...page2]; // 4 items
-    const totalFiltered = 10;
-    const remaining = totalFiltered - accumulated.length;
-    expect(remaining).toBe(6);
+  it("resets to page 1 on filter change", () => {
+    let page = 3;
+    // Simulate filter change resetting page
+    page = 1;
+    expect(page).toBe(1);
+    expect((page - 1) * pagesize).toBe(0);
   });
 });

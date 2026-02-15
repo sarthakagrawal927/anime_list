@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import type {
-  AnimeSummary,
   SearchFilter,
   SearchResponse,
 } from "@/lib/types";
@@ -51,8 +50,7 @@ export default function FilterBuilder() {
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [currentOffset, setCurrentOffset] = useState(0);
-  const [accumulatedResults, setAccumulatedResults] = useState<AnimeSummary[]>([]);
+  const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -64,7 +62,9 @@ export default function FilterBuilder() {
     queryFn: getFilterActions,
   });
 
-  const buildSearchOpts = useCallback((forOffset = 0) => {
+  const offset = (currentPage - 1) * pagesize;
+
+  const buildSearchOpts = useCallback(() => {
     const allFilters: SearchFilter[] = [];
 
     if (selectedGenres.length > 0) {
@@ -96,49 +96,28 @@ export default function FilterBuilder() {
       filters: allFilters,
       opts: {
         pagesize,
-        offset: forOffset,
+        offset,
         sortBy: sortBy || undefined,
         airing,
         hideWatched,
       },
     };
-  }, [filters, pagesize, sortBy, airing, selectedGenres, searchText, hideWatched, showAdvanced]);
+  }, [filters, pagesize, offset, sortBy, airing, selectedGenres, searchText, hideWatched, showAdvanced]);
 
   // Create stable query key from filter params
-  const filterKey = JSON.stringify(buildSearchOpts(0));
+  const filterKey = JSON.stringify(buildSearchOpts());
 
-  const { data, isLoading: loading, error } = useQuery<SearchResponse>({
-    queryKey: ["search", filterKey, currentOffset],
+  const { data, isLoading: loading, isFetching, error } = useQuery<SearchResponse>({
+    queryKey: ["search", filterKey],
     queryFn: () => {
-      const { filters: f, opts } = buildSearchOpts(currentOffset);
+      const { filters: f, opts } = buildSearchOpts();
       return searchAnime(f, opts);
     },
+    placeholderData: (prev) => prev,
   });
 
-  // Accumulate results across pages
-  useEffect(() => {
-    if (!data) return;
-    if (currentOffset === 0) {
-      setAccumulatedResults(data.filteredList);
-    } else {
-      setAccumulatedResults((prev) => [...prev, ...data.filteredList]);
-    }
-  }, [data, currentOffset]);
-
-  // Reset accumulation on filter change
-  useEffect(() => {
-    setCurrentOffset(0);
-    setAccumulatedResults([]);
-  }, [searchText, sortBy, airing, selectedGenres, hideWatched, pagesize]);
-
   const handleSearch = () => {
-    setCurrentOffset(0); // Reset to page 1
-  };
-
-  const handleLoadMore = () => {
-    if (data) {
-      setCurrentOffset((prev) => prev + data.filteredList.length);
-    }
+    setCurrentPage(1);
   };
 
   const toggleGenre = (genre: string) => {
@@ -172,6 +151,7 @@ export default function FilterBuilder() {
     setSortBy("");
     setAiring("any");
     setHideWatched([]);
+    setCurrentPage(1);
   };
 
   const activeFilterCount =
@@ -184,7 +164,9 @@ export default function FilterBuilder() {
     }).length : 0);
 
   const totalFiltered = data?.totalFiltered || 0;
-  const hasMore = accumulatedResults.length < totalFiltered;
+  const totalPages = Math.ceil(totalFiltered / pagesize);
+  const hasNext = currentPage < totalPages;
+  const hasPrev = currentPage > 1;
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -394,24 +376,43 @@ export default function FilterBuilder() {
 
       {error && <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Search failed"}</p>}
 
-      {loading ? (
+      {loading && !data ? (
         <ResultsGridSkeleton />
       ) : data ? (
         <>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Showing {accumulatedResults.length} of {totalFiltered.toLocaleString()} results
-            </p>
+          <div className={cn("transition-opacity", isFetching && "opacity-60")}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-muted-foreground">
+                Showing {offset + 1}–{Math.min(offset + data.filteredList.length, totalFiltered)} of {totalFiltered.toLocaleString()} results
+              </p>
+              {totalPages > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </p>
+              )}
+            </div>
+            <ResultsGrid results={data} />
           </div>
-          <ResultsGrid results={{ ...data, filteredList: accumulatedResults }} />
-          {hasMore && (
-            <div className="flex justify-center pt-2 pb-8">
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 pt-2 pb-8">
               <Button
-                onClick={handleLoadMore}
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={!hasPrev || isFetching}
                 variant="outline"
-                className="px-8"
+                size="sm"
               >
-                Load More ({(totalFiltered - accumulatedResults.length).toLocaleString()} remaining)
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={!hasNext || isFetching}
+                variant="outline"
+                size="sm"
+              >
+                Next
               </Button>
             </div>
           )}
