@@ -45,7 +45,7 @@ export default function ChangelogPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Changelog</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Recently added and updated anime in the database
+          Recently added anime to the database
         </p>
       </div>
 
@@ -82,6 +82,9 @@ export default function ChangelogPage() {
               <ul className="space-y-1.5">
                 {grouped[date].map((entry) => (
                   <li key={entry.mal_id} className="flex items-center gap-2 text-sm">
+                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400">
+                      Added
+                    </span>
                     {entry.type && (
                       <span
                         className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${TYPE_COLORS[entry.type] || "bg-muted text-muted-foreground"}`}
