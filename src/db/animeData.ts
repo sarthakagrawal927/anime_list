@@ -67,11 +67,43 @@ export async function upsertAnime(anime: AnimeItem): Promise<void> {
 }
 
 /**
+ * Get existing mal_ids from a list of ids
+ */
+async function getExistingIds(malIds: number[]): Promise<Set<number>> {
+  const db = getDb();
+  if (malIds.length === 0) return new Set();
+  const placeholders = malIds.map(() => "?").join(",");
+  const result = await db.execute({
+    sql: `SELECT mal_id FROM anime_data WHERE mal_id IN (${placeholders})`,
+    args: malIds,
+  });
+  return new Set(result.rows.map((r) => r.mal_id as number));
+}
+
+export interface UpsertSummary {
+  added: { mal_id: number; title: string }[];
+  updated: { mal_id: number; title: string }[];
+}
+
+/**
  * Bulk insert/update anime (more efficient for large batches)
  */
-export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<void> {
+export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<UpsertSummary> {
   const db = getDb();
   const batchSize = 100; // SQLite batch limit
+
+  const allIds = animeList.map((a) => a.mal_id);
+  const existingIds = await getExistingIds(allIds);
+
+  const summary: UpsertSummary = { added: [], updated: [] };
+  for (const anime of animeList) {
+    const entry = { mal_id: anime.mal_id, title: anime.title_english || anime.title };
+    if (existingIds.has(anime.mal_id)) {
+      summary.updated.push(entry);
+    } else {
+      summary.added.push(entry);
+    }
+  }
 
   for (let i = 0; i < animeList.length; i += batchSize) {
     const batch = animeList.slice(i, i + batchSize);
@@ -137,6 +169,7 @@ export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<void> {
   }
 
   console.log(`Upserted ${animeList.length} anime to database`);
+  return summary;
 }
 
 /**

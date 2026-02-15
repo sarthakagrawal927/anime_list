@@ -77,7 +77,8 @@ export const fetchAllAnimePages = async (): Promise<void> => {
 
   // Save to Turso database
   console.log(`Saving ${allAnime.length} anime to database...`);
-  await upsertAnimeBatch(allAnime);
+  const summary = await upsertAnimeBatch(allAnime);
+  console.log(`📥 ${summary.added.length} new, 🔄 ${summary.updated.length} updated`);
 
   console.log(`✓ Full refresh completed in ${(performance.now() - p0) / 1000}s`);
 };
@@ -146,10 +147,26 @@ export const updateLatestTwoSeasonData = async (): Promise<void> => {
   // Save to Turso database
   if (allFetchedAnime.length > 0) {
     console.log(`Saving ${allFetchedAnime.length} anime to database...`);
-    await upsertAnimeBatch(allFetchedAnime);
+    const summary = await upsertAnimeBatch(allFetchedAnime);
+
+    if (summary.added.length > 0) {
+      console.log(`\n📥 NEW (${summary.added.length}):`);
+      for (const a of summary.added) {
+        console.log(`  + ${a.title} (${a.mal_id})`);
+      }
+    }
+    if (summary.updated.length > 0) {
+      console.log(`\n🔄 UPDATED (${summary.updated.length}):`);
+      for (const a of summary.updated) {
+        console.log(`  ~ ${a.title} (${a.mal_id})`);
+      }
+    }
+    if (summary.added.length === 0 && summary.updated.length === 0) {
+      console.log("No changes detected.");
+    }
   }
 
-  console.log(`✓ Season update completed in ${(performance.now() - p0) / 1000}s`);
+  console.log(`\n✓ Season update completed in ${(performance.now() - p0) / 1000}s`);
 };
 
 // Manga API functions
