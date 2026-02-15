@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import FilterBuilder from "@/components/FilterBuilder";
+import { ResultsGridSkeleton } from "@/components/ResultsGrid";
 
 export default function SearchPage() {
   return (
@@ -9,7 +11,9 @@ export default function SearchPage() {
           Search and filter across 15,000+ anime titles
         </p>
       </div>
-      <FilterBuilder />
+      <Suspense fallback={<ResultsGridSkeleton />}>
+        <FilterBuilder />
+      </Suspense>
     </div>
   );
 }

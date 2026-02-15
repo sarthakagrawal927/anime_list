@@ -1,4 +1,4 @@
-import { existsSync } from "fs";
+import { existsSync, statSync } from "fs";
 import {
   fetchAllMangaPages,
 } from "../api";
@@ -10,6 +10,17 @@ import { animeStore } from "../store/animeStore";
 import { mangaStore } from "../store/mangaStore";
 import { runAllMigrations } from "../db/migrations";
 import { getAnimeCount } from "../db/animeData";
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+function isFileOlderThan(filePath: string, maxAgeMs: number): boolean {
+  try {
+    const { mtimeMs } = statSync(filePath);
+    return Date.now() - mtimeMs > maxAgeMs;
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Load anime data from Turso database into memory
@@ -53,11 +64,10 @@ export async function loadMangaData(): Promise<void> {
     return initMangaData();
   }
 
-  let mangaData;
-  if (await isFileOlderThan(FILE_PATHS.cleanMangaData, THIRTY_DAYS_MS)) {
+  if (isFileOlderThan(FILE_PATHS.cleanMangaData, THIRTY_DAYS_MS)) {
     console.log("Monthly manga reclean starting in background");
     initMangaData();
   }
-  await mangaStore.setMangaList(mangaData);
+  await mangaStore.setMangaList();
   console.log("Manga data loaded successfully");
 }

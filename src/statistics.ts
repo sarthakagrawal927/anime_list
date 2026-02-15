@@ -1,10 +1,12 @@
 import {
   AnimeField,
   DISTRIBUTION_RANGES,
+  FILE_PATHS,
   PERCENTILE_FIELDS,
 } from "./config";
 import { AnimeItem } from "./types/anime";
 import { MangaItem, MangaField } from "./types/manga";
+import { readJsonFile } from "./utils/file";
 import {
   AnimeStats,
   Distribution,
