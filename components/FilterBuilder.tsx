@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
-import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger, parseAsBoolean, parseAsJson } from "nuqs";
+import { useState, useCallback } from "react";
+import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger, parseAsJson } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import type {
   SearchFilter,
@@ -54,8 +54,12 @@ export default function FilterBuilder() {
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
-  const [showAdvanced, setShowAdvanced] = useQueryState("advanced", parseAsBoolean.withDefault(false));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
+
+  // Auto-open advanced panel if URL contains non-default filters
+  const hasCustomFilters = filters.length > 1 ||
+    (filters.length === 1 && (filters[0].field !== "score" || filters[0].action !== "GREATER_THAN" || filters[0].value !== 7));
+  const [showAdvanced, setShowAdvanced] = useState(hasCustomFilters);
 
   // Reset to page 1 whenever called — used by all filter mutations
   const resetPage = () => setCurrentPage(1);
