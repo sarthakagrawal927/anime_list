@@ -78,12 +78,10 @@ export const searchAnime = async (
   }
 
   const sorted = getScoreSortedList(filtered, filters, sortBy);
-  const stats = await getAnimeStats(filtered);
 
   res.json({
     totalFiltered: filtered.length,
     filteredList: takePage(sorted, pagesize, offset).map(toSummary),
-    stats,
   });
 };
 

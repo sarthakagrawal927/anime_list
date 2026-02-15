@@ -19,7 +19,6 @@ export interface AnimeSummary {
 export interface SearchResponse {
   totalFiltered: number;
   filteredList: AnimeSummary[];
-  stats: AnimeStats;
 }
 
 export interface FieldOptions {
