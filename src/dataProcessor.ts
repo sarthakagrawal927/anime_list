@@ -31,17 +31,17 @@ import { mangaStore } from "./store/mangaStore";
 const extractImageUrl = (images?: { webp?: { image_url?: string }; jpg?: { image_url?: string } }): string | undefined =>
   images?.webp?.image_url || images?.jpg?.image_url || undefined;
 
-export const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
-  const arrayToMap = (
-    arr?: Array<{ name: string }>
-  ): { [key: string]: number } => {
-    const map: { [key: string]: number } = {};
-    if (arr) {
-      arr.forEach(({ name }) => (map[name] = 1));
-    }
-    return map;
-  };
+const arrayToMap = (
+  arr?: Array<{ name: string }>
+): { [key: string]: number } => {
+  const map: { [key: string]: number } = {};
+  if (arr) {
+    arr.forEach(({ name }) => (map[name] = 1));
+  }
+  return map;
+};
 
+export const transformRawAnime = (rawAnime: RawAnimeData[0]): AnimeItem => {
   return {
     mal_id: rawAnime.mal_id,
     url: rawAnime.url,
@@ -105,16 +105,6 @@ export const cleanExistingJsonFile = async (): Promise<AnimeItem[] | null> => {
 
 // Manga data processing functions
 const transformRawManga = (rawManga: RawMangaData[0]): MangaItem => {
-  const arrayToMap = (
-    arr?: Array<{ name: string }>
-  ): { [key: string]: number } => {
-    const map: { [key: string]: number } = {};
-    if (arr) {
-      arr.forEach(({ name }) => (map[name] = 1));
-    }
-    return map;
-  };
-
   return {
     mal_id: rawManga.mal_id,
     url: rawManga.url,

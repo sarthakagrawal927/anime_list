@@ -71,7 +71,11 @@ export default function StatsPage() {
       )}
 
       {isLoading ? (
-        <p className="text-muted-foreground">Loading statistics...</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
       ) : error ? (
         <p className="text-destructive text-sm">
           {error instanceof Error ? error.message : "Failed to load stats"}

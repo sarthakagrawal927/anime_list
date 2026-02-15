@@ -35,13 +35,20 @@ async function main() {
   // Daily data refresh at 3 AM
   cron.schedule("0 3 * * *", async () => {
     console.log("Running scheduled data refresh...");
-    try {
-      await loadAnimeData();
-      await loadMangaData();
-      console.log("Scheduled refresh complete");
-    } catch (error) {
-      console.error("Scheduled refresh failed:", error);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await loadAnimeData();
+        await loadMangaData();
+        console.log("✓ Scheduled refresh complete");
+        return;
+      } catch (error) {
+        console.error(`Refresh attempt ${attempt}/3 failed:`, error);
+        if (attempt < 3) {
+          await new Promise(r => setTimeout(r, 60000)); // Wait 1 min before retry
+        }
+      }
     }
+    console.error("✗ All refresh attempts failed");
   });
 }
 

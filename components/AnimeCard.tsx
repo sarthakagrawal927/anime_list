@@ -144,7 +144,9 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
               disabled={mutation.isPending}
               className="h-7 w-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg leading-none shadow-lg hover:scale-110 transition-transform"
             >
-              +
+              {mutation.isPending ? (
+                <span className="animate-spin text-sm">...</span>
+              ) : "+"}
             </button>
             {showMenu && (
               <div className="absolute right-0 top-9 bg-popover border border-border rounded-lg shadow-xl py-1 w-32 z-20">

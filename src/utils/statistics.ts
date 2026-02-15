@@ -80,18 +80,24 @@ export const getDistribution = (
   ranges: readonly number[],
   field: AnimeField
 ): Distribution[] => {
-  const distribution: Distribution[] = [];
-  let values = data
+  const values = data
     .map((item) => getFieldValue(item, field))
-    .filter((value): value is number => value !== undefined && value !== null);
+    .filter((value): value is number => value !== undefined && value !== null)
+    .sort((a, b) => b - a); // descending
+
+  const distribution: Distribution[] = [];
+  let idx = 0;
 
   for (let i = ranges.length - 1; i >= 0; i--) {
-    const count = values.filter((value) => value >= ranges[i]).length;
-    values = values.filter((value) => value < ranges[i]);
+    let count = 0;
+    while (idx < values.length && values[idx] >= ranges[i]) {
+      count++;
+      idx++;
+    }
     distribution.push({ range: `${ranges[i]}+`, count });
   }
 
-  distribution.push({ range: `others`, count: values.length });
+  distribution.push({ range: `others`, count: values.length - idx });
   return distribution;
 };
 
@@ -191,9 +197,10 @@ const normalizeValue = (
 
     case AnimeField.Year: {
       const currentYear = new Date().getFullYear();
-      return 1;
+      const range = currentYear - minScore;
+      if (range <= 0) return 5;
       // Simple normalization with slight recency bias
-      return Math.pow((value - minScore) / (currentYear - minScore), 0.8) * 10;
+      return Math.pow((value - minScore) / range, 0.8) * 10;
     }
 
     default:

@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.warn("⚠ JWT_SECRET not set — authentication will be disabled");
+}
 
 export interface AuthPayload {
   userId: string;
@@ -23,6 +26,11 @@ function extractToken(req: Request): string | null {
 }
 
 export function requireAuth(req: AuthRequest, res: Response, next: NextFunction): void {
+  if (!JWT_SECRET) {
+    res.status(503).json({ error: "Authentication is not configured" });
+    return;
+  }
+
   const token = extractToken(req);
   if (!token) {
     res.status(401).json({ error: "Authentication required" });
@@ -39,6 +47,11 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 }
 
 export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction): void {
+  if (!JWT_SECRET) {
+    next();
+    return;
+  }
+
   const token = extractToken(req);
   if (!token) {
     next();
@@ -55,5 +68,8 @@ export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunctio
 }
 
 export function signToken(payload: AuthPayload): string {
+  if (!JWT_SECRET) {
+    throw new Error("Cannot sign token: JWT_SECRET is not configured");
+  }
   return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 }

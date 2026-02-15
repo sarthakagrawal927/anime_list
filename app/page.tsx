@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import FilterBuilder from "@/components/FilterBuilder";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ResultsGridSkeleton } from "@/components/ResultsGrid";
 
 export default function SearchPage() {
@@ -12,7 +13,9 @@ export default function SearchPage() {
         </p>
       </div>
       <Suspense fallback={<ResultsGridSkeleton />}>
-        <FilterBuilder />
+        <ErrorBoundary>
+          <FilterBuilder />
+        </ErrorBoundary>
       </Suspense>
     </div>
   );

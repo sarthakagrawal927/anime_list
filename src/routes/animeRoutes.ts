@@ -5,6 +5,7 @@ import { validate } from "../middleware/validation";
 import { filterRequestSchema } from "../validators/animeFilters";
 import { watchedListSchema } from "../validators/watchedList";
 import { requireAuth, optionalAuth } from "../middleware/auth";
+import { userRateLimit } from "../middleware/rateLimit";
 import {
   addToWatchlist,
   getEnrichedWatchlist,
@@ -38,6 +39,7 @@ router.get(`${routes.base}/watchlist/enriched`, requireAuth, catcher(getEnriched
 router.post(
   `${routes.base}${routes.add_to_watched}`,
   requireAuth,
+  userRateLimit,
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addToWatchlist)
 );

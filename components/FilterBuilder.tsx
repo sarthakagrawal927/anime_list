@@ -230,6 +230,7 @@ export default function FilterBuilder() {
           </svg>
           <Input
             placeholder="Search anime..."
+            aria-label="Search anime"
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={(e) => {
@@ -246,6 +247,7 @@ export default function FilterBuilder() {
         <select
           value={sortBy}
           onChange={(e) => { setSortBy(e.target.value); resetPage(); }}
+          aria-label="Sort by"
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
         >
           {SORT_OPTIONS.map((opt) => (
@@ -258,6 +260,7 @@ export default function FilterBuilder() {
         <select
           value={pagesize}
           onChange={(e) => { setPagesize(Number(e.target.value)); resetPage(); }}
+          aria-label="Results per page"
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
         >
           {[20, 50, 100].map((n) => (
@@ -285,6 +288,7 @@ export default function FilterBuilder() {
             <button
               key={genre}
               onClick={() => toggleGenre(genre)}
+              aria-pressed={selected}
               className={cn(
                 "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
                 selected
@@ -303,6 +307,7 @@ export default function FilterBuilder() {
         {/* Airing status tags */}
         <button
           onClick={() => { setAiring(airing === "yes" ? "any" : "yes"); resetPage(); }}
+          aria-pressed={airing === "yes"}
           className={cn(
             "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
             airing === "yes"
@@ -314,6 +319,7 @@ export default function FilterBuilder() {
         </button>
         <button
           onClick={() => { setAiring(airing === "no" ? "any" : "no"); resetPage(); }}
+          aria-pressed={airing === "no"}
           className={cn(
             "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
             airing === "no"
@@ -362,6 +368,7 @@ export default function FilterBuilder() {
               <button
                 key={status}
                 onClick={() => toggleHideWatched(status)}
+                aria-pressed={active}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
                   active
@@ -438,7 +445,7 @@ export default function FilterBuilder() {
             <ResultsGrid results={data} />
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 pt-2 pb-8">
+            <div className="sticky bottom-0 z-10 flex items-center justify-center gap-3 py-3 bg-background/95 backdrop-blur-sm border-t border-border -mx-4 px-4 sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:py-2 sm:pb-8">
               <Button
                 onClick={() => setCurrentPage(currentPage - 1)}
                 disabled={!hasPrev || isFetching}

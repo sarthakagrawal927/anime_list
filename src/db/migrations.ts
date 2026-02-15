@@ -104,8 +104,22 @@ export async function migrateAnimeDataTable(): Promise<void> {
   console.log("Anime data table created successfully");
 }
 
+export async function migrateWatchlistIndexes(): Promise<void> {
+  const db = getDb();
+
+  console.log("Creating watchlist indexes...");
+
+  await db.batch([
+    "CREATE INDEX IF NOT EXISTS idx_watchlist_user ON anime_watchlist(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_manga_watchlist_user ON manga_watchlist(user_id)",
+  ]);
+
+  console.log("Watchlist indexes created successfully");
+}
+
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateAnimeDataTable();
+  await migrateWatchlistIndexes();
   console.log("All migrations completed");
 }

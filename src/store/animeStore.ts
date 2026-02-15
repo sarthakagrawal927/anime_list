@@ -48,21 +48,27 @@ class AnimeStore {
     if (isExpired && !this.isRefreshing) {
       console.log("Cache stale, refreshing in background...");
       this.isRefreshing = true;
-
-      // Fire-and-forget background refresh
-      this.setAnimeList()
-        .then(() => {
-          console.log("✓ Background refresh complete");
-          this.isRefreshing = false;
-        })
-        .catch((err) => {
-          console.error("✗ Background refresh failed:", err);
-          this.isRefreshing = false;
-        });
+      this.refreshWithRetry();
     }
 
     // Always return current cache immediately (stale-while-revalidate)
     return this.animeList;
+  }
+
+  private async refreshWithRetry(attempt = 1, maxAttempts = 3): Promise<void> {
+    try {
+      await this.setAnimeList();
+      console.log("✓ Background cache refresh complete");
+    } catch (err) {
+      if (attempt < maxAttempts) {
+        console.warn(`Cache refresh attempt ${attempt}/${maxAttempts} failed, retrying in 30s...`);
+        setTimeout(() => this.refreshWithRetry(attempt + 1, maxAttempts), 30000);
+        return;
+      }
+      console.error("✗ Background cache refresh failed after all retries:", err);
+    } finally {
+      this.isRefreshing = false;
+    }
   }
 
   clearStore(): void {
