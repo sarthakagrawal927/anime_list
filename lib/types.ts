@@ -3,6 +3,7 @@ export interface AnimeSummary {
   score: number;
   points: number;
   name: string;
+  title_english?: string;
   link: string;
   synopsis: string;
   members: number;

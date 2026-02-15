@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import type {
+  AnimeSummary,
   SearchFilter,
   SearchResponse,
 } from "@/lib/types";
@@ -42,14 +44,15 @@ const HIDE_WATCHED_OPTIONS = [
 export default function FilterBuilder() {
   const { user } = useAuth();
   const [filters, setFilters] = useState<SearchFilter[]>([{ ...DEFAULT_FILTER }]);
-  const [pagesize, setPagesize] = useState(20);
-  const [sortBy, setSortBy] = useState<string>("");
-  const [airing, setAiring] = useState<"yes" | "no" | "any">("any");
+  const [searchText, setSearchText] = useQueryState("q", parseAsString.withDefault(""));
+  const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault(""));
+  const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
+  const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
+  const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
+  const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [searchText, setSearchText] = useState("");
-  const [hideWatched, setHideWatched] = useState<string[]>([]);
   const [currentOffset, setCurrentOffset] = useState(0);
+  const [accumulatedResults, setAccumulatedResults] = useState<AnimeSummary[]>([]);
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -112,6 +115,22 @@ export default function FilterBuilder() {
     },
   });
 
+  // Accumulate results across pages
+  useEffect(() => {
+    if (!data) return;
+    if (currentOffset === 0) {
+      setAccumulatedResults(data.filteredList);
+    } else {
+      setAccumulatedResults((prev) => [...prev, ...data.filteredList]);
+    }
+  }, [data, currentOffset]);
+
+  // Reset accumulation on filter change
+  useEffect(() => {
+    setCurrentOffset(0);
+    setAccumulatedResults([]);
+  }, [searchText, sortBy, airing, selectedGenres, hideWatched, pagesize]);
+
   const handleSearch = () => {
     setCurrentOffset(0); // Reset to page 1
   };
@@ -165,7 +184,7 @@ export default function FilterBuilder() {
     }).length : 0);
 
   const totalFiltered = data?.totalFiltered || 0;
-  const hasMore = currentOffset + (data?.filteredList.length || 0) < totalFiltered;
+  const hasMore = accumulatedResults.length < totalFiltered;
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -381,10 +400,10 @@ export default function FilterBuilder() {
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">
-              Showing {currentOffset + data.filteredList.length} of {totalFiltered.toLocaleString()} results
+              Showing {accumulatedResults.length} of {totalFiltered.toLocaleString()} results
             </p>
           </div>
-          <ResultsGrid results={data} />
+          <ResultsGrid results={{ ...data, filteredList: accumulatedResults }} />
           {hasMore && (
             <div className="flex justify-center pt-2 pb-8">
               <Button
@@ -392,7 +411,7 @@ export default function FilterBuilder() {
                 variant="outline"
                 className="px-8"
               >
-                Load More ({(totalFiltered - currentOffset - data.filteredList.length).toLocaleString()} remaining)
+                Load More ({(totalFiltered - accumulatedResults.length).toLocaleString()} remaining)
               </Button>
             </div>
           )}

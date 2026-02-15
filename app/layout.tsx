@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 import Navigation from "@/components/Navigation";
 import { AuthProvider } from "@/lib/auth";
@@ -44,12 +45,14 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen antialiased">
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
-        <QueryProvider>
-          <AuthProvider>
-            <Navigation />
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
-          </AuthProvider>
-        </QueryProvider>
+        <NuqsAdapter>
+          <QueryProvider>
+            <AuthProvider>
+              <Navigation />
+              <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+            </AuthProvider>
+          </QueryProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

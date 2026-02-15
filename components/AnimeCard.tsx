@@ -57,7 +57,7 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
           {anime.image ? (
             <Image
               src={anime.image}
-              alt={anime.name}
+              alt={anime.title_english || anime.name}
               fill
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 185px"
@@ -120,7 +120,7 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
           rel="noopener noreferrer"
           className="text-sm font-medium text-foreground line-clamp-2 leading-tight hover:text-primary transition-colors"
         >
-          {anime.name}
+          {anime.title_english || anime.name}
         </a>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {anime.year > 0 && <span>{anime.year}</span>}

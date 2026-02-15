@@ -28,6 +28,7 @@ const toSummary = (anime: ScoredAnime) => ({
   score: anime.score,
   points: anime.points,
   name: anime.title,
+  title_english: anime.title_english,
   link: anime.url,
   synopsis: anime.synopsis,
   members: anime.members,
