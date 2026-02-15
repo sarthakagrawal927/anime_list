@@ -124,7 +124,7 @@ export async function migrateAnimeCreatedAt(): Promise<void> {
   if (hasCreatedAt) return;
 
   console.log("Adding created_at column to anime_data...");
-  await db.execute("ALTER TABLE anime_data ADD COLUMN created_at TEXT DEFAULT (datetime('now'))");
+  await db.execute("ALTER TABLE anime_data ADD COLUMN created_at TEXT");
   // Backfill: set created_at = updated_at for existing rows
   await db.execute("UPDATE anime_data SET created_at = updated_at WHERE created_at IS NULL");
   console.log("created_at column added");

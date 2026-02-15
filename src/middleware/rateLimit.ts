@@ -5,8 +5,9 @@ export const userRateLimit = rateLimit({
   max: 30,
   keyGenerator: (req) => {
     const authReq = req as any;
-    return authReq.user?.userId || req.ip || "unknown";
+    return authReq.user?.userId || "anonymous";
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
 });
