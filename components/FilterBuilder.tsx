@@ -29,11 +29,11 @@ const QUICK_GENRES = [
 ];
 
 const SORT_OPTIONS = [
-  { value: "", label: "Relevance" },
   { value: "score", label: "Score" },
   { value: "members", label: "Popularity" },
   { value: "year", label: "Year" },
   { value: "favorites", label: "Favorites" },
+  { value: "", label: "Relevance" },
 ];
 
 const HIDE_WATCHED_OPTIONS = [
@@ -49,7 +49,7 @@ export default function FilterBuilder() {
   const { user } = useAuth();
   const [filters, setFilters] = useQueryState("af", filtersParser.withDefault([{ ...DEFAULT_FILTER }]));
   const [searchText, setSearchText] = useQueryState("q", parseAsString.withDefault(""));
-  const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault(""));
+  const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault("score"));
   const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
@@ -185,7 +185,7 @@ export default function FilterBuilder() {
     setSelectedGenres([]);
     setSearchText("");
     setFilters([{ ...DEFAULT_FILTER }]);
-    setSortBy("");
+    setSortBy("score");
     setAiring("any");
     setHideWatched([]);
     setShowAdvanced(false);
