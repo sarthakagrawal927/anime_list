@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger } from "nuqs";
+import { useCallback } from "react";
+import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger, parseAsBoolean, parseAsJson } from "nuqs";
 import { useQuery } from "@tanstack/react-query";
 import type {
   SearchFilter,
@@ -40,17 +40,25 @@ const HIDE_WATCHED_OPTIONS = [
   "Watching", "Completed", "Deferred", "Avoiding", "BRR",
 ];
 
+const filtersParser = parseAsJson<SearchFilter[]>((v) => {
+  if (!Array.isArray(v)) return null;
+  return v as SearchFilter[];
+});
+
 export default function FilterBuilder() {
   const { user } = useAuth();
-  const [filters, setFilters] = useState<SearchFilter[]>([{ ...DEFAULT_FILTER }]);
+  const [filters, setFilters] = useQueryState("af", filtersParser.withDefault([{ ...DEFAULT_FILTER }]));
   const [searchText, setSearchText] = useQueryState("q", parseAsString.withDefault(""));
   const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault(""));
   const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useQueryState("advanced", parseAsBoolean.withDefault(false));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
+
+  // Reset to page 1 whenever called — used by all filter mutations
+  const resetPage = () => setCurrentPage(1);
 
   const { data: fields } = useQuery({
     queryKey: ["fields"],
@@ -124,24 +132,29 @@ export default function FilterBuilder() {
     setSelectedGenres((prev) =>
       prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]
     );
+    resetPage();
   };
 
   const toggleHideWatched = (status: string) => {
     setHideWatched((prev) =>
       prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
     );
+    resetPage();
   };
 
   const updateFilter = (index: number, filter: SearchFilter) => {
     setFilters((prev) => prev.map((f, i) => (i === index ? filter : f)));
+    resetPage();
   };
 
   const removeFilter = (index: number) => {
     setFilters((prev) => prev.filter((_, i) => i !== index));
+    resetPage();
   };
 
   const addFilter = () => {
     setFilters((prev) => [...prev, { ...DEFAULT_FILTER }]);
+    resetPage();
   };
 
   const clearAll = () => {
@@ -151,6 +164,7 @@ export default function FilterBuilder() {
     setSortBy("");
     setAiring("any");
     setHideWatched([]);
+    setShowAdvanced(false);
     setCurrentPage(1);
   };
 
@@ -193,7 +207,7 @@ export default function FilterBuilder() {
           <Input
             placeholder="Search anime..."
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={(e) => { setSearchText(e.target.value); resetPage(); }}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             className="pl-9 h-9 bg-secondary border-0"
           />
@@ -201,7 +215,7 @@ export default function FilterBuilder() {
 
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(e) => { setSortBy(e.target.value); resetPage(); }}
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
         >
           {SORT_OPTIONS.map((opt) => (
@@ -213,7 +227,7 @@ export default function FilterBuilder() {
 
         <select
           value={pagesize}
-          onChange={(e) => setPagesize(Number(e.target.value))}
+          onChange={(e) => { setPagesize(Number(e.target.value)); resetPage(); }}
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
         >
           {[20, 50, 100].map((n) => (
@@ -258,7 +272,7 @@ export default function FilterBuilder() {
 
         {/* Airing status tags */}
         <button
-          onClick={() => setAiring(airing === "yes" ? "any" : "yes")}
+          onClick={() => { setAiring(airing === "yes" ? "any" : "yes"); resetPage(); }}
           className={cn(
             "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
             airing === "yes"
@@ -269,7 +283,7 @@ export default function FilterBuilder() {
           Airing
         </button>
         <button
-          onClick={() => setAiring(airing === "no" ? "any" : "no")}
+          onClick={() => { setAiring(airing === "no" ? "any" : "no"); resetPage(); }}
           className={cn(
             "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
             airing === "no"
@@ -284,7 +298,7 @@ export default function FilterBuilder() {
         <div className="w-px h-6 bg-border" />
 
         <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
+          onClick={() => { setShowAdvanced(!showAdvanced); resetPage(); }}
           className={cn(
             "text-xs px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5",
             showAdvanced
