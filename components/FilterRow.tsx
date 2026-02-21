@@ -99,40 +99,44 @@ export default function FilterRow({
   };
 
   return (
-    <div className="flex items-start gap-2 rounded-lg border border-border bg-card p-3">
-      <select
-        value={filter.field}
-        onChange={(e) => handleFieldChange(e.target.value)}
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-      >
-        {allFields.map((f) => (
-          <option key={f} value={f}>
-            {f}
-          </option>
-        ))}
-      </select>
+    <div className="flex flex-col sm:flex-row sm:items-start gap-2 rounded-lg border border-border bg-card p-3">
+      {/* Field and Action selectors - stack on mobile, row on desktop */}
+      <div className="flex gap-2 w-full sm:w-auto">
+        <select
+          value={filter.field}
+          onChange={(e) => handleFieldChange(e.target.value)}
+          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[120px]"
+        >
+          {allFields.map((f) => (
+            <option key={f} value={f}>
+              {f}
+            </option>
+          ))}
+        </select>
 
-      <select
-        value={filter.action}
-        onChange={(e) => onChange(index, { ...filter, action: e.target.value })}
-        className="h-8 rounded-md border border-input bg-background px-2 text-sm"
-      >
-        {availableActions.map((a) => (
-          <option key={a} value={a}>
-            {a}
-          </option>
-        ))}
-      </select>
+        <select
+          value={filter.action}
+          onChange={(e) => onChange(index, { ...filter, action: e.target.value })}
+          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[140px]"
+        >
+          {availableActions.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+      </div>
 
+      {/* Value input/selector - full width on mobile */}
       {isArray && valueOptions ? (
-        <div className="flex flex-wrap gap-1 flex-1">
+        <div className="flex flex-wrap gap-1.5 flex-1">
           {valueOptions.map((opt) => {
             const selected = Array.isArray(filter.value) && filter.value.includes(opt);
             return (
               <Badge
                 key={opt}
                 variant={selected ? "default" : "outline"}
-                className="cursor-pointer text-xs font-normal"
+                className="cursor-pointer text-xs font-normal h-7"
                 onClick={() => handleValueChange(opt)}
               >
                 {opt}
@@ -144,7 +148,7 @@ export default function FilterRow({
         <select
           value={filter.value as string}
           onChange={(e) => handleValueChange(e.target.value)}
-          className="h-8 rounded-md border border-input bg-background px-2 text-sm flex-1"
+          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm w-full sm:flex-1"
         >
           <option value="">Select...</option>
           {valueOptions.map((opt) => (
@@ -159,15 +163,16 @@ export default function FilterRow({
           value={filter.value as string | number}
           onChange={(e) => handleValueChange(e.target.value)}
           placeholder="Value..."
-          className="h-8 flex-1"
+          className="h-9 sm:h-8 w-full sm:flex-1"
         />
       )}
 
+      {/* Remove button - full width on mobile, shrink on desktop */}
       <Button
         variant="ghost"
         size="sm"
         onClick={() => onRemove(index)}
-        className="text-destructive hover:text-destructive shrink-0 h-8"
+        className="text-destructive hover:text-destructive w-full sm:w-auto sm:shrink-0 h-9 sm:h-8"
       >
         Remove
       </Button>

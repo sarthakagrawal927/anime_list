@@ -402,14 +402,14 @@ export default function FilterBuilder() {
 
       {/* Advanced filter builder (collapsible) */}
       {showAdvanced && (
-        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
             <h3 className="text-sm font-medium text-foreground">Advanced Filters</h3>
-            <Button variant="ghost" size="sm" onClick={addFilter} className="h-7 text-xs gap-1">
-              <span className="text-lg leading-none">+</span> Add Filter
+            <Button variant="ghost" size="sm" onClick={addFilter} className="h-8 sm:h-7 text-xs gap-1 shrink-0">
+              <span className="text-lg leading-none">+</span> <span className="hidden sm:inline">Add Filter</span><span className="sm:hidden">Add</span>
             </Button>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 sm:space-y-2">
             {filters.map((filter, i) => (
               <FilterRow
                 key={i}
