@@ -4,13 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EnrichedWatchlistItem } from "@/lib/types";
-import { getEnrichedWatchlist, addToWatchlist } from "@/lib/api";
+import { getEnrichedWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
+const STATUSES = ["Watching", "Completed", "Dropped", "Delaying", "BRR"];
 
 const STATUS_STYLES: Record<string, { dot: string; active: string }> = {
   Watching: {
@@ -21,11 +21,11 @@ const STATUS_STYLES: Record<string, { dot: string; active: string }> = {
     dot: "bg-blue-400",
     active: "bg-blue-500/15 text-blue-400 border-blue-500/30",
   },
-  Deferred: {
+  Dropped: {
     dot: "bg-yellow-400",
     active: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
   },
-  Avoiding: {
+  Delaying: {
     dot: "bg-red-400",
     active: "bg-red-500/15 text-red-400 border-red-500/30",
   },
@@ -66,6 +66,14 @@ export default function WatchlistView() {
   const statusMutation = useMutation({
     mutationFn: ({ malId, status }: { malId: string; status: string }) =>
       addToWatchlist([Number(malId)], status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (malId: string) =>
+      removeFromWatchlist([Number(malId)]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
@@ -197,12 +205,20 @@ export default function WatchlistView() {
                 <div className="mt-auto pt-1">
                   <select
                     value={item.watchStatus}
-                    onChange={(e) => statusMutation.mutate({ malId: item.mal_id, status: e.target.value })}
+                    onChange={(e) => {
+                      if (e.target.value === "REMOVE") {
+                        removeMutation.mutate(item.mal_id);
+                      } else {
+                        statusMutation.mutate({ malId: item.mal_id, status: e.target.value });
+                      }
+                    }}
+                    disabled={statusMutation.isPending || removeMutation.isPending}
                     className="h-7 rounded-lg border border-input bg-secondary px-2 text-xs"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
+                    <option value="REMOVE" className="text-destructive">Remove from watchlist</option>
                   </select>
                 </div>
               </div>

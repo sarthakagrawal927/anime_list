@@ -37,7 +37,7 @@ const SORT_OPTIONS = [
 ];
 
 const HIDE_WATCHED_OPTIONS = [
-  "Watching", "Completed", "Deferred", "Avoiding", "BRR",
+  "Watching", "Completed", "Dropped", "Delaying", "BRR",
 ];
 
 const filtersParser = parseAsJson<SearchFilter[]>((v) => {
@@ -281,7 +281,7 @@ export default function FilterBuilder() {
       </div>
 
       {/* Quick genre chips */}
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1.5 items-center">
         {QUICK_GENRES.map((genre) => {
           const selected = selectedGenres.includes(genre);
           return (

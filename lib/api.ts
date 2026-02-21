@@ -87,6 +87,16 @@ export function addToWatchlist(
   });
 }
 
+export function removeFromWatchlist(
+  malIds: number[]
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/watched/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ mal_ids: malIds, status: "Watching" }), // status is required by schema but ignored
+  });
+}
+
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
   return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
 }

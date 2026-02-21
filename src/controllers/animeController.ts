@@ -146,6 +146,16 @@ export const addToWatchlist = async (
   res.json({ success: true, message: "Anime added to watched list" });
 };
 
+export const removeFromWatchlist = async (
+  req: AuthRequest & Request<{}, {}, WatchedListPayload>,
+  res: Response
+) => {
+  const userId = req.user!.userId;
+  const { deleteFromAnimeWatchlist } = await import("../db/watchlist");
+  await deleteFromAnimeWatchlist(req.body.mal_ids, userId);
+  res.json({ success: true, message: "Anime removed from watchlist" });
+};
+
 export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
   const watchlist = await getWatchedAnimeList(userId);

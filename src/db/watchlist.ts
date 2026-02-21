@@ -64,6 +64,18 @@ export async function upsertAnimeWatchlist(
   await db.batch(stmts);
 }
 
+export async function deleteFromAnimeWatchlist(
+  malIds: string[],
+  userId: string = "default"
+): Promise<void> {
+  const db = getDb();
+  const stmts = malIds.map((id) => ({
+    sql: `DELETE FROM anime_watchlist WHERE user_id = ? AND mal_id = ?`,
+    args: [userId, id],
+  }));
+  await db.batch(stmts);
+}
+
 // Manga watchlist
 
 export async function getMangaWatchlist(userId: string = "default"): Promise<MangaWatchlistData | null> {

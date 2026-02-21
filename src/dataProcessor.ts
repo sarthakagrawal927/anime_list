@@ -301,6 +301,31 @@ const matchesFilter = <
   return false;
 };
 
+// Special filter matcher for anime that checks both title and title_english when searching title field
+const matchesAnimeFilter = (
+  anime: AnimeItem,
+  filter: Filter,
+  ctx: {
+    getFieldValue: (item: AnimeItem, field: AnimeField) => unknown;
+    isNumericField: (field: AnimeField) => boolean;
+    isArrayField: (field: AnimeField) => boolean;
+    isStringField: (field: AnimeField) => boolean;
+  }
+): boolean => {
+  // Special case: when searching "title" field, check both title and title_english
+  if (filter.field === AnimeField.Title && filter.action === FilterAction.Contains) {
+    const searchValue = filter.value as string;
+    const titleMatch = matchesStringFilter(anime.title, searchValue, FilterAction.Contains);
+    const englishTitleMatch = anime.title_english
+      ? matchesStringFilter(anime.title_english, searchValue, FilterAction.Contains)
+      : false;
+    return titleMatch || englishTitleMatch;
+  }
+
+  // For all other fields, use the standard matching logic
+  return matchesFilter(anime, filter, ctx);
+};
+
 const filterCollection = <
   TItem,
   TField,
@@ -364,12 +389,17 @@ export const filterAnimeList = async (
   try {
     const animeList = await animeStore.getAnimeList();
 
-    return filterCollection(animeList, filters, {
-      getFieldValue: getAnimeFieldValue,
-      isNumericField,
-      isArrayField,
-      isStringField,
-    });
+    // Use custom anime filter that checks both title fields
+    return animeList.filter((anime) =>
+      filters.every((filter) =>
+        matchesAnimeFilter(anime, filter, {
+          getFieldValue: getAnimeFieldValue,
+          isNumericField,
+          isArrayField,
+          isStringField,
+        })
+      )
+    );
   } catch (error) {
     console.error("Error during filtering:", error);
     throw error;

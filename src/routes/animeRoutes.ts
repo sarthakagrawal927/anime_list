@@ -8,6 +8,7 @@ import { requireAuth, optionalAuth } from "../middleware/auth";
 import { userRateLimit } from "../middleware/rateLimit";
 import {
   addToWatchlist,
+  removeFromWatchlist,
   getChangelog,
   getEnrichedWatchlist,
   getFieldOptions,
@@ -48,6 +49,14 @@ router.post(
   userRateLimit,
   validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(addToWatchlist)
+);
+
+router.post(
+  `${routes.base}/watched/remove`,
+  requireAuth,
+  userRateLimit,
+  validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
+  catcher(removeFromWatchlist)
 );
 
 export default router;

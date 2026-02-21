@@ -8,13 +8,13 @@ import { addToWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 
-const STATUSES = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
+const STATUSES = ["Watching", "Completed", "Dropped", "Delaying", "BRR"];
 
 const STATUS_COLORS: Record<string, string> = {
   Watching: "bg-emerald-500",
   Completed: "bg-blue-500",
-  Deferred: "bg-yellow-500",
-  Avoiding: "bg-red-500",
+  Dropped: "bg-yellow-500",
+  Delaying: "bg-red-500",
   BRR: "bg-purple-500",
 };
 
