@@ -130,10 +130,38 @@ export async function migrateAnimeCreatedAt(): Promise<void> {
   console.log("created_at column added");
 }
 
+export async function migrateWatchlistStatusRenames(): Promise<void> {
+  const db = getDb();
+
+  // Check if migration has already run by looking for new status names
+  const statusCheck = await db.execute({
+    sql: "SELECT COUNT(*) as count FROM anime_watchlist WHERE status IN ('Avoiding', 'Deferred')",
+    args: []
+  });
+
+  const needsMigration = (statusCheck.rows[0].count as number) > 0;
+
+  if (!needsMigration) {
+    return;
+  }
+
+  console.log("Migrating watchlist status names...");
+
+  await db.batch([
+    { sql: "UPDATE anime_watchlist SET status = 'Delaying' WHERE status = 'Avoiding'", args: [] },
+    { sql: "UPDATE anime_watchlist SET status = 'Dropped' WHERE status = 'Deferred'", args: [] },
+    { sql: "UPDATE manga_watchlist SET status = 'Delaying' WHERE status = 'Avoiding'", args: [] },
+    { sql: "UPDATE manga_watchlist SET status = 'Dropped' WHERE status = 'Deferred'", args: [] },
+  ]);
+
+  console.log("Watchlist status names migrated successfully");
+}
+
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateAnimeDataTable();
   await migrateWatchlistIndexes();
   await migrateAnimeCreatedAt();
+  await migrateWatchlistStatusRenames();
   console.log("All migrations completed");
 }

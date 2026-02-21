@@ -5,7 +5,7 @@ import { SERVER_CONFIG } from "./src/config";
 import { loadAnimeData, loadMangaData } from "./src/services/dataLoader";
 import { initWatchlistTables } from "./src/db/watchlist";
 import { initUsersTable } from "./src/db/users";
-import { migrateWatchlistTables } from "./src/db/migrations";
+import { runAllMigrations } from "./src/db/migrations";
 
 const port = SERVER_CONFIG.port;
 
@@ -15,7 +15,7 @@ async function main() {
   // Init DB tables and run migrations
   await initUsersTable();
   await initWatchlistTables();
-  await migrateWatchlistTables();
+  await runAllMigrations();
   console.log("Database tables initialized");
 
   // Start listening immediately so Render health check passes
