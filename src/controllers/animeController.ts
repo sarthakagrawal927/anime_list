@@ -11,13 +11,14 @@ import {
   addAnimeToWatched,
   filterAnimeList,
   getWatchedAnimeList,
+  // TODO: Implement this function
 } from "../dataProcessor";
 import { getAnimeStats } from "../statistics";
 import { getScoreSortedList } from "../utils/statistics";
 import { FilterRequestBody } from "../validators/animeFilters";
 import { WatchedListPayload } from "../validators/watchedList";
 import { hideWatchedItems, includeOnlyWatchedItems, takePage } from "./helpers";
-import { WatchedAnime } from '../types/watchlist';
+import { WatchedAnime } from "../types/watchlist";
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
 import { getLastDataUpdate, getRecentChanges } from "../db/animeData";
@@ -44,7 +45,7 @@ const toSummary = (anime: ScoredAnime) => ({
 
 const applyAiringFilter = (
   airing: FilterRequestBody["airing"],
-  list: Awaited<ReturnType<typeof filterAnimeList>>
+  list: Awaited<ReturnType<typeof filterAnimeList>>,
 ) =>
   airing === "any"
     ? list
@@ -67,7 +68,7 @@ export const getFilterActions = async (_req: Request, res: Response) => {
 
 export const searchAnime = async (
   req: AuthRequest & Request<{}, {}, FilterRequestBody>,
-  res: Response
+  res: Response,
 ) => {
   const { filters, sortBy, airing, hideWatched, pagesize, offset } = req.body;
   const userId = req.user?.userId;
@@ -75,7 +76,12 @@ export const searchAnime = async (
   let filtered = await filterAnimeList(filters);
   filtered = applyAiringFilter(airing, filtered);
   if (userId) {
-    filtered = await hideWatchedItems(filtered, hideWatched, () => getWatchedAnimeList(userId), (list) => list.anime);
+    filtered = await hideWatchedItems(
+      filtered,
+      hideWatched,
+      () => getWatchedAnimeList(userId),
+      (list) => list.anime,
+    );
   }
 
   const sorted = getScoreSortedList(filtered, filters, sortBy);
@@ -88,7 +94,8 @@ export const searchAnime = async (
 
 export const getStats = async (req: AuthRequest, res: Response) => {
   const userId = req.user?.userId;
-  const hideWatched = (req.query.hideWatched as string)?.split(',').filter(Boolean) || [];
+  const hideWatched =
+    (req.query.hideWatched as string)?.split(",").filter(Boolean) || [];
 
   let animeList = await animeStore.getAnimeList();
 
@@ -102,14 +109,14 @@ export const getStats = async (req: AuthRequest, res: Response) => {
       WatchStatus.BadRatingRatio,
     ];
     const includeStatuses = allStatuses.filter(
-      (status) => !hideWatched.includes(status)
+      (status) => !hideWatched.includes(status),
     );
 
     animeList = await includeOnlyWatchedItems(
       animeList,
       includeStatuses,
       () => getWatchedAnimeList(userId),
-      (list) => list.anime
+      (list) => list.anime,
     );
   }
 
@@ -128,7 +135,7 @@ export const getWatchlist = async (req: AuthRequest, res: Response) => {
 
   if (status) {
     const filteredAnime = Object.values(watchlist.anime).filter(
-      (item: WatchedAnime) => item.status === status
+      (item: WatchedAnime) => item.status === status,
     );
     res.json(filteredAnime);
     return;
@@ -139,7 +146,7 @@ export const getWatchlist = async (req: AuthRequest, res: Response) => {
 
 export const addToWatchlist = async (
   req: AuthRequest & Request<{}, {}, WatchedListPayload>,
-  res: Response
+  res: Response,
 ) => {
   const userId = req.user!.userId;
   await addAnimeToWatched(req.body.mal_ids, req.body.status, userId);
@@ -148,7 +155,7 @@ export const addToWatchlist = async (
 
 export const removeFromWatchlist = async (
   req: AuthRequest & Request<{}, {}, WatchedListPayload>,
-  res: Response
+  res: Response,
 ) => {
   const userId = req.user!.userId;
   const { deleteFromAnimeWatchlist } = await import("../db/watchlist");

@@ -6,7 +6,6 @@ import {
 } from "./config";
 import { AnimeItem } from "./types/anime";
 import { MangaItem, MangaField } from "./types/manga";
-import { readJsonFile } from "./utils/file";
 import {
   AnimeStats,
   Distribution,
@@ -69,7 +68,7 @@ export const getMangaStats = async (
 ): Promise<AnimeStats> => {
   const data =
     mangaList ||
-    ((await readJsonFile(FILE_PATHS.cleanMangaData)) as MangaItem[]) ||
+    ((await import("./utils/file").then((m) => m.readJsonFile(FILE_PATHS.cleanMangaData))) as MangaItem[]) ||
     [];
 
   const percentiles: Record<string, Percentiles> = {};
