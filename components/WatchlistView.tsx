@@ -10,30 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const STATUSES = ["Watching", "Completed", "Dropped", "Delaying", "BRR"];
-
-const STATUS_STYLES: Record<string, { dot: string; active: string }> = {
-  Watching: {
-    dot: "bg-emerald-400",
-    active: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  },
-  Completed: {
-    dot: "bg-blue-400",
-    active: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  },
-  Dropped: {
-    dot: "bg-yellow-400",
-    active: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  },
-  Delaying: {
-    dot: "bg-red-400",
-    active: "bg-red-500/15 text-red-400 border-red-500/30",
-  },
-  BRR: {
-    dot: "bg-purple-400",
-    active: "bg-purple-500/15 text-purple-400 border-purple-500/30",
-  },
-};
+import { WATCH_STATUSES, STATUS_STYLES } from "@/lib/watchStatus";
 
 function WatchlistSkeleton() {
   return (
@@ -108,7 +85,7 @@ export default function WatchlistView() {
     <div className="space-y-5">
       {/* Status tabs */}
       <div className="flex gap-2 flex-wrap">
-        {STATUSES.map((status) => {
+        {WATCH_STATUSES.map((status) => {
           const count = items.filter((item) => item.watchStatus === status).length;
           const isActive = activeTab === status;
           const style = STATUS_STYLES[status];
@@ -215,7 +192,7 @@ export default function WatchlistView() {
                     disabled={statusMutation.isPending || removeMutation.isPending}
                     className="h-7 rounded-lg border border-input bg-secondary px-2 text-xs"
                   >
-                    {STATUSES.map((s) => (
+                    {WATCH_STATUSES.map((s) => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                     <option value="REMOVE" className="text-destructive">Remove from watchlist</option>

@@ -14,6 +14,7 @@ export {
   matchesFilter,
   getAnimeFieldValue,
 } from "./filterEngine";
+import { filterCollection } from "./filterEngine";
 import {
   MangaItem,
   MangaField,

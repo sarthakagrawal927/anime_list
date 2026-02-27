@@ -300,8 +300,8 @@ app.get("/api/stats", optionalAuth, async (c) => {
     const allStatuses: WatchStatus[] = [
       WatchStatus.Watching,
       WatchStatus.Completed,
-      WatchStatus.Deferred,
-      WatchStatus.Avoiding,
+      WatchStatus.Dropped,
+      WatchStatus.Delaying,
       WatchStatus.BadRatingRatio,
     ];
     const includeStatuses = allStatuses.filter(

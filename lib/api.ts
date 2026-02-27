@@ -30,6 +30,11 @@ function authHeaders(): Record<string, string> {
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
+  if (res.status === 401) {
+    localStorage.removeItem("mal_auth");
+    window.dispatchEvent(new Event("mal_auth_expired"));
+    throw new Error("Session expired. Please sign in again.");
+  }
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }

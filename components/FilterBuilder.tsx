@@ -36,9 +36,7 @@ const SORT_OPTIONS = [
   { value: "", label: "Relevance" },
 ];
 
-const HIDE_WATCHED_OPTIONS = [
-  "Watching", "Completed", "Dropped", "Delaying", "BRR",
-];
+import { WATCH_STATUSES } from "@/lib/watchStatus";
 
 const filtersParser = parseAsJson<SearchFilter[]>((v) => {
   if (!Array.isArray(v)) return null;
@@ -362,7 +360,7 @@ export default function FilterBuilder() {
       {user && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Hide watched:</span>
-          {HIDE_WATCHED_OPTIONS.map((status) => {
+          {WATCH_STATUSES.map((status) => {
             const active = hideWatched.includes(status);
             return (
               <button

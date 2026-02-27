@@ -44,6 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     setLoading(false);
+
+    const handleExpired = () => {
+      setUser(null);
+      setToken(null);
+    };
+    window.addEventListener("mal_auth_expired", handleExpired);
+    return () => window.removeEventListener("mal_auth_expired", handleExpired);
   }, []);
 
   const login = useCallback(async (credential: string) => {
@@ -54,11 +61,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Login failed" }));
+      const err = await res.json().catch(() => ({ error: "Login failed" })) as { error?: string };
       throw new Error(err.error || "Login failed");
     }
 
-    const data = await res.json();
+    const data = await res.json() as { user: AuthUser; token: string };
     setUser(data.user);
     setToken(data.token);
     localStorage.setItem("mal_auth", JSON.stringify(data));

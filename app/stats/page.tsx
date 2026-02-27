@@ -7,7 +7,7 @@ import { getStats } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
-const STATUS_OPTIONS = ["Watching", "Completed", "Deferred", "Avoiding", "BRR"];
+import { WATCH_STATUSES } from "@/lib/watchStatus";
 
 export default function StatsPage() {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ export default function StatsPage() {
   // When logged in and statuses selected, hide everything EXCEPT selected statuses
   // This means hideWatched = all statuses NOT in includeStatuses
   const hideWatched = user && includeStatuses.length > 0
-    ? STATUS_OPTIONS.filter((s) => !includeStatuses.includes(s))
+    ? WATCH_STATUSES.filter((s) => !includeStatuses.includes(s))
     : [];
 
   const { data: stats, isLoading, error } = useQuery({
@@ -42,7 +42,7 @@ export default function StatsPage() {
       {user && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Include only from:</span>
-          {STATUS_OPTIONS.map((status) => {
+          {WATCH_STATUSES.map((status) => {
             const active = includeStatuses.includes(status);
             return (
               <button

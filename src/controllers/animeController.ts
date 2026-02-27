@@ -104,8 +104,8 @@ export const getStats = async (req: AuthRequest, res: Response) => {
     const allStatuses: WatchStatus[] = [
       WatchStatus.Watching,
       WatchStatus.Completed,
-      WatchStatus.Deferred,
-      WatchStatus.Avoiding,
+      WatchStatus.Dropped,
+      WatchStatus.Delaying,
       WatchStatus.BadRatingRatio,
     ];
     const includeStatuses = allStatuses.filter(
