@@ -28,6 +28,7 @@ export interface MangaWatchlistData {
 }
 
 export interface WatchlistTag {
+  id: string;
   tag: WatchTag;
   count: number;
   color: string;

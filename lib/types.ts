@@ -111,6 +111,7 @@ export interface EnrichedWatchlistResponse {
 }
 
 export interface WatchlistTag {
+  id: string;
   tag: string;
   count: number;
   color: string;
