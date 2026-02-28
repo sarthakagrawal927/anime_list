@@ -25,7 +25,7 @@ const DEFAULT_FILTER: SearchFilter = {
 const QUICK_GENRES = [
   "Action", "Comedy", "Drama", "Fantasy", "Romance", "Sci-Fi",
   "Slice of Life", "Adventure", "Mystery", "Horror", "Supernatural",
-  "Sports", "Thriller",
+  "Sports", "Suspense",
 ];
 
 const SORT_OPTIONS = [

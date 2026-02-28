@@ -44,7 +44,6 @@ import {
   COMPARISON_ACTIONS,
   ARRAY_ACTIONS,
 } from "./types/anime";
-import { runAllMigrations } from "./db/migrations";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -115,7 +114,6 @@ app.use("*", async (_c, next) => {
   if (!dbInitialized) {
     await initUsersTable();
     await initWatchlistTables();
-    await runAllMigrations();
     dbInitialized = true;
   }
   await next();
