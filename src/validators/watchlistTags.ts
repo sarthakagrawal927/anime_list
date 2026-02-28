@@ -8,3 +8,18 @@ export const watchlistTagSchema = z.object({
 
 export type WatchlistTagPayload = z.infer<typeof watchlistTagSchema>;
 
+export const watchlistTagUpdateSchema = z
+  .object({
+    tag: watchTagSchema.optional(),
+    color: watchTagColorSchema,
+  })
+  .refine(
+    (value) => typeof value.tag === "string" || typeof value.color === "string",
+    {
+      message: "At least one of tag or color must be provided",
+    },
+  );
+
+export const watchlistTagDeleteSchema = z.object({
+  moveToTagId: z.string().trim().optional(),
+});

@@ -134,6 +134,28 @@ export function saveWatchlistTag(
   });
 }
 
+export function updateWatchlistTag(
+  tagId: string,
+  payload: { tag?: string; color?: string },
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/watchlist/tags/${tagId}/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteWatchlistTag(
+  tagId: string,
+  moveToTagId?: string,
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/watchlist/tags/${tagId}/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ moveToTagId }),
+  });
+}
+
 export function getLastUpdated(): Promise<{ lastUpdated: string | null }> {
   return fetchJson(`${BASE}/last-updated`);
 }

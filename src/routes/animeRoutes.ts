@@ -7,7 +7,11 @@ import {
   watchedListRemoveSchema,
   watchedListSchema,
 } from "../validators/watchedList";
-import { watchlistTagSchema } from "../validators/watchlistTags";
+import {
+  watchlistTagDeleteSchema,
+  watchlistTagSchema,
+  watchlistTagUpdateSchema,
+} from "../validators/watchlistTags";
 import { requireAuth, optionalAuth } from "../middleware/auth";
 import { userRateLimit } from "../middleware/rateLimit";
 import {
@@ -21,7 +25,9 @@ import {
   getStats,
   getWatchlist,
   getWatchlistTags,
+  deleteWatchlistTag,
   saveWatchlistTag,
+  updateWatchlistTag,
   searchAnime,
 } from "../controllers/animeController";
 
@@ -53,6 +59,20 @@ router.post(
   userRateLimit,
   validate(watchlistTagSchema, { errorMessage: "Invalid watchlist tag payload" }),
   catcher(saveWatchlistTag),
+);
+router.post(
+  `${routes.base}/watchlist/tags/:tagId/update`,
+  requireAuth,
+  userRateLimit,
+  validate(watchlistTagUpdateSchema, { errorMessage: "Invalid watchlist tag update payload" }),
+  catcher(updateWatchlistTag),
+);
+router.post(
+  `${routes.base}/watchlist/tags/:tagId/delete`,
+  requireAuth,
+  userRateLimit,
+  validate(watchlistTagDeleteSchema, { errorMessage: "Invalid watchlist tag delete payload" }),
+  catcher(deleteWatchlistTag),
 );
 
 router.get(`${routes.base}/watchlist/enriched`, requireAuth, catcher(getEnrichedWatchlist));

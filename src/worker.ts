@@ -6,11 +6,13 @@ import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
 // Business logic imports (all unchanged files)
 import { filterAnimeList } from "./filterEngine";
 import {
+  deleteUserTag,
   getAnimeWatchlist,
   upsertAnimeWatchlist,
   deleteFromAnimeWatchlist,
   initWatchlistTables,
   getUserTags,
+  updateUserTag,
   upsertUserTag,
 } from "./db/watchlist";
 import { getAnimeStats } from "./statistics";
@@ -30,7 +32,11 @@ import {
   watchedListRemoveSchema,
   watchedListSchema,
 } from "./validators/watchedList";
-import { watchlistTagSchema } from "./validators/watchlistTags";
+import {
+  watchlistTagDeleteSchema,
+  watchlistTagSchema,
+  watchlistTagUpdateSchema,
+} from "./validators/watchlistTags";
 import {
   NUMERIC_FIELDS,
   ARRAY_FIELDS,
@@ -368,6 +374,39 @@ app.post("/api/watchlist/tags", requireAuth, async (c) => {
   const user = c.get("user")!;
   await upsertUserTag(parsed.data.tag, user.userId, parsed.data.color);
   return c.json({ success: true, message: "Tag saved" });
+});
+
+app.post("/api/watchlist/tags/:tagId/update", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = watchlistTagUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Invalid watchlist tag update payload", details: parsed.error.issues },
+      400
+    );
+  }
+
+  const user = c.get("user")!;
+  await updateUserTag(c.req.param("tagId"), user.userId, {
+    tag: parsed.data.tag,
+    color: parsed.data.color,
+  });
+  return c.json({ success: true, message: "Tag updated" });
+});
+
+app.post("/api/watchlist/tags/:tagId/delete", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = watchlistTagDeleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Invalid watchlist tag delete payload", details: parsed.error.issues },
+      400
+    );
+  }
+
+  const user = c.get("user")!;
+  await deleteUserTag(c.req.param("tagId"), user.userId, parsed.data.moveToTagId);
+  return c.json({ success: true, message: "Tag deleted" });
 });
 
 app.get("/api/watchlist/enriched", requireAuth, async (c) => {

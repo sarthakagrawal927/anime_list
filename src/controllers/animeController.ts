@@ -30,7 +30,12 @@ import { WatchedAnime } from "../types/watchlist";
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
 import { getLastDataUpdate, getRecentChanges } from "../db/animeData";
-import { getUserTags, upsertUserTag } from "../db/watchlist";
+import {
+  deleteUserTag,
+  getUserTags,
+  updateUserTag,
+  upsertUserTag,
+} from "../db/watchlist";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -229,6 +234,37 @@ export const saveWatchlistTag = async (
   const userId = req.user!.userId;
   await upsertUserTag(req.body.tag, userId, req.body.color);
   res.json({ success: true, message: "Tag saved" });
+};
+
+export const updateWatchlistTag = async (
+  req: AuthRequest & Request<{ tagId: string }, {}, { tag?: string; color?: string }>,
+  res: Response,
+) => {
+  const userId = req.user!.userId;
+  try {
+    await updateUserTag(req.params.tagId, userId, {
+      tag: req.body.tag,
+      color: req.body.color,
+    });
+    res.json({ success: true, message: "Tag updated" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to update tag";
+    res.status(400).json({ error: message });
+  }
+};
+
+export const deleteWatchlistTag = async (
+  req: AuthRequest & Request<{ tagId: string }, {}, { moveToTagId?: string }>,
+  res: Response,
+) => {
+  const userId = req.user!.userId;
+  try {
+    await deleteUserTag(req.params.tagId, userId, req.body.moveToTagId);
+    res.json({ success: true, message: "Tag deleted" });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete tag";
+    res.status(400).json({ error: message });
+  }
 };
 
 export const getLastUpdated = async (_req: Request, res: Response) => {

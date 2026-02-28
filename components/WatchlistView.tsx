@@ -4,7 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EnrichedWatchlistItem } from "@/lib/types";
-import { addToWatchlist, getEnrichedWatchlist, getWatchlistTags, removeFromWatchlist } from "@/lib/api";
+import {
+  addToWatchlist,
+  deleteWatchlistTag,
+  getEnrichedWatchlist,
+  getWatchlistTags,
+  removeFromWatchlist,
+  saveWatchlistTag,
+  updateWatchlistTag,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +39,9 @@ function WatchlistSkeleton() {
 export default function WatchlistView() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState("#10b981");
+  const [tagDrafts, setTagDrafts] = useState<Record<string, { tag: string; color: string }>>({});
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -63,6 +74,32 @@ export default function WatchlistView() {
     },
   });
 
+  const createTagMutation = useMutation({
+    mutationFn: ({ tag, color }: { tag: string; color?: string }) =>
+      saveWatchlistTag(tag, color),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
+    },
+  });
+
+  const updateTagMutation = useMutation({
+    mutationFn: ({ tagId, tag, color }: { tagId: string; tag?: string; color?: string }) =>
+      updateWatchlistTag(tagId, { tag, color }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
+
+  const deleteTagMutation = useMutation({
+    mutationFn: ({ tagId }: { tagId: string }) =>
+      deleteWatchlistTag(tagId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
+
   const items: EnrichedWatchlistItem[] = data?.items ?? [];
   const tags = tagsData?.tags ?? [];
   const tagColorMap = useMemo(
@@ -79,6 +116,27 @@ export default function WatchlistView() {
       setActiveTab(tags[0].tag);
     }
   }, [tags, activeTab]);
+
+  useEffect(() => {
+    if (!tags.length) return;
+    setTagDrafts((prev) => {
+      const next: Record<string, { tag: string; color: string }> = { ...prev };
+      for (const tag of tags) {
+        if (!next[tag.id]) {
+          next[tag.id] = {
+            tag: tag.tag,
+            color: resolveTagColor(tag.tag, tag.color),
+          };
+        }
+      }
+      for (const id of Object.keys(next)) {
+        if (!tags.some((tag) => tag.id === id)) {
+          delete next[id];
+        }
+      }
+      return next;
+    });
+  }, [tags]);
 
   if (authLoading) return null;
 
@@ -113,7 +171,7 @@ export default function WatchlistView() {
           const color = resolveTagColor(tag.tag, tag.color);
           return (
             <button
-              key={tag.tag}
+              key={tag.id}
               onClick={() => setActiveTab(tag.tag)}
               className={cn(
                 "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
@@ -141,6 +199,110 @@ export default function WatchlistView() {
         {tags.length === 0 && (
           <span className="text-sm text-muted-foreground">No tags yet</span>
         )}
+      </div>
+
+      <div className="rounded-lg border border-border p-3 space-y-3">
+        <h3 className="text-sm font-medium text-foreground">Manage Lists</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
+            placeholder="New list name"
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
+          />
+          <input
+            type="color"
+            value={newTagColor}
+            onChange={(e) => setNewTagColor(e.target.value)}
+            className="h-8 w-9 rounded border border-input bg-background p-0.5"
+            aria-label="New list color"
+          />
+          <button
+            onClick={() => {
+              const tag = newTagName.trim();
+              if (!tag) return;
+              createTagMutation.mutate(
+                { tag, color: newTagColor },
+                {
+                  onSuccess: () => {
+                    setNewTagName("");
+                    setActiveTab(tag);
+                  },
+                },
+              );
+            }}
+            disabled={createTagMutation.isPending}
+            className="h-8 rounded-md px-3 text-xs bg-primary text-primary-foreground disabled:opacity-60"
+          >
+            Add List
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          {tags.map((tag) => {
+            const draft = tagDrafts[tag.id] || {
+              tag: tag.tag,
+              color: resolveTagColor(tag.tag, tag.color),
+            };
+            return (
+              <div key={`${tag.id}-manage`} className="flex flex-wrap items-center gap-2">
+                <input
+                  value={draft.tag}
+                  onChange={(e) =>
+                    setTagDrafts((prev) => ({
+                      ...prev,
+                      [tag.id]: {
+                        ...draft,
+                        tag: e.target.value,
+                      },
+                    }))
+                  }
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
+                />
+                <input
+                  type="color"
+                  value={draft.color}
+                  onChange={(e) =>
+                    setTagDrafts((prev) => ({
+                      ...prev,
+                      [tag.id]: {
+                        ...draft,
+                        color: e.target.value,
+                      },
+                    }))
+                  }
+                  className="h-8 w-9 rounded border border-input bg-background p-0.5"
+                  aria-label={`${tag.tag} color`}
+                />
+                <button
+                  onClick={() =>
+                    updateTagMutation.mutate({
+                      tagId: tag.id,
+                      tag: draft.tag.trim(),
+                      color: draft.color,
+                    })
+                  }
+                  disabled={updateTagMutation.isPending}
+                  className="h-8 rounded-md px-2 text-xs border border-border hover:bg-accent disabled:opacity-60"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    if (!window.confirm(`Delete list "${tag.tag}"? Items will be moved automatically.`)) {
+                      return;
+                    }
+                    deleteTagMutation.mutate({ tagId: tag.id });
+                  }}
+                  disabled={deleteTagMutation.isPending}
+                  className="h-8 rounded-md px-2 text-xs border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -254,4 +416,3 @@ export default function WatchlistView() {
     </div>
   );
 }
-

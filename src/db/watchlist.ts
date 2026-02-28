@@ -58,6 +58,28 @@ type DbTag = {
   color: string | null;
 };
 
+async function getTagById(userId: string, tagId: string): Promise<DbTag | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `
+      SELECT id, name, color
+      FROM user_tags
+      WHERE user_id = ? AND id = ?
+      LIMIT 1
+    `,
+    args: [userId, tagId],
+  });
+
+  if (result.rows.length === 0) return null;
+
+  const row = result.rows[0];
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    color: (row.color as string | null) ?? null,
+  };
+}
+
 async function getTagByName(userId: string, tag: string): Promise<DbTag | null> {
   const db = getDb();
   const result = await db.execute({
@@ -192,6 +214,92 @@ export async function upsertUserTag(
   await ensureTag(userId, tag, color);
 }
 
+export async function updateUserTag(
+  tagId: string,
+  userId: string,
+  updates: {
+    tag?: string;
+    color?: string;
+  },
+): Promise<void> {
+  const db = getDb();
+  const current = await getTagById(userId, tagId);
+  if (!current) {
+    throw new Error("Tag not found");
+  }
+
+  const nextName = updates.tag ? normalizeTag(updates.tag) : current.name;
+  const nextColor = updates.color
+    ? normalizeTagColor(updates.color) || defaultTagColor(nextName)
+    : current.color || defaultTagColor(nextName);
+
+  const duplicate = await db.execute({
+    sql: `
+      SELECT id
+      FROM user_tags
+      WHERE user_id = ?
+        AND lower(name) = lower(?)
+        AND id != ?
+      LIMIT 1
+    `,
+    args: [userId, nextName, tagId],
+  });
+
+  if (duplicate.rows.length > 0) {
+    throw new Error("Tag already exists");
+  }
+
+  await db.execute({
+    sql: "UPDATE user_tags SET name = ?, color = ? WHERE user_id = ? AND id = ?",
+    args: [nextName, nextColor, userId, tagId],
+  });
+}
+
+export async function deleteUserTag(
+  tagId: string,
+  userId: string,
+  moveToTagId?: string,
+): Promise<void> {
+  const db = getDb();
+  const source = await getTagById(userId, tagId);
+  if (!source) {
+    throw new Error("Tag not found");
+  }
+
+  let targetTagId = moveToTagId?.trim() || "";
+  if (!targetTagId) {
+    if (source.name.toLowerCase() === "done") {
+      targetTagId = (await ensureTag(userId, "Watching", defaultTagColor("Watching"))).id;
+    } else {
+      targetTagId = (await ensureTag(userId, "Done", defaultTagColor("Done"))).id;
+    }
+  }
+
+  if (targetTagId === tagId) {
+    throw new Error("Cannot move items into the same tag being deleted");
+  }
+
+  const target = await getTagById(userId, targetTagId);
+  if (!target) {
+    throw new Error("Target tag not found");
+  }
+
+  await db.batch([
+    {
+      sql: "UPDATE anime_watchlist SET tag_id = ? WHERE user_id = ? AND tag_id = ?",
+      args: [targetTagId, userId, tagId],
+    },
+    {
+      sql: "UPDATE manga_watchlist SET tag_id = ? WHERE user_id = ? AND tag_id = ?",
+      args: [targetTagId, userId, tagId],
+    },
+    {
+      sql: "DELETE FROM user_tags WHERE user_id = ? AND id = ?",
+      args: [userId, tagId],
+    },
+  ]);
+}
+
 // Anime watchlist
 
 export async function getAnimeWatchlist(userId: string = "default"): Promise<WatchlistData | null> {
@@ -295,4 +403,3 @@ export async function upsertMangaWatchlist(
   }));
   await db.batch(statements);
 }
-
