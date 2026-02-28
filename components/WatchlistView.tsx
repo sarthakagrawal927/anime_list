@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EnrichedWatchlistItem } from "@/lib/types";
-import { getEnrichedWatchlist, addToWatchlist, removeFromWatchlist } from "@/lib/api";
+import { addToWatchlist, getEnrichedWatchlist, getWatchlistTags, removeFromWatchlist } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-import { WATCH_STATUSES, STATUS_STYLES } from "@/lib/watchStatus";
+import { getDefaultTagColor, resolveTagColor, toRgba } from "@/lib/watchStatus";
 
 function WatchlistSkeleton() {
   return (
@@ -31,7 +30,7 @@ function WatchlistSkeleton() {
 
 export default function WatchlistView() {
   const { user, loading: authLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("Watching");
+  const [activeTab, setActiveTab] = useState("");
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -40,11 +39,18 @@ export default function WatchlistView() {
     enabled: !!user,
   });
 
+  const { data: tagsData } = useQuery({
+    queryKey: ["watchlist", "tags"],
+    queryFn: () => getWatchlistTags(),
+    enabled: !!user,
+  });
+
   const statusMutation = useMutation({
-    mutationFn: ({ malId, status }: { malId: string; status: string }) =>
-      addToWatchlist([Number(malId)], status),
+    mutationFn: ({ malId, status, tagColor }: { malId: string; status: string; tagColor?: string }) =>
+      addToWatchlist([Number(malId)], status, tagColor),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
     },
   });
 
@@ -53,10 +59,26 @@ export default function WatchlistView() {
       removeFromWatchlist([Number(malId)]),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
     },
   });
 
   const items: EnrichedWatchlistItem[] = data?.items ?? [];
+  const tags = tagsData?.tags ?? [];
+  const tagColorMap = useMemo(
+    () => new Map(tags.map((tag) => [tag.tag, resolveTagColor(tag.tag, tag.color)])),
+    [tags],
+  );
+
+  useEffect(() => {
+    if (!tags.length) {
+      setActiveTab("");
+      return;
+    }
+    if (!activeTab || !tags.some((tag) => tag.tag === activeTab)) {
+      setActiveTab(tags[0].tag);
+    }
+  }, [tags, activeTab]);
 
   if (authLoading) return null;
 
@@ -79,39 +101,51 @@ export default function WatchlistView() {
   if (isLoading) return <WatchlistSkeleton />;
   if (error) return <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Failed to load watchlist"}</p>;
 
-  const filtered = items.filter((item) => item.watchStatus === activeTab);
+  const filtered = activeTab
+    ? items.filter((item) => item.watchStatus === activeTab)
+    : items;
 
   return (
     <div className="space-y-5">
-      {/* Status tabs */}
       <div className="flex gap-2 flex-wrap">
-        {WATCH_STATUSES.map((status) => {
-          const count = items.filter((item) => item.watchStatus === status).length;
-          const isActive = activeTab === status;
-          const style = STATUS_STYLES[status];
+        {tags.map((tag) => {
+          const isActive = activeTab === tag.tag;
+          const color = resolveTagColor(tag.tag, tag.color);
           return (
             <button
-              key={status}
-              onClick={() => setActiveTab(status)}
+              key={tag.tag}
+              onClick={() => setActiveTab(tag.tag)}
               className={cn(
                 "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
-                isActive
-                  ? style.active
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent"
+                isActive ? "" : "text-muted-foreground hover:text-foreground"
               )}
+              style={
+                isActive
+                  ? {
+                      color,
+                      borderColor: toRgba(color, 0.45),
+                      backgroundColor: toRgba(color, 0.15),
+                    }
+                  : {
+                      color,
+                      borderColor: toRgba(color, 0.3),
+                    }
+              }
             >
-              <span className={cn("h-2 w-2 rounded-full", style.dot)} />
-              {status}
-              <span className="text-xs opacity-60">({count})</span>
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+              {tag.tag}
+              <span className="text-xs opacity-60">({tag.count})</span>
             </button>
           );
         })}
+        {tags.length === 0 && (
+          <span className="text-sm text-muted-foreground">No tags yet</span>
+        )}
       </div>
 
-      {/* Items */}
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No anime with status &ldquo;{activeTab}&rdquo;
+          {activeTab ? `No anime with tag "${activeTab}"` : "No anime in watchlist yet"}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -185,16 +219,30 @@ export default function WatchlistView() {
                     onChange={(e) => {
                       if (e.target.value === "REMOVE") {
                         removeMutation.mutate(item.mal_id);
-                      } else {
-                        statusMutation.mutate({ malId: item.mal_id, status: e.target.value });
+                        return;
                       }
+                      if (e.target.value === "__NEW_TAG__") {
+                        const customTag = window.prompt("New tag name");
+                        if (!customTag || !customTag.trim()) return;
+                        const tag = customTag.trim();
+                        const color = getDefaultTagColor(tag);
+                        statusMutation.mutate({ malId: item.mal_id, status: tag, tagColor: color });
+                        setActiveTab(tag);
+                        return;
+                      }
+                      statusMutation.mutate({
+                        malId: item.mal_id,
+                        status: e.target.value,
+                        tagColor: tagColorMap.get(e.target.value),
+                      });
                     }}
                     disabled={statusMutation.isPending || removeMutation.isPending}
                     className="h-7 rounded-lg border border-input bg-secondary px-2 text-xs"
                   >
-                    {WATCH_STATUSES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                    {tags.map((tag) => (
+                      <option key={tag.tag} value={tag.tag}>{tag.tag}</option>
                     ))}
+                    <option value="__NEW_TAG__">+ New tag...</option>
                     <option value="REMOVE" className="text-destructive">Remove from watchlist</option>
                   </select>
                 </div>
@@ -206,3 +254,4 @@ export default function WatchlistView() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AnimeField, Genre, Theme, WatchStatus } from "../config";
+import { AnimeField, Genre, Theme } from "../config";
 import {
   ARRAY_FIELDS,
   ArrayField,
@@ -16,6 +16,7 @@ import {
   createNumericFilterSchema,
   createStringFilterSchemas,
 } from "./commonFilters";
+import { watchTagSchema } from "./watchTags";
 
 const getValidCategories = (field: ArrayField): Set<string> => {
   if (field === AnimeField.Genres) return new Set<string>(Object.values(Genre));
@@ -104,7 +105,7 @@ const airingSchema = z.enum(["yes", "no", "any"] as const);
 
 export const filterRequestSchema = z.object({
   filters: filtersSchema,
-  hideWatched: z.array(z.nativeEnum(WatchStatus)).default([]),
+  hideWatched: z.array(watchTagSchema).default([]),
   pagesize: z.number().int().min(1).default(20),
   offset: z.number().int().min(0).default(0),
   sortBy: numericFieldSchema.optional(),

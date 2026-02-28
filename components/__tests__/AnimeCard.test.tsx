@@ -13,12 +13,14 @@ jest.mock("next/image", () => ({
 }));
 
 jest.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: { tags: [] } }),
   useMutation: () => ({ mutate: jest.fn(), isPending: false }),
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
 }));
 
 jest.mock("@/lib/api", () => ({
   addToWatchlist: jest.fn(),
+  getWatchlistTags: jest.fn().mockResolvedValue({ tags: [] }),
 }));
 
 jest.mock("@/lib/auth", () => ({

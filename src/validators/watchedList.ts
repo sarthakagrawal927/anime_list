@@ -1,15 +1,22 @@
 import { z } from "zod";
-import { WatchStatus } from "../config";
+import { watchTagColorSchema, watchTagSchema } from "./watchTags";
 
 const malIdSchema = z
   .union([z.string().min(1), z.number()])
   .transform((value) => value.toString());
 
-export const watchedListSchema = z.object({
+export const watchlistIdsSchema = z.object({
   mal_ids: z.array(malIdSchema).nonempty({
     message: "mal_ids must contain at least one id",
   }),
-  status: z.nativeEnum(WatchStatus),
 });
 
+export const watchedListSchema = watchlistIdsSchema.extend({
+  status: watchTagSchema,
+  tagColor: watchTagColorSchema,
+});
+
+export const watchedListRemoveSchema = watchlistIdsSchema;
+
 export type WatchedListPayload = z.infer<typeof watchedListSchema>;
+export type WatchedListRemovePayload = z.infer<typeof watchedListRemoveSchema>;

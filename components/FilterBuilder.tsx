@@ -7,7 +7,7 @@ import type {
   SearchFilter,
   SearchResponse,
 } from "@/lib/types";
-import { getFields, getFilterActions, searchAnime } from "@/lib/api";
+import { getFields, getFilterActions, getWatchlistTags, searchAnime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import FilterRow from "./FilterRow";
 import ResultsGrid, { ResultsGridSkeleton } from "./ResultsGrid";
@@ -36,7 +36,7 @@ const SORT_OPTIONS = [
   { value: "", label: "Relevance" },
 ];
 
-import { WATCH_STATUSES } from "@/lib/watchStatus";
+import { resolveTagColor, toRgba } from "@/lib/watchStatus";
 
 const filtersParser = parseAsJson<SearchFilter[]>((v) => {
   if (!Array.isArray(v)) return null;
@@ -89,6 +89,14 @@ export default function FilterBuilder() {
     queryKey: ["filterActions"],
     queryFn: getFilterActions,
   });
+
+  const { data: watchlistTagsData } = useQuery({
+    queryKey: ["watchlist", "tags"],
+    queryFn: () => getWatchlistTags(),
+    enabled: !!user,
+  });
+
+  const watchlistTags = watchlistTagsData?.tags ?? [];
 
   const offset = (currentPage - 1) * pagesize;
 
@@ -360,24 +368,40 @@ export default function FilterBuilder() {
       {user && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Hide watched:</span>
-          {WATCH_STATUSES.map((status) => {
-            const active = hideWatched.includes(status);
+          {watchlistTags.map((tag) => {
+            const active = hideWatched.includes(tag.tag);
+            const color = resolveTagColor(tag.tag, tag.color);
             return (
               <button
-                key={status}
-                onClick={() => toggleHideWatched(status)}
+                key={tag.tag}
+                onClick={() => toggleHideWatched(tag.tag)}
                 aria-pressed={active}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
                   active
-                    ? "bg-destructive/15 text-destructive border-destructive/30"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    ? ""
+                    : "text-muted-foreground hover:text-foreground"
                 )}
+                style={
+                  active
+                    ? {
+                        color,
+                        borderColor: toRgba(color, 0.45),
+                        backgroundColor: toRgba(color, 0.15),
+                      }
+                    : {
+                        color,
+                        borderColor: toRgba(color, 0.3),
+                      }
+                }
               >
-                {status}
+                {tag.tag}
               </button>
             );
           })}
+          {watchlistTags.length === 0 && (
+            <span className="text-xs text-muted-foreground">No tags yet</span>
+          )}
         </div>
       )}
 

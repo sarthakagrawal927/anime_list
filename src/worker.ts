@@ -10,6 +10,8 @@ import {
   upsertAnimeWatchlist,
   deleteFromAnimeWatchlist,
   initWatchlistTables,
+  getUserTags,
+  upsertUserTag,
 } from "./db/watchlist";
 import { getAnimeStats } from "./statistics";
 import { getScoreSortedList } from "./utils/statistics";
@@ -20,10 +22,15 @@ import { initUsersTable } from "./db/users";
 import {
   hideWatchedItems,
   includeOnlyWatchedItems,
+  parseTagQuery,
   takePage,
 } from "./controllers/helpers";
 import { filterRequestSchema } from "./validators/animeFilters";
-import { watchedListSchema } from "./validators/watchedList";
+import {
+  watchedListRemoveSchema,
+  watchedListSchema,
+} from "./validators/watchedList";
+import { watchlistTagSchema } from "./validators/watchlistTags";
 import {
   NUMERIC_FIELDS,
   ARRAY_FIELDS,
@@ -31,7 +38,6 @@ import {
   COMPARISON_ACTIONS,
   ARRAY_ACTIONS,
 } from "./types/anime";
-import { WatchStatus } from "./config";
 import { runAllMigrations } from "./db/migrations";
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -290,27 +296,33 @@ app.post("/api/search", optionalAuth, async (c) => {
 // Stats
 app.get("/api/stats", optionalAuth, async (c) => {
   const user = c.get("user");
-  const hideWatched = (c.req.query("hideWatched") || "")
-    .split(",")
-    .filter(Boolean);
+  const includeWatched = parseTagQuery(c.req.query("includeWatched"));
+  const hideWatched = parseTagQuery(c.req.query("hideWatched"));
 
   let animeList = await animeStore.getAnimeList();
 
-  if (user?.userId && hideWatched.length > 0) {
-    const allStatuses: WatchStatus[] = [
-      WatchStatus.Watching,
-      WatchStatus.Completed,
-      WatchStatus.Dropped,
-      WatchStatus.Delaying,
-      WatchStatus.BadRatingRatio,
-    ];
-    const includeStatuses = allStatuses.filter(
-      (s) => !hideWatched.includes(s)
+  if (user?.userId && includeWatched.length > 0) {
+    animeList = await includeOnlyWatchedItems(
+      animeList,
+      includeWatched,
+      () => getAnimeWatchlist(user.userId),
+      (list) => list.anime
     );
+  } else if (user?.userId && hideWatched.length > 0) {
+    const watchlist = await getAnimeWatchlist(user.userId);
+    const includeWatchedFromHide = watchlist
+      ? Array.from(
+          new Set(
+            Object.values(watchlist.anime)
+              .map((item) => item.status)
+              .filter((status) => !hideWatched.includes(status))
+          )
+        )
+      : [];
 
     animeList = await includeOnlyWatchedItems(
       animeList,
-      includeStatuses,
+      includeWatchedFromHide,
       () => getAnimeWatchlist(user.userId),
       (list) => list.anime
     );
@@ -323,7 +335,7 @@ app.get("/api/stats", optionalAuth, async (c) => {
 app.get("/api/watchlist", requireAuth, async (c) => {
   const user = c.get("user")!;
   const watchlist = await getAnimeWatchlist(user.userId);
-  const status = c.req.query("status") as WatchStatus;
+  const status = (c.req.query("status") || "").trim();
 
   if (!watchlist) return c.json({ error: "Watchlist not found" }, 404);
 
@@ -335,6 +347,27 @@ app.get("/api/watchlist", requireAuth, async (c) => {
   }
 
   return c.json(watchlist);
+});
+
+app.get("/api/watchlist/tags", requireAuth, async (c) => {
+  const user = c.get("user")!;
+  const tags = await getUserTags(user.userId);
+  return c.json({ tags });
+});
+
+app.post("/api/watchlist/tags", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = watchlistTagSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json(
+      { error: "Invalid watchlist tag payload", details: parsed.error.issues },
+      400
+    );
+  }
+
+  const user = c.get("user")!;
+  await upsertUserTag(parsed.data.tag, user.userId, parsed.data.color);
+  return c.json({ success: true, message: "Tag saved" });
 });
 
 app.get("/api/watchlist/enriched", requireAuth, async (c) => {
@@ -378,13 +411,18 @@ app.post("/api/watched/add", requireAuth, async (c) => {
   }
 
   const user = c.get("user")!;
-  await upsertAnimeWatchlist(parsed.data.mal_ids, parsed.data.status, user.userId);
+  await upsertAnimeWatchlist(
+    parsed.data.mal_ids,
+    parsed.data.status,
+    user.userId,
+    parsed.data.tagColor
+  );
   return c.json({ success: true, message: "Anime added to watched list" });
 });
 
 app.post("/api/watched/remove", requireAuth, async (c) => {
   const body = await c.req.json();
-  const parsed = watchedListSchema.safeParse(body);
+  const parsed = watchedListRemoveSchema.safeParse(body);
   if (!parsed.success) {
     return c.json(
       { error: "Invalid watchlist payload", details: parsed.error.issues },

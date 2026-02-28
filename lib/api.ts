@@ -6,6 +6,7 @@ import type {
   AnimeStats,
   WatchlistData,
   EnrichedWatchlistResponse,
+  WatchlistTag,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -71,9 +72,20 @@ export function searchAnime(
   });
 }
 
-export function getStats(hideWatched: string[] = []): Promise<AnimeStats> {
-  const params = hideWatched.length > 0 ? `?hideWatched=${hideWatched.join(',')}` : '';
-  return fetchJson(`${BASE}/stats${params}`, { headers: authHeaders() });
+export function getStats(opts: {
+  hideWatched?: string[];
+  includeWatched?: string[];
+} = {}): Promise<AnimeStats> {
+  const params = new URLSearchParams();
+  if (opts.hideWatched && opts.hideWatched.length > 0) {
+    params.set("hideWatched", opts.hideWatched.join(","));
+  }
+  if (opts.includeWatched && opts.includeWatched.length > 0) {
+    params.set("includeWatched", opts.includeWatched.join(","));
+  }
+  const query = params.toString();
+  const suffix = query ? `?${query}` : "";
+  return fetchJson(`${BASE}/stats${suffix}`, { headers: authHeaders() });
 }
 
 export function getWatchlist(status?: string): Promise<WatchlistData> {
@@ -83,12 +95,13 @@ export function getWatchlist(status?: string): Promise<WatchlistData> {
 
 export function addToWatchlist(
   malIds: number[],
-  status: string
+  status: string,
+  tagColor?: string,
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watched/add`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ mal_ids: malIds, status }),
+    body: JSON.stringify({ mal_ids: malIds, status, tagColor }),
   });
 }
 
@@ -98,12 +111,27 @@ export function removeFromWatchlist(
   return fetchJson(`${BASE}/watched/remove`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ mal_ids: malIds, status: "Watching" }), // status is required by schema but ignored
+    body: JSON.stringify({ mal_ids: malIds }),
   });
 }
 
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
   return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
+}
+
+export function getWatchlistTags(): Promise<{ tags: WatchlistTag[] }> {
+  return fetchJson(`${BASE}/watchlist/tags`, { headers: authHeaders() });
+}
+
+export function saveWatchlistTag(
+  tag: string,
+  color?: string,
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/watchlist/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ tag, color }),
+  });
 }
 
 export function getLastUpdated(): Promise<{ lastUpdated: string | null }> {

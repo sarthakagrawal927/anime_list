@@ -1,5 +1,34 @@
 import { getDb } from "./client";
 
+const DEFAULT_TAG_COLORS: Record<string, string> = {
+  Watching: "#10b981",
+  Done: "#3b82f6",
+};
+
+const TAG_COLOR_PALETTE = [
+  "#10b981",
+  "#3b82f6",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#06b6d4",
+  "#f97316",
+  "#84cc16",
+  "#ec4899",
+  "#14b8a6",
+] as const;
+
+const getDefaultTagColor = (tag: string): string => {
+  const defaultColor = DEFAULT_TAG_COLORS[tag];
+  if (defaultColor) return defaultColor;
+
+  let hash = 0;
+  for (let i = 0; i < tag.length; i += 1) {
+    hash = (hash * 31 + tag.charCodeAt(i)) >>> 0;
+  }
+  return TAG_COLOR_PALETTE[hash % TAG_COLOR_PALETTE.length];
+};
+
 export async function migrateWatchlistTables(): Promise<void> {
   const db = getDb();
 
@@ -112,9 +141,64 @@ export async function migrateWatchlistIndexes(): Promise<void> {
   await db.batch([
     "CREATE INDEX IF NOT EXISTS idx_watchlist_user ON anime_watchlist(user_id)",
     "CREATE INDEX IF NOT EXISTS idx_manga_watchlist_user ON manga_watchlist(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_user_tags_user ON user_tags(user_id)",
   ]);
 
   console.log("Watchlist indexes created successfully");
+}
+
+export async function migrateUserTagsTable(): Promise<void> {
+  const db = getDb();
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS user_tags (
+      user_id TEXT NOT NULL,
+      tag TEXT NOT NULL COLLATE NOCASE,
+      color TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, tag)
+    )
+  `);
+
+  const info = await db.execute("PRAGMA table_info(user_tags)");
+  const hasColor = info.rows.some((row) => row.name === "color");
+  if (!hasColor) {
+    await db.execute("ALTER TABLE user_tags ADD COLUMN color TEXT");
+  }
+
+  const rows = await db.execute(`
+    SELECT DISTINCT user_id, status AS tag FROM anime_watchlist WHERE status IS NOT NULL AND trim(status) != ''
+    UNION
+    SELECT DISTINCT user_id, status AS tag FROM manga_watchlist WHERE status IS NOT NULL AND trim(status) != ''
+  `);
+
+  const statements = rows.rows.map((row) => {
+    const userId = row.user_id as string;
+    const tag = row.tag as string;
+    return {
+      sql: "INSERT OR IGNORE INTO user_tags (user_id, tag, color) VALUES (?, ?, ?)",
+      args: [userId, tag, getDefaultTagColor(tag)],
+    };
+  });
+
+  if (statements.length > 0) {
+    await db.batch(statements);
+  }
+
+  const missingColorRows = await db.execute(
+    "SELECT user_id, tag FROM user_tags WHERE color IS NULL OR trim(color) = ''"
+  );
+  const colorStatements = missingColorRows.rows.map((row) => {
+    const userId = row.user_id as string;
+    const tag = row.tag as string;
+    return {
+      sql: "UPDATE user_tags SET color = ? WHERE user_id = ? AND tag = ?",
+      args: [getDefaultTagColor(tag), userId, tag],
+    };
+  });
+
+  if (colorStatements.length > 0) {
+    await db.batch(colorStatements);
+  }
 }
 
 export async function migrateAnimeCreatedAt(): Promise<void> {
@@ -159,9 +243,9 @@ export async function migrateWatchlistStatusRenames(): Promise<void> {
 
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
+  await migrateUserTagsTable();
   await migrateAnimeDataTable();
   await migrateWatchlistIndexes();
   await migrateAnimeCreatedAt();
-  await migrateWatchlistStatusRenames();
   console.log("All migrations completed");
 }

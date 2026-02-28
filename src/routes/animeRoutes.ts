@@ -3,7 +3,11 @@ import { SERVER_CONFIG } from "../config";
 import { catcher } from "../utils/functional";
 import { validate } from "../middleware/validation";
 import { filterRequestSchema } from "../validators/animeFilters";
-import { watchedListSchema } from "../validators/watchedList";
+import {
+  watchedListRemoveSchema,
+  watchedListSchema,
+} from "../validators/watchedList";
+import { watchlistTagSchema } from "../validators/watchlistTags";
 import { requireAuth, optionalAuth } from "../middleware/auth";
 import { userRateLimit } from "../middleware/rateLimit";
 import {
@@ -16,6 +20,8 @@ import {
   getLastUpdated,
   getStats,
   getWatchlist,
+  getWatchlistTags,
+  saveWatchlistTag,
   searchAnime,
 } from "../controllers/animeController";
 
@@ -40,6 +46,14 @@ router.post(
 router.get(`${routes.base}${routes.stats}`, optionalAuth, catcher(getStats));
 
 router.get(`${routes.base}${routes.watchlist}`, requireAuth, catcher(getWatchlist));
+router.get(`${routes.base}/watchlist/tags`, requireAuth, catcher(getWatchlistTags));
+router.post(
+  `${routes.base}/watchlist/tags`,
+  requireAuth,
+  userRateLimit,
+  validate(watchlistTagSchema, { errorMessage: "Invalid watchlist tag payload" }),
+  catcher(saveWatchlistTag),
+);
 
 router.get(`${routes.base}/watchlist/enriched`, requireAuth, catcher(getEnrichedWatchlist));
 
@@ -55,7 +69,7 @@ router.post(
   `${routes.base}/watched/remove`,
   requireAuth,
   userRateLimit,
-  validate(watchedListSchema, { errorMessage: "Invalid watchlist payload" }),
+  validate(watchedListRemoveSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(removeFromWatchlist)
 );
 

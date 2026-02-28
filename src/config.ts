@@ -149,14 +149,6 @@ export const SERVER_CONFIG = {
   },
 } as const;
 
-export enum WatchStatus {
-  Watching = "Watching",
-  Completed = "Completed",
-  Dropped = "Dropped",
-  Delaying = "Delaying",
-  BadRatingRatio = "BRR",
-}
-
 export const ERROR_MESSAGES = {
   fetchFailed: "Failed to fetch anime stats",
   filterFailed: "Failed to apply filters and get stats",

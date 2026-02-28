@@ -1,4 +1,4 @@
-import { FILE_PATHS, AnimeField, FilterAction, WatchStatus } from "./config";
+import { FILE_PATHS, AnimeField, FilterAction } from "./config";
 import {
   AnimeItem,
   Filter,
@@ -27,6 +27,7 @@ import {
 import {
   WatchlistData,
   MangaWatchlistData,
+  WatchTag,
   WatchedAnime,
   WatchedManga,
   UserAnimeListItem as WatchlistUserAnimeItem,
@@ -205,7 +206,7 @@ export const storeUserWatchedDataInFile = async (): Promise<void> => {
           title: anime.series_title,
           type: anime.series_type,
           episodes: Number(anime.series_episodes),
-          status: anime.my_status as WatchStatus,
+          status: anime.my_status,
           id: anime.series_animedb_id,
         };
         return acc;
@@ -219,12 +220,13 @@ export const storeUserWatchedDataInFile = async (): Promise<void> => {
 
 export async function addAnimeToWatched(
   mal_ids: string[],
-  status: WatchStatus,
-  userId: string = "default"
+  status: WatchTag,
+  userId: string = "default",
+  tagColor?: string
 ): Promise<void> {
   try {
     const { upsertAnimeWatchlist } = await import("./db/watchlist");
-    await upsertAnimeWatchlist(mal_ids, status, userId);
+    await upsertAnimeWatchlist(mal_ids, status, userId, tagColor);
   } catch (error) {
     console.error("Error adding anime to watched list:", error);
     throw error;
@@ -245,12 +247,13 @@ export async function getWatchedAnimeList(userId: string = "default"): Promise<W
 
 export async function addMangaToWatched(
   mal_ids: string[],
-  status: WatchStatus,
-  userId: string = "default"
+  status: WatchTag,
+  userId: string = "default",
+  tagColor?: string
 ): Promise<void> {
   try {
     const { upsertMangaWatchlist } = await import("./db/watchlist");
-    await upsertMangaWatchlist(mal_ids, status, userId);
+    await upsertMangaWatchlist(mal_ids, status, userId, tagColor);
   } catch (error) {
     console.error("Error adding manga to watched list:", error);
     throw error;

@@ -6,7 +6,6 @@ import {
   NUMERIC_FIELDS,
   STRING_FIELDS,
 } from "../types/anime";
-import { WatchStatus } from "../config";
 import {
   addAnimeToWatched,
   filterAnimeList,
@@ -16,12 +15,22 @@ import {
 import { getAnimeStats } from "../statistics";
 import { getScoreSortedList } from "../utils/statistics";
 import { FilterRequestBody } from "../validators/animeFilters";
-import { WatchedListPayload } from "../validators/watchedList";
-import { hideWatchedItems, includeOnlyWatchedItems, takePage } from "./helpers";
+import {
+  WatchedListPayload,
+  WatchedListRemovePayload,
+} from "../validators/watchedList";
+import { WatchlistTagPayload } from "../validators/watchlistTags";
+import {
+  hideWatchedItems,
+  includeOnlyWatchedItems,
+  parseTagQuery,
+  takePage,
+} from "./helpers";
 import { WatchedAnime } from "../types/watchlist";
 import { AuthRequest } from "../middleware/auth";
 import { animeStore } from "../store/animeStore";
 import { getLastDataUpdate, getRecentChanges } from "../db/animeData";
+import { getUserTags, upsertUserTag } from "../db/watchlist";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -94,27 +103,33 @@ export const searchAnime = async (
 
 export const getStats = async (req: AuthRequest, res: Response) => {
   const userId = req.user?.userId;
-  const hideWatched =
-    (req.query.hideWatched as string)?.split(",").filter(Boolean) || [];
+  const includeWatched = parseTagQuery(req.query.includeWatched);
+  const hideWatched = parseTagQuery(req.query.hideWatched);
 
   let animeList = await animeStore.getAnimeList();
 
-  if (userId && hideWatched.length > 0) {
-    // Convert hideWatched to includeStatuses (invert the selection)
-    const allStatuses: WatchStatus[] = [
-      WatchStatus.Watching,
-      WatchStatus.Completed,
-      WatchStatus.Dropped,
-      WatchStatus.Delaying,
-      WatchStatus.BadRatingRatio,
-    ];
-    const includeStatuses = allStatuses.filter(
-      (status) => !hideWatched.includes(status),
+  if (userId && includeWatched.length > 0) {
+    animeList = await includeOnlyWatchedItems(
+      animeList,
+      includeWatched,
+      () => getWatchedAnimeList(userId),
+      (list) => list.anime,
     );
+  } else if (userId && hideWatched.length > 0) {
+    const watchlist = await getWatchedAnimeList(userId);
+    const includeWatchedFromHide = watchlist
+      ? Array.from(
+          new Set(
+            Object.values(watchlist.anime)
+              .map((item) => item.status)
+              .filter((status) => !hideWatched.includes(status)),
+          ),
+        )
+      : [];
 
     animeList = await includeOnlyWatchedItems(
       animeList,
-      includeStatuses,
+      includeWatchedFromHide,
       () => getWatchedAnimeList(userId),
       (list) => list.anime,
     );
@@ -126,7 +141,7 @@ export const getStats = async (req: AuthRequest, res: Response) => {
 export const getWatchlist = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
   const watchlist = await getWatchedAnimeList(userId);
-  const status = req.query.status as WatchStatus;
+  const status = typeof req.query.status === "string" ? req.query.status.trim() : "";
 
   if (!watchlist) {
     res.status(404).json({ error: "Watchlist not found" });
@@ -149,12 +164,17 @@ export const addToWatchlist = async (
   res: Response,
 ) => {
   const userId = req.user!.userId;
-  await addAnimeToWatched(req.body.mal_ids, req.body.status, userId);
+  await addAnimeToWatched(
+    req.body.mal_ids,
+    req.body.status,
+    userId,
+    req.body.tagColor,
+  );
   res.json({ success: true, message: "Anime added to watched list" });
 };
 
 export const removeFromWatchlist = async (
-  req: AuthRequest & Request<{}, {}, WatchedListPayload>,
+  req: AuthRequest & Request<{}, {}, WatchedListRemovePayload>,
   res: Response,
 ) => {
   const userId = req.user!.userId;
@@ -194,6 +214,21 @@ export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
   });
 
   res.json({ items });
+};
+
+export const getWatchlistTags = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const tags = await getUserTags(userId);
+  res.json({ tags });
+};
+
+export const saveWatchlistTag = async (
+  req: AuthRequest & Request<{}, {}, WatchlistTagPayload>,
+  res: Response,
+) => {
+  const userId = req.user!.userId;
+  await upsertUserTag(req.body.tag, userId, req.body.color);
+  res.json({ success: true, message: "Tag saved" });
 };
 
 export const getLastUpdated = async (_req: Request, res: Response) => {

@@ -3,25 +3,29 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import StatsCharts from "@/components/StatsCharts";
-import { getStats } from "@/lib/api";
+import { getStats, getWatchlistTags } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-
-import { WATCH_STATUSES } from "@/lib/watchStatus";
+import { resolveTagColor, toRgba } from "@/lib/watchStatus";
 
 export default function StatsPage() {
   const { user } = useAuth();
   const [includeStatuses, setIncludeStatuses] = useState<string[]>([]);
 
-  // When logged in and statuses selected, hide everything EXCEPT selected statuses
-  // This means hideWatched = all statuses NOT in includeStatuses
-  const hideWatched = user && includeStatuses.length > 0
-    ? WATCH_STATUSES.filter((s) => !includeStatuses.includes(s))
-    : [];
+  const { data: tagsData } = useQuery({
+    queryKey: ["watchlist", "tags"],
+    queryFn: () => getWatchlistTags(),
+    enabled: !!user,
+  });
+
+  const availableTags = tagsData?.tags ?? [];
 
   const { data: stats, isLoading, error } = useQuery({
-    queryKey: ["stats", hideWatched],
-    queryFn: () => getStats(hideWatched),
+    queryKey: ["stats", includeStatuses],
+    queryFn: () =>
+      getStats({
+        includeWatched: includeStatuses,
+      }),
   });
 
   const toggleIncludeStatus = (status: string) => {
@@ -42,23 +46,41 @@ export default function StatsPage() {
       {user && (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">Include only from:</span>
-          {WATCH_STATUSES.map((status) => {
-            const active = includeStatuses.includes(status);
+          {availableTags.map((tag) => {
+            const active = includeStatuses.includes(tag.tag);
+            const color = resolveTagColor(tag.tag, tag.color);
             return (
               <button
-                key={status}
-                onClick={() => toggleIncludeStatus(status)}
+                key={tag.tag}
+                onClick={() => toggleIncludeStatus(tag.tag)}
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
                   active
-                    ? "bg-primary/20 text-primary border-primary/40"
-                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    ? ""
+                    : "text-muted-foreground hover:text-foreground"
                 )}
+                style={
+                  active
+                    ? {
+                        color,
+                        borderColor: toRgba(color, 0.45),
+                        backgroundColor: toRgba(color, 0.15),
+                      }
+                    : {
+                        color,
+                        borderColor: toRgba(color, 0.3),
+                      }
+                }
               >
-                {status}
+                {tag.tag}
               </button>
             );
           })}
+          {availableTags.length === 0 && (
+            <span className="text-xs text-muted-foreground">
+              No tags yet
+            </span>
+          )}
           {includeStatuses.length > 0 && (
             <button
               onClick={() => setIncludeStatuses([])}

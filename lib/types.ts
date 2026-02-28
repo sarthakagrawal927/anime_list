@@ -109,3 +109,9 @@ export interface EnrichedWatchlistItem {
 export interface EnrichedWatchlistResponse {
   items: EnrichedWatchlistItem[];
 }
+
+export interface WatchlistTag {
+  tag: string;
+  count: number;
+  color: string;
+}

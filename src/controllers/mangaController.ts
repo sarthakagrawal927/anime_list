@@ -90,7 +90,12 @@ export const addMangaToWatchlistHandler = async (
   res: Response
 ) => {
   const userId = req.user!.userId;
-  await addMangaToWatched(req.body.mal_ids, req.body.status, userId);
+  await addMangaToWatched(
+    req.body.mal_ids,
+    req.body.status,
+    userId,
+    req.body.tagColor,
+  );
   res.json({ success: true, message: "Manga added to watched list" });
 };
 

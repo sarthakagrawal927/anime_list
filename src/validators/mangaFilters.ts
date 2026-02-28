@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { WatchStatus } from "../config";
 import {
   MANGA_ARRAY_FIELDS,
   MANGA_BOOLEAN_FIELDS,
@@ -19,6 +18,7 @@ import {
   createNumericFilterSchema,
   createStringFilterSchemas,
 } from "./commonFilters";
+import { watchTagSchema } from "./watchTags";
 
 const numericFieldSchema = z.enum(MANGA_NUMERIC_FIELDS as [MangaNumericField, ...MangaNumericField[]]);
 const arrayFieldSchema = z.enum(MANGA_ARRAY_FIELDS as [MangaArrayField, ...MangaArrayField[]]);
@@ -45,7 +45,7 @@ export const mangaFiltersSchema = createFiltersArraySchema(mangaFilterSchema);
 
 export const mangaFilterRequestSchema = z.object({
   filters: mangaFiltersSchema,
-  hideWatched: z.array(z.nativeEnum(WatchStatus)).default([]),
+  hideWatched: z.array(watchTagSchema).default([]),
   pagesize: z.number().int().min(1).default(50),
   sortBy: numericFieldSchema.optional(),
 });

@@ -2,31 +2,48 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AnimeSummary } from "@/lib/types";
-import { addToWatchlist } from "@/lib/api";
+import { addToWatchlist, getWatchlistTags } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-
-import { WATCH_STATUSES, STATUS_COLORS } from "@/lib/watchStatus";
+import { DEFAULT_WATCH_TAGS, resolveTagColor } from "@/lib/watchStatus";
 
 export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
   const [added, setAdded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [customTag, setCustomTag] = useState("");
+  const [customColor, setCustomColor] = useState("#10b981");
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const { data: tagsData } = useQuery({
+    queryKey: ["watchlist", "tags"],
+    queryFn: () => getWatchlistTags(),
+    enabled: !!user,
+  });
+
+  const availableTags = tagsData?.tags?.length ? tagsData.tags : DEFAULT_WATCH_TAGS;
+
   const mutation = useMutation({
-    mutationFn: (status: string) => addToWatchlist([anime.id], status),
+    mutationFn: ({
+      status,
+      tagColor,
+    }: {
+      status: string;
+      tagColor?: string;
+    }) => addToWatchlist([anime.id], status, tagColor),
     onSuccess: () => {
       setAdded(true);
+      setCustomTag("");
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
     },
   });
 
-  const handleAdd = (status: string) => {
+  const handleAdd = (status: string, tagColor?: string) => {
     setShowMenu(false);
-    mutation.mutate(status);
+    mutation.mutate({ status, tagColor });
   };
 
   const scoreColor =
@@ -141,22 +158,54 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
               ) : "+"}
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-9 bg-popover border border-border rounded-lg shadow-xl py-1 w-32 z-20">
-                {WATCH_STATUSES.map((s) => (
+              <div className="absolute right-0 top-9 bg-popover border border-border rounded-lg shadow-xl py-1 w-52 z-20">
+                {availableTags.map((tag) => {
+                  const color = resolveTagColor(tag.tag, tag.color);
+                  return (
                   <button
-                    key={s}
+                    key={tag.tag}
                     onClick={(e) => {
                       e.preventDefault();
-                      handleAdd(s);
+                      handleAdd(tag.tag);
                     }}
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left"
                   >
                     <span
-                      className={`h-2 w-2 rounded-full ${STATUS_COLORS[s]}`}
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: color }}
                     />
-                    {s}
+                    {tag.tag}
                   </button>
-                ))}
+                  );
+                })}
+                <div className="mt-1 border-t border-border px-2 pt-2 pb-1 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={customTag}
+                      onChange={(e) => setCustomTag(e.target.value)}
+                      placeholder="New tag"
+                      className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+                    />
+                    <input
+                      type="color"
+                      value={customColor}
+                      onChange={(e) => setCustomColor(e.target.value)}
+                      className="h-7 w-8 rounded border border-input bg-background p-0.5"
+                      aria-label="Tag color"
+                    />
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const tag = customTag.trim();
+                      if (!tag) return;
+                      handleAdd(tag, customColor);
+                    }}
+                    className="h-7 w-full rounded-md bg-primary text-primary-foreground text-xs"
+                  >
+                    Add custom tag
+                  </button>
+                </div>
               </div>
             )}
           </div>

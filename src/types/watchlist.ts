@@ -1,4 +1,4 @@
-import { WatchStatus } from "../config";
+export type WatchTag = string;
 
 export interface UserInfo {
   id: string;
@@ -6,13 +6,13 @@ export interface UserInfo {
 }
 
 export interface WatchedAnime {
-  status: WatchStatus;
+  status: WatchTag;
   id: string;
   [key: string]: string | number;
 }
 
 export interface WatchedManga {
-  status: WatchStatus;
+  status: WatchTag;
   id: string;
   [key: string]: string | number;
 }
@@ -25,6 +25,12 @@ export interface WatchlistData {
 export interface MangaWatchlistData {
   user: UserInfo;
   manga: Record<string, WatchedManga>;
+}
+
+export interface WatchlistTag {
+  tag: WatchTag;
+  count: number;
+  color: string;
 }
 
 export interface UserAnimeListItem {
