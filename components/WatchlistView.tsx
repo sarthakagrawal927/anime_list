@@ -39,6 +39,7 @@ function WatchlistSkeleton() {
 export default function WatchlistView() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("");
+  const [showListSettings, setShowListSettings] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#10b981");
   const [tagDrafts, setTagDrafts] = useState<Record<string, { tag: string; color: string }>>({});
@@ -165,145 +166,155 @@ export default function WatchlistView() {
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-2 flex-wrap">
-        {tags.map((tag) => {
-          const isActive = activeTab === tag.tag;
-          const color = resolveTagColor(tag.tag, tag.color);
-          return (
-            <button
-              key={tag.id}
-              onClick={() => setActiveTab(tag.tag)}
-              className={cn(
-                "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
-                isActive ? "" : "text-muted-foreground hover:text-foreground"
-              )}
-              style={
-                isActive
-                  ? {
-                      color,
-                      borderColor: toRgba(color, 0.45),
-                      backgroundColor: toRgba(color, 0.15),
-                    }
-                  : {
-                      color,
-                      borderColor: toRgba(color, 0.3),
-                    }
-              }
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-              {tag.tag}
-              <span className="text-xs opacity-60">({tag.count})</span>
-            </button>
-          );
-        })}
-        {tags.length === 0 && (
-          <span className="text-sm text-muted-foreground">No tags yet</span>
-        )}
-      </div>
-
-      <div className="rounded-lg border border-border p-3 space-y-3">
-        <h3 className="text-sm font-medium text-foreground">Manage Lists</h3>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            placeholder="New list name"
-            className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
-          />
-          <input
-            type="color"
-            value={newTagColor}
-            onChange={(e) => setNewTagColor(e.target.value)}
-            className="h-8 w-9 rounded border border-input bg-background p-0.5"
-            aria-label="New list color"
-          />
-          <button
-            onClick={() => {
-              const tag = newTagName.trim();
-              if (!tag) return;
-              createTagMutation.mutate(
-                { tag, color: newTagColor },
-                {
-                  onSuccess: () => {
-                    setNewTagName("");
-                    setActiveTab(tag);
-                  },
-                },
-              );
-            }}
-            disabled={createTagMutation.isPending}
-            className="h-8 rounded-md px-3 text-xs bg-primary text-primary-foreground disabled:opacity-60"
-          >
-            Add List
-          </button>
-        </div>
-
-        <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
           {tags.map((tag) => {
-            const draft = tagDrafts[tag.id] || {
-              tag: tag.tag,
-              color: resolveTagColor(tag.tag, tag.color),
-            };
+            const isActive = activeTab === tag.tag;
+            const color = resolveTagColor(tag.tag, tag.color);
             return (
-              <div key={`${tag.id}-manage`} className="flex flex-wrap items-center gap-2">
-                <input
-                  value={draft.tag}
-                  onChange={(e) =>
-                    setTagDrafts((prev) => ({
-                      ...prev,
-                      [tag.id]: {
-                        ...draft,
-                        tag: e.target.value,
-                      },
-                    }))
-                  }
-                  className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
-                />
-                <input
-                  type="color"
-                  value={draft.color}
-                  onChange={(e) =>
-                    setTagDrafts((prev) => ({
-                      ...prev,
-                      [tag.id]: {
-                        ...draft,
-                        color: e.target.value,
-                      },
-                    }))
-                  }
-                  className="h-8 w-9 rounded border border-input bg-background p-0.5"
-                  aria-label={`${tag.tag} color`}
-                />
-                <button
-                  onClick={() =>
-                    updateTagMutation.mutate({
-                      tagId: tag.id,
-                      tag: draft.tag.trim(),
-                      color: draft.color,
-                    })
-                  }
-                  disabled={updateTagMutation.isPending}
-                  className="h-8 rounded-md px-2 text-xs border border-border hover:bg-accent disabled:opacity-60"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    if (!window.confirm(`Delete list "${tag.tag}"? Items will be moved automatically.`)) {
-                      return;
-                    }
-                    deleteTagMutation.mutate({ tagId: tag.id });
-                  }}
-                  disabled={deleteTagMutation.isPending}
-                  className="h-8 rounded-md px-2 text-xs border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-60"
-                >
-                  Delete
-                </button>
-              </div>
+              <button
+                key={tag.id}
+                onClick={() => setActiveTab(tag.tag)}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-200",
+                  isActive ? "" : "text-muted-foreground hover:text-foreground"
+                )}
+                style={
+                  isActive
+                    ? {
+                        color,
+                        borderColor: toRgba(color, 0.45),
+                        backgroundColor: toRgba(color, 0.15),
+                      }
+                    : {
+                        color,
+                        borderColor: toRgba(color, 0.3),
+                      }
+                }
+              >
+                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+                {tag.tag}
+                <span className="text-xs opacity-60">({tag.count})</span>
+              </button>
             );
           })}
+          {tags.length === 0 && (
+            <span className="text-sm text-muted-foreground">No tags yet</span>
+          )}
         </div>
+        <button
+          onClick={() => setShowListSettings((prev) => !prev)}
+          className="h-8 rounded-md px-3 text-xs border border-border hover:bg-accent"
+        >
+          {showListSettings ? "Close Settings" : "List Settings"}
+        </button>
       </div>
+
+      {showListSettings && (
+        <div className="rounded-lg border border-border p-3 space-y-3">
+          <h3 className="text-sm font-medium text-foreground">Manage Lists</h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="New list name"
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
+            />
+            <input
+              type="color"
+              value={newTagColor}
+              onChange={(e) => setNewTagColor(e.target.value)}
+              className="h-8 w-9 rounded border border-input bg-background p-0.5"
+              aria-label="New list color"
+            />
+            <button
+              onClick={() => {
+                const tag = newTagName.trim();
+                if (!tag) return;
+                createTagMutation.mutate(
+                  { tag, color: newTagColor },
+                  {
+                    onSuccess: () => {
+                      setNewTagName("");
+                      setActiveTab(tag);
+                    },
+                  },
+                );
+              }}
+              disabled={createTagMutation.isPending}
+              className="h-8 rounded-md px-3 text-xs bg-primary text-primary-foreground disabled:opacity-60"
+            >
+              Add List
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {tags.map((tag) => {
+              const draft = tagDrafts[tag.id] || {
+                tag: tag.tag,
+                color: resolveTagColor(tag.tag, tag.color),
+              };
+              return (
+                <div key={`${tag.id}-manage`} className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={draft.tag}
+                    onChange={(e) =>
+                      setTagDrafts((prev) => ({
+                        ...prev,
+                        [tag.id]: {
+                          ...draft,
+                          tag: e.target.value,
+                        },
+                      }))
+                    }
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs min-w-[180px]"
+                  />
+                  <input
+                    type="color"
+                    value={draft.color}
+                    onChange={(e) =>
+                      setTagDrafts((prev) => ({
+                        ...prev,
+                        [tag.id]: {
+                          ...draft,
+                          color: e.target.value,
+                        },
+                      }))
+                    }
+                    className="h-8 w-9 rounded border border-input bg-background p-0.5"
+                    aria-label={`${tag.tag} color`}
+                  />
+                  <button
+                    onClick={() =>
+                      updateTagMutation.mutate({
+                        tagId: tag.id,
+                        tag: draft.tag.trim(),
+                        color: draft.color,
+                      })
+                    }
+                    disabled={updateTagMutation.isPending}
+                    className="h-8 rounded-md px-2 text-xs border border-border hover:bg-accent disabled:opacity-60"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!window.confirm(`Delete list "${tag.tag}"? Items will be moved automatically.`)) {
+                        return;
+                      }
+                      deleteTagMutation.mutate({ tagId: tag.id });
+                    }}
+                    disabled={deleteTagMutation.isPending}
+                    className="h-8 rounded-md px-2 text-xs border border-destructive/40 text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                  >
+                    Delete
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">

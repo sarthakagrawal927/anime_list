@@ -423,7 +423,7 @@ app.get("/api/watchlist/enriched", requireAuth, async (c) => {
     return {
       mal_id: entry.id,
       watchStatus: entry.status,
-      title: anime?.title || entry.title || `ID: ${entry.id}`,
+      title: anime?.title_english || anime?.title || entry.title || `ID: ${entry.id}`,
       image: anime?.image,
       score: anime?.score,
       year: anime?.year,
