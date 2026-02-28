@@ -424,7 +424,7 @@ export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateUserTagsTable();
   await migrateWatchlistToTagIds();
-  await migrateLegacyTagsToDone();
+  // Keep user-created and restored tags intact; do not auto-collapse legacy names into Done.
   await migrateAnimeDataTable();
   await migrateWatchlistIndexes();
   await migrateAnimeCreatedAt();
