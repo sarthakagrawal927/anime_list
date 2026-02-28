@@ -61,6 +61,8 @@ type Env = {
   GOOGLE_CLIENT_ID: string;
 };
 
+const SEARCH_CACHE_TTL_SECONDS = 180;
+
 // ── JWT helpers (using jose instead of jsonwebtoken) ───────────────────
 
 const getJwtSecret = () =>
@@ -88,6 +90,40 @@ function extractBearerToken(header: string | undefined): string | null {
   if (header?.startsWith("Bearer ")) return header.slice(7);
   return null;
 }
+
+const toHex = (buffer: ArrayBuffer): string =>
+  Array.from(new Uint8Array(buffer))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+const buildSearchCacheRequest = async (
+  origin: string,
+  payload: {
+    filters: unknown;
+    sortBy: string | undefined;
+    airing: "yes" | "no" | "any";
+    pagesize: number;
+    offset: number;
+  }
+): Promise<Request> => {
+  const normalizedPayload = {
+    filters: payload.filters,
+    sortBy: payload.sortBy ?? null,
+    airing: payload.airing,
+    pagesize: payload.pagesize,
+    offset: payload.offset,
+  };
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(JSON.stringify(normalizedPayload))
+  );
+  const key = toHex(digest);
+  const cacheUrl = new URL("https://mal-cache.local/api/search");
+  cacheUrl.searchParams.set("v", "1");
+  cacheUrl.searchParams.set("k", key);
+  cacheUrl.searchParams.set("o", origin || "none");
+  return new Request(cacheUrl.toString(), { method: "GET" });
+};
 
 // ── Google OAuth (using jose JWKS instead of google-auth-library) ──────
 
@@ -235,6 +271,7 @@ app.get("/api/changelog", async (c) => {
 
 // Search
 app.post("/api/search", optionalAuth, async (c) => {
+  const edgeCache = (caches as unknown as { default: Cache }).default;
   const body = await c.req.json();
   const parsed = filterRequestSchema.safeParse(body);
   if (!parsed.success) {
@@ -252,6 +289,21 @@ app.post("/api/search", optionalAuth, async (c) => {
   const { filters, sortBy, airing, hideWatched, pagesize, offset } =
     parsed.data;
   const user = c.get("user");
+  const canUseCache = hideWatched.length === 0;
+  let cacheRequest: Request | null = null;
+
+  if (canUseCache) {
+    cacheRequest = await buildSearchCacheRequest(
+      c.req.header("origin") || "none",
+      { filters, sortBy, airing, pagesize, offset }
+    );
+    const cachedResponse = await edgeCache.match(cacheRequest);
+    if (cachedResponse) {
+      const response = new Response(cachedResponse.body, cachedResponse);
+      response.headers.set("X-Search-Cache", "HIT");
+      return response;
+    }
+  }
 
   let filtered = await filterAnimeList(filters);
 
@@ -275,7 +327,7 @@ app.post("/api/search", optionalAuth, async (c) => {
 
   const sorted = getScoreSortedList(filtered, filters, sortBy);
 
-  return c.json({
+  const response = c.json({
     totalFiltered: filtered.length,
     filteredList: takePage(sorted, pagesize, offset).map((anime) => ({
       id: anime.mal_id,
@@ -295,6 +347,20 @@ app.post("/api/search", optionalAuth, async (c) => {
       image: anime.image,
     })),
   });
+
+  if (!canUseCache || !cacheRequest) {
+    response.headers.set("X-Search-Cache", "BYPASS");
+    return response;
+  }
+
+  response.headers.set("X-Search-Cache", "MISS");
+  const cacheableResponse = new Response(response.body, response);
+  cacheableResponse.headers.set(
+    "Cache-Control",
+    `public, max-age=0, s-maxage=${SEARCH_CACHE_TTL_SECONDS}`
+  );
+  c.executionCtx.waitUntil(edgeCache.put(cacheRequest, cacheableResponse.clone()));
+  return cacheableResponse;
 });
 
 // Stats
