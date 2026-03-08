@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/lib/auth";
 import { QueryProvider } from "@/lib/query-provider";
 import FeedbackWidgetWrapper from "@/components/FeedbackWidgetWrapper";
+import { SaasMakerAnalytics } from "@/components/SaasMakerAnalytics";
 
 export const metadata: Metadata = {
   title: {
@@ -83,6 +84,7 @@ export default function RootLayout({
               <Navigation />
               <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
               <Footer />
+              <SaasMakerAnalytics />
               <FeedbackWidgetWrapper />
             </AuthProvider>
           </QueryProvider>
