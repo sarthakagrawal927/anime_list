@@ -38,6 +38,21 @@ import {
   watchlistTagUpdateSchema,
 } from "./validators/watchlistTags";
 import {
+  addToScheduleSchema,
+  updateScheduleItemSchema,
+  removeFromScheduleSchema,
+  reorderScheduleSchema,
+} from "./validators/schedule";
+import {
+  getSchedule,
+  initScheduleTable,
+  upsertScheduleItems,
+  updateScheduleItem as dbUpdateScheduleItem,
+  removeScheduleItems,
+  reorderSchedule as dbReorderSchedule,
+} from "./db/schedule";
+import { computeTimeline } from "./controllers/scheduleController";
+import {
   NUMERIC_FIELDS,
   ARRAY_FIELDS,
   STRING_FIELDS,
@@ -150,6 +165,7 @@ app.use("*", async (_c, next) => {
   if (!dbInitialized) {
     await initUsersTable();
     await initWatchlistTables();
+    await initScheduleTable();
     dbInitialized = true;
   }
   await next();
@@ -543,6 +559,84 @@ app.post("/api/watched/remove", requireAuth, async (c) => {
   const user = c.get("user")!;
   await deleteFromAnimeWatchlist(parsed.data.mal_ids, user.userId);
   return c.json({ success: true, message: "Anime removed from watchlist" });
+});
+
+// Schedule
+app.get("/api/schedule/timeline", requireAuth, async (c) => {
+  const user = c.get("user")!;
+  const scheduleRows = await getSchedule(user.userId);
+  const watchlist = await getAnimeWatchlist(user.userId);
+  const allAnime = await animeStore.getAnimeList();
+  const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
+
+  const items = scheduleRows.map((row) => {
+    const anime = animeMap.get(row.mal_id);
+    const watched = watchlist?.anime[row.mal_id];
+    return {
+      mal_id: row.mal_id,
+      episodes_per_day: row.episodes_per_day,
+      sort_order: row.sort_order,
+      title: anime?.title_english || anime?.title || (watched?.title as string | undefined) || `ID: ${row.mal_id}`,
+      image: anime?.image,
+      episodes: anime?.episodes,
+      type: anime?.type,
+      score: anime?.score,
+      url: anime?.url,
+      watchStatus: watched?.status || "",
+    };
+  });
+
+  const { timeline, stats } = computeTimeline(items);
+  return c.json({ items, timeline, stats });
+});
+
+app.post("/api/schedule/add", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = addToScheduleSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid schedule payload", details: parsed.error.issues }, 400);
+  }
+  const user = c.get("user")!;
+  await upsertScheduleItems(
+    user.userId,
+    parsed.data.mal_ids.map((id) => ({ malId: id, episodesPerDay: parsed.data.episodes_per_day })),
+  );
+  return c.json({ success: true, message: "Added to schedule" });
+});
+
+app.post("/api/schedule/:malId/update", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = updateScheduleItemSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid schedule update payload", details: parsed.error.issues }, 400);
+  }
+  const user = c.get("user")!;
+  await dbUpdateScheduleItem(user.userId, c.req.param("malId"), {
+    episodesPerDay: parsed.data.episodes_per_day,
+  });
+  return c.json({ success: true, message: "Schedule item updated" });
+});
+
+app.post("/api/schedule/remove", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = removeFromScheduleSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid schedule payload", details: parsed.error.issues }, 400);
+  }
+  const user = c.get("user")!;
+  await removeScheduleItems(user.userId, parsed.data.mal_ids);
+  return c.json({ success: true, message: "Removed from schedule" });
+});
+
+app.post("/api/schedule/reorder", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const parsed = reorderScheduleSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid schedule reorder payload", details: parsed.error.issues }, 400);
+  }
+  const user = c.get("user")!;
+  await dbReorderSchedule(user.userId, parsed.data.mal_ids);
+  return c.json({ success: true, message: "Schedule reordered" });
 });
 
 // ── Export ──────────────────────────────────────────────────────────────

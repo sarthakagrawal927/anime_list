@@ -420,6 +420,24 @@ export async function migrateAnimeCreatedAt(): Promise<void> {
   await db.execute("UPDATE anime_data SET created_at = updated_at WHERE created_at IS NULL");
 }
 
+export async function migrateScheduleTable(): Promise<void> {
+  const exists = await tableExists("anime_schedule");
+  if (exists) return;
+
+  const db = getDb();
+  console.log("Creating anime_schedule table...");
+  await db.batch([
+    `CREATE TABLE IF NOT EXISTS anime_schedule (
+      user_id TEXT NOT NULL,
+      mal_id TEXT NOT NULL,
+      episodes_per_day INTEGER NOT NULL DEFAULT 3,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (user_id, mal_id)
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_schedule_user ON anime_schedule(user_id)",
+  ]);
+}
+
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateUserTagsTable();
@@ -428,5 +446,6 @@ export async function runAllMigrations(): Promise<void> {
   await migrateAnimeDataTable();
   await migrateWatchlistIndexes();
   await migrateAnimeCreatedAt();
+  await migrateScheduleTable();
   console.log("All migrations completed");
 }
