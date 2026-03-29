@@ -10,6 +10,7 @@ import {
   getEnrichedWatchlist,
   getScheduleTimeline,
   removeFromSchedule,
+  updateScheduleItem,
   reorderSchedule,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -51,10 +52,12 @@ function buildTimeline(items: ScheduleItem[], epd: number): {
 
   for (const item of items) {
     const totalEps = item.episodes ?? 0;
-    if (totalEps === 0) continue;
-    totalEpisodes += totalEps;
-    let epsRemaining = totalEps;
-    let currentEp = 1;
+    const watched = item.episodes_watched ?? 0;
+    const remaining = Math.max(0, totalEps - watched);
+    if (remaining === 0) continue;
+    totalEpisodes += remaining;
+    let epsRemaining = remaining;
+    let currentEp = watched + 1;
 
     while (epsRemaining > 0) {
       if (dayCapacityLeft === 0) {
@@ -173,6 +176,31 @@ export default function ScheduleView() {
   });
 
   const SCHEDULE_KEY = ["schedule", "timeline"];
+
+  const watchedMutation = useMutation({
+    mutationFn: ({ malId, watched }: { malId: string; watched: number }) =>
+      updateScheduleItem(malId, { episodes_watched: watched }),
+    onMutate: async ({ malId, watched }) => {
+      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
+      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((i: ScheduleItem) =>
+            i.mal_id === malId ? { ...i, episodes_watched: watched } : i,
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
+    },
+  });
 
   const removeMutation = useMutation({
     mutationFn: (malIds: number[]) => removeFromSchedule(malIds),
@@ -457,12 +485,28 @@ export default function ScheduleView() {
 
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                   <span className="text-sm font-medium truncate">{item.title}</span>
-                  <div className="flex gap-2 text-xs text-muted-foreground">
-                    {item.episodes && <span>{item.episodes} eps</span>}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {item.episodes != null && (
+                      <span className="inline-flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          max={item.episodes}
+                          value={item.episodes_watched ?? 0}
+                          onChange={(e) => {
+                            const val = Math.max(0, Math.min(item.episodes ?? 0, Number(e.target.value) || 0));
+                            watchedMutation.mutate({ malId: item.mal_id, watched: val });
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-5 w-10 rounded border border-input bg-background px-0.5 text-[11px] text-center"
+                        />
+                        <span>/ {item.episodes}</span>
+                      </span>
+                    )}
                     {item.type && <span>{item.type}</span>}
-                    {item.episodes && (
+                    {item.episodes != null && (
                       <span className="text-primary">
-                        {Math.ceil(item.episodes / epd)} days
+                        {Math.ceil(Math.max(0, item.episodes - (item.episodes_watched ?? 0)) / epd)} days left
                       </span>
                     )}
                   </div>

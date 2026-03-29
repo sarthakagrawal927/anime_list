@@ -432,10 +432,21 @@ export async function migrateScheduleTable(): Promise<void> {
       mal_id TEXT NOT NULL,
       episodes_per_day INTEGER NOT NULL DEFAULT 3,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      episodes_watched INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (user_id, mal_id)
     )`,
     "CREATE INDEX IF NOT EXISTS idx_schedule_user ON anime_schedule(user_id)",
   ]);
+}
+
+export async function migrateScheduleEpisodesWatched(): Promise<void> {
+  const db = getDb();
+  const exists = await tableExists("anime_schedule");
+  if (!exists) return;
+  const col = await hasColumn("anime_schedule", "episodes_watched");
+  if (col) return;
+  console.log("Adding episodes_watched column to anime_schedule...");
+  await db.execute("ALTER TABLE anime_schedule ADD COLUMN episodes_watched INTEGER NOT NULL DEFAULT 0");
 }
 
 export async function runAllMigrations(): Promise<void> {
@@ -447,5 +458,6 @@ export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistIndexes();
   await migrateAnimeCreatedAt();
   await migrateScheduleTable();
+  await migrateScheduleEpisodesWatched();
   console.log("All migrations completed");
 }

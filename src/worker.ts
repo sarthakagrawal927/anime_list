@@ -576,6 +576,7 @@ app.get("/api/schedule/timeline", requireAuth, async (c) => {
       mal_id: row.mal_id,
       episodes_per_day: row.episodes_per_day,
       sort_order: row.sort_order,
+      episodes_watched: row.episodes_watched,
       title: anime?.title_english || anime?.title || (watched?.title as string | undefined) || `ID: ${row.mal_id}`,
       image: anime?.image,
       episodes: anime?.episodes,
@@ -613,6 +614,7 @@ app.post("/api/schedule/:malId/update", requireAuth, async (c) => {
   const user = c.get("user")!;
   await dbUpdateScheduleItem(user.userId, c.req.param("malId"), {
     episodesPerDay: parsed.data.episodes_per_day,
+    episodesWatched: parsed.data.episodes_watched,
   });
   return c.json({ success: true, message: "Schedule item updated" });
 });

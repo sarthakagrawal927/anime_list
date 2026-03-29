@@ -4,6 +4,7 @@ export interface ScheduleRow {
   mal_id: string;
   episodes_per_day: number;
   sort_order: number;
+  episodes_watched: number;
 }
 
 export async function initScheduleTable(): Promise<void> {
@@ -23,7 +24,7 @@ export async function initScheduleTable(): Promise<void> {
 export async function getSchedule(userId: string): Promise<ScheduleRow[]> {
   const db = getDb();
   const result = await db.execute({
-    sql: `SELECT mal_id, episodes_per_day, sort_order
+    sql: `SELECT mal_id, episodes_per_day, sort_order, COALESCE(episodes_watched, 0) AS episodes_watched
           FROM anime_schedule
           WHERE user_id = ?
           ORDER BY sort_order ASC`,
@@ -34,6 +35,7 @@ export async function getSchedule(userId: string): Promise<ScheduleRow[]> {
     mal_id: row.mal_id as string,
     episodes_per_day: Number(row.episodes_per_day),
     sort_order: Number(row.sort_order),
+    episodes_watched: Number(row.episodes_watched),
   }));
 }
 
@@ -66,7 +68,7 @@ export async function upsertScheduleItems(
 export async function updateScheduleItem(
   userId: string,
   malId: string,
-  updates: { episodesPerDay?: number; sortOrder?: number },
+  updates: { episodesPerDay?: number; sortOrder?: number; episodesWatched?: number },
 ): Promise<void> {
   const db = getDb();
   const sets: string[] = [];
@@ -79,6 +81,10 @@ export async function updateScheduleItem(
   if (updates.sortOrder !== undefined) {
     sets.push("sort_order = ?");
     args.push(updates.sortOrder);
+  }
+  if (updates.episodesWatched !== undefined) {
+    sets.push("episodes_watched = ?");
+    args.push(updates.episodesWatched);
   }
 
   if (sets.length === 0) return;
