@@ -196,25 +196,76 @@ export default function ScheduleView() {
     },
   });
 
+  const SCHEDULE_KEY = ["schedule", "timeline"];
+
   const updateMutation = useMutation({
     mutationFn: ({ malId, episodesPerDay }: { malId: string; episodesPerDay: number }) =>
       updateScheduleItem(malId, episodesPerDay),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
+    onMutate: async ({ malId, episodesPerDay }) => {
+      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
+      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
+        if (!old) return old;
+        return {
+          ...old,
+          items: old.items.map((i: ScheduleItem) =>
+            i.mal_id === malId ? { ...i, episodes_per_day: episodesPerDay } : i,
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (malIds: number[]) => removeFromSchedule(malIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
+    onMutate: async (malIds) => {
+      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
+      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+      const removeSet = new Set(malIds.map(String));
+      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
+        if (!old) return old;
+        return { ...old, items: old.items.filter((i: ScheduleItem) => !removeSet.has(i.mal_id)) };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: (malIds: string[]) => reorderSchedule(malIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
+    onMutate: async (orderedIds) => {
+      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
+      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
+        if (!old) return old;
+        const map = new Map(old.items.map((i: ScheduleItem) => [i.mal_id, i]));
+        const reordered = orderedIds
+          .map((id, i) => {
+            const item = map.get(id);
+            return item ? { ...item, sort_order: i } : null;
+          })
+          .filter(Boolean) as ScheduleItem[];
+        return { ...old, items: reordered };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
     },
   });
 
@@ -223,8 +274,20 @@ export default function ScheduleView() {
       await removeFromSchedule([Number(malId)]);
       await addToWatchlist([Number(malId)], "Done");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["schedule"] });
+    onMutate: async (malId) => {
+      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
+      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
+        if (!old) return old;
+        return { ...old, items: old.items.filter((i: ScheduleItem) => i.mal_id !== malId) };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
   });
