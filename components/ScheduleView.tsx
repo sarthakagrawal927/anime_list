@@ -28,8 +28,8 @@ function buildTimeline(items: ScheduleItem[], epd: number): {
   today.setHours(0, 0, 0, 0);
 
   let currentDay = 0;
+  let dayCapacityLeft = epd;
   let totalEpisodes = 0;
-  let dayPartial = false;
 
   const dateForDay = (day: number): string => {
     const d = new Date(today);
@@ -56,27 +56,12 @@ function buildTimeline(items: ScheduleItem[], epd: number): {
     let epsRemaining = totalEps;
     let currentEp = 1;
 
-    if (dayPartial && epsRemaining > 0) {
-      const epsThisDay = Math.min(epd, epsRemaining);
-      const dayEntry = getOrCreateDay(currentDay);
-      dayEntry.entries.push({
-        mal_id: item.mal_id,
-        title: item.title,
-        image: item.image,
-        episodes_today: epsThisDay,
-        episode_range: [currentEp, currentEp + epsThisDay - 1],
-        is_final_day: epsRemaining === epsThisDay,
-      });
-      currentEp += epsThisDay;
-      epsRemaining -= epsThisDay;
-      if (epsRemaining > 0) {
-        currentDay++;
-        dayPartial = false;
-      }
-    }
-
     while (epsRemaining > 0) {
-      const epsThisDay = Math.min(epd, epsRemaining);
+      if (dayCapacityLeft === 0) {
+        currentDay++;
+        dayCapacityLeft = epd;
+      }
+      const epsThisDay = Math.min(dayCapacityLeft, epsRemaining);
       const dayEntry = getOrCreateDay(currentDay);
       dayEntry.entries.push({
         mal_id: item.mal_id,
@@ -88,17 +73,7 @@ function buildTimeline(items: ScheduleItem[], epd: number): {
       });
       currentEp += epsThisDay;
       epsRemaining -= epsThisDay;
-
-      if (epsRemaining > 0) {
-        currentDay++;
-        dayPartial = false;
-      } else {
-        dayPartial = epsThisDay < epd;
-        if (!dayPartial) {
-          currentDay++;
-          dayPartial = false;
-        }
-      }
+      dayCapacityLeft -= epsThisDay;
     }
   }
 
