@@ -50,7 +50,7 @@ export default function FilterBuilder() {
   const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault("score"));
   const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
-  const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
+  const [hideWatched, setHideWatched] = useQueryState("wt", parseAsArrayOf(parseAsString).withDefault([]));
   const [watchlistMode, setWatchlistMode] = useQueryState("wm", parseAsStringLiteral(["hide", "show"] as const).withDefault("hide"));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
