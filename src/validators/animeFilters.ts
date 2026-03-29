@@ -106,11 +106,15 @@ const airingSchema = z.enum(["yes", "no", "any"] as const);
 export const filterRequestSchema = z.object({
   filters: filtersSchema,
   hideWatched: z.array(watchTagSchema).default([]),
+  includeWatched: z.array(watchTagSchema).default([]),
   pagesize: z.number().int().min(1).default(20),
   offset: z.number().int().min(0).default(0),
   sortBy: numericFieldSchema.optional(),
   airing: airingSchema.default("any"),
-});
+}).refine(
+  (data) => !(data.hideWatched.length > 0 && data.includeWatched.length > 0),
+  { message: "Cannot use both hideWatched and includeWatched at the same time" }
+);
 
 export type FilterRequestBody = z.infer<typeof filterRequestSchema> & {
   sortBy?: NumericField;

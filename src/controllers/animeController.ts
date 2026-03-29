@@ -84,12 +84,19 @@ export const searchAnime = async (
   req: AuthRequest & Request<{}, {}, FilterRequestBody>,
   res: Response,
 ) => {
-  const { filters, sortBy, airing, hideWatched, pagesize, offset } = req.body;
+  const { filters, sortBy, airing, hideWatched, includeWatched, pagesize, offset } = req.body;
   const userId = req.user?.userId;
 
   let filtered = await filterAnimeList(filters);
   filtered = applyAiringFilter(airing, filtered);
-  if (userId) {
+  if (userId && includeWatched.length > 0) {
+    filtered = await includeOnlyWatchedItems(
+      filtered,
+      includeWatched,
+      () => getWatchedAnimeList(userId),
+      (list) => list.anime,
+    );
+  } else if (userId) {
     filtered = await hideWatchedItems(
       filtered,
       hideWatched,

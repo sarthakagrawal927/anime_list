@@ -286,10 +286,10 @@ app.post("/api/search", optionalAuth, async (c) => {
     );
   }
 
-  const { filters, sortBy, airing, hideWatched, pagesize, offset } =
+  const { filters, sortBy, airing, hideWatched, includeWatched, pagesize, offset } =
     parsed.data;
   const user = c.get("user");
-  const canUseCache = hideWatched.length === 0;
+  const canUseCache = hideWatched.length === 0 && includeWatched.length === 0;
   let cacheRequest: Request | null = null;
 
   if (canUseCache) {
@@ -315,8 +315,15 @@ app.post("/api/search", optionalAuth, async (c) => {
     });
   }
 
-  // Hide watched
-  if (user?.userId) {
+  // Watchlist filter
+  if (user?.userId && includeWatched.length > 0) {
+    filtered = await includeOnlyWatchedItems(
+      filtered,
+      includeWatched,
+      () => getAnimeWatchlist(user.userId),
+      (list) => list.anime
+    );
+  } else if (user?.userId) {
     filtered = await hideWatchedItems(
       filtered,
       hideWatched,

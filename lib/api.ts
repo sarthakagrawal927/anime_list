@@ -56,6 +56,7 @@ export function searchAnime(
     sortBy?: string;
     airing?: "yes" | "no" | "any";
     hideWatched?: string[];
+    includeWatched?: string[];
   } = {}
 ): Promise<SearchResponse> {
   return fetchJson(`${BASE}/search`, {
@@ -68,6 +69,7 @@ export function searchAnime(
       sortBy: opts.sortBy,
       airing: opts.airing ?? "any",
       hideWatched: opts.hideWatched ?? [],
+      includeWatched: opts.includeWatched ?? [],
     }),
   });
 }
