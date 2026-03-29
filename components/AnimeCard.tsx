@@ -4,13 +4,14 @@ import { useState } from "react";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AnimeSummary } from "@/lib/types";
-import { addToWatchlist, getWatchlistTags } from "@/lib/api";
+import { addToWatchlist, addToSchedule, getWatchlistTags } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { DEFAULT_WATCH_TAGS, resolveTagColor } from "@/lib/watchStatus";
 
 export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
   const [added, setAdded] = useState(false);
+  const [scheduled, setScheduled] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [customTag, setCustomTag] = useState("");
   const [customColor, setCustomColor] = useState("#10b981");
@@ -38,6 +39,15 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
       setCustomTag("");
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
       queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
+    },
+  });
+
+  const scheduleMutation = useMutation({
+    mutationFn: () => addToSchedule([anime.id]),
+    onSuccess: () => {
+      setScheduled(true);
+      setShowMenu(false);
+      queryClient.invalidateQueries({ queryKey: ["schedule"] });
     },
   });
 
@@ -178,7 +188,22 @@ export default function AnimeCard({ anime }: { anime: AnimeSummary }) {
                   </button>
                   );
                 })}
-                <div className="mt-1 border-t border-border px-2 pt-2 pb-1 space-y-1.5">
+                <div className="border-t border-border">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      scheduleMutation.mutate();
+                    }}
+                    disabled={scheduleMutation.isPending || scheduled}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left disabled:opacity-50"
+                  >
+                    <svg className="h-2 w-2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                    {scheduled ? "Scheduled" : "Add to Schedule"}
+                  </button>
+                </div>
+                <div className="border-t border-border px-2 pt-2 pb-1 space-y-1.5">
                   <div className="flex items-center gap-2">
                     <input
                       value={customTag}
