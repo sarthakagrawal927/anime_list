@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { EnrichedWatchlistItem, ScheduleItem, ScheduleTimelineDay, ScheduleTimelineEntry } from "@/lib/types";
@@ -154,6 +154,23 @@ export default function ScheduleView() {
   const dragIndexRef = useRef<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Debounce watched updates -- optimistic UI is instant, API call is debounced
+  const watchedTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const debouncedWatchedUpdate = useCallback(
+    (malId: string, watched: number) => {
+      const existing = watchedTimers.current.get(malId);
+      if (existing) clearTimeout(existing);
+      watchedTimers.current.set(
+        malId,
+        setTimeout(() => {
+          watchedTimers.current.delete(malId);
+          updateScheduleItem(malId, { episodes_watched: watched });
+        }, 500),
+      );
+    },
+    [],
+  );
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["schedule", "timeline"],
     queryFn: () => getScheduleTimeline(),
@@ -177,12 +194,9 @@ export default function ScheduleView() {
 
   const SCHEDULE_KEY = ["schedule", "timeline"];
 
-  const watchedMutation = useMutation({
-    mutationFn: ({ malId, watched }: { malId: string; watched: number }) =>
-      updateScheduleItem(malId, { episodes_watched: watched }),
-    onMutate: async ({ malId, watched }) => {
-      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
-      const previous = queryClient.getQueryData(SCHEDULE_KEY);
+  const setWatched = useCallback(
+    (malId: string, watched: number) => {
+      // Optimistic: update cache instantly
       queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
         if (!old) return old;
         return {
@@ -192,15 +206,11 @@ export default function ScheduleView() {
           ),
         };
       });
-      return { previous };
+      // Debounced: sync to server
+      debouncedWatchedUpdate(malId, watched);
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
-    },
-  });
+    [queryClient, debouncedWatchedUpdate, data],
+  );
 
   const removeMutation = useMutation({
     mutationFn: (malIds: number[]) => removeFromSchedule(malIds),
@@ -495,7 +505,7 @@ export default function ScheduleView() {
                           value={item.episodes_watched ?? 0}
                           onChange={(e) => {
                             const val = Math.max(0, Math.min(item.episodes ?? 0, Number(e.target.value) || 0));
-                            watchedMutation.mutate({ malId: item.mal_id, watched: val });
+                            setWatched(item.mal_id, val);
                           }}
                           onClick={(e) => e.stopPropagation()}
                           className="h-5 w-10 rounded border border-input bg-background px-0.5 text-[11px] text-center"
