@@ -37,6 +37,12 @@ interface Props {
   onRemove: (index: number) => void;
 }
 
+const MULTI_SELECT_FIELDS = new Set(["type", "season"]);
+
+function isMultiSelectField(field: string): boolean {
+  return MULTI_SELECT_FIELDS.has(field);
+}
+
 function getActionsForField(
   field: string,
   fields: FieldOptions,
@@ -44,11 +50,16 @@ function getActionsForField(
 ): string[] {
   if (fields.numeric.includes(field)) return [...actions.comparison];
   if (fields.array.includes(field)) return [...actions.array];
+  if (isMultiSelectField(field)) return [...actions.array];
   return ["EQUALS", "CONTAINS"];
 }
 
 function isArrayField(field: string, fields: FieldOptions): boolean {
   return fields.array.includes(field);
+}
+
+function supportsMultiSelect(field: string, fields: FieldOptions): boolean {
+  return fields.array.includes(field) || isMultiSelectField(field);
 }
 
 function getValueOptions(field: string): string[] | null {
@@ -70,17 +81,17 @@ export default function FilterRow({
 }: Props) {
   const allFields = [...fields.numeric, ...fields.array, ...fields.string];
   const availableActions = getActionsForField(filter.field, fields, actions);
-  const isArray = isArrayField(filter.field, fields);
+  const isArray = supportsMultiSelect(filter.field, fields);
   const valueOptions = getValueOptions(filter.field);
 
   const handleFieldChange = (field: string) => {
     const newActions = getActionsForField(field, fields, actions);
-    const newIsArray = isArrayField(field, fields);
+    const newIsMultiSelect = supportsMultiSelect(field, fields);
     onChange(index, {
       ...filter,
       field,
       action: newActions[0] || filter.action,
-      value: newIsArray ? [] : "",
+      value: newIsMultiSelect ? [] : "",
     });
   };
 
