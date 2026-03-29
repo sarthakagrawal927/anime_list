@@ -51,6 +51,7 @@ import {
   removeScheduleItems,
   reorderSchedule as dbReorderSchedule,
 } from "./db/schedule";
+import { migrateScheduleEpisodesWatched } from "./db/migrations";
 import { computeTimeline } from "./controllers/scheduleController";
 import {
   NUMERIC_FIELDS,
@@ -166,6 +167,7 @@ app.use("*", async (_c, next) => {
     await initUsersTable();
     await initWatchlistTables();
     await initScheduleTable();
+    await migrateScheduleEpisodesWatched();
     dbInitialized = true;
   }
   await next();
