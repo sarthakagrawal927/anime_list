@@ -123,6 +123,7 @@ export interface ScheduleItem {
   mal_id: string;
   episodes_per_day: number;
   sort_order: number;
+  episodes_watched: number;
   title: string;
   image?: string;
   episodes?: number;

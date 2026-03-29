@@ -15,6 +15,7 @@ interface EnrichedScheduleItem {
   mal_id: string;
   episodes_per_day: number;
   sort_order: number;
+  episodes_watched: number;
   title: string;
   image?: string;
   episodes?: number;
@@ -114,6 +115,7 @@ async function enrichScheduleItems(
       mal_id: row.mal_id,
       episodes_per_day: row.episodes_per_day,
       sort_order: row.sort_order,
+      episodes_watched: row.episodes_watched,
       title: anime?.title_english || anime?.title || (watched?.title as string | undefined) || `ID: ${row.mal_id}`,
       image: anime?.image,
       episodes: anime?.episodes,
@@ -148,6 +150,7 @@ export const updateScheduleEntry = async (req: AuthRequest, res: Response) => {
   const malId = req.params.malId;
   await dbUpdateScheduleItem(userId, malId, {
     episodesPerDay: req.body.episodes_per_day,
+    episodesWatched: req.body.episodes_watched,
   });
   res.json({ success: true, message: "Schedule item updated" });
 };

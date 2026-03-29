@@ -178,12 +178,12 @@ export function addToSchedule(
 
 export function updateScheduleItem(
   malId: string,
-  episodesPerDay: number,
+  payload: { episodes_watched?: number; episodes_per_day?: number },
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/schedule/${malId}/update`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ episodes_per_day: episodesPerDay }),
+    body: JSON.stringify(payload),
   });
 }
 
