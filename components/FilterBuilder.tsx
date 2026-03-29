@@ -51,6 +51,7 @@ export default function FilterBuilder() {
   const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("hide", parseAsArrayOf(parseAsString).withDefault([]));
+  const [watchlistMode, setWatchlistMode] = useQueryState("wm", parseAsStringLiteral(["hide", "show"] as const).withDefault("hide"));
   const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
 
@@ -135,10 +136,11 @@ export default function FilterBuilder() {
         offset,
         sortBy: sortBy || undefined,
         airing,
-        hideWatched,
+        hideWatched: watchlistMode === "hide" ? hideWatched : [],
+        includeWatched: watchlistMode === "show" ? hideWatched : [],
       },
     };
-  }, [filters, pagesize, offset, sortBy, airing, selectedGenres, searchText, hideWatched, showAdvanced]);
+  }, [filters, pagesize, offset, sortBy, airing, selectedGenres, searchText, hideWatched, watchlistMode, showAdvanced]);
 
   // Create stable query key from filter params
   const filterKey = JSON.stringify(buildSearchOpts());
@@ -194,6 +196,7 @@ export default function FilterBuilder() {
     setSortBy("score");
     setAiring("any");
     setHideWatched([]);
+    setWatchlistMode("hide");
     setShowAdvanced(false);
     setCurrentPage(1);
   };
@@ -367,7 +370,31 @@ export default function FilterBuilder() {
       {/* Hide watched (only when logged in) */}
       {user && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Hide watched:</span>
+          <div className="flex items-center gap-1 mr-1">
+            <button
+              onClick={() => { setWatchlistMode("hide"); resetPage(); }}
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full transition-all duration-200",
+                watchlistMode === "hide"
+                  ? "bg-primary/20 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Hide
+            </button>
+            <button
+              onClick={() => { setWatchlistMode("show"); resetPage(); }}
+              className={cn(
+                "text-xs px-2 py-0.5 rounded-full transition-all duration-200",
+                watchlistMode === "show"
+                  ? "bg-primary/20 text-primary font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Show only
+            </button>
+          </div>
+          <div className="w-px h-5 bg-border" />
           {watchlistTags.map((tag) => {
             const active = hideWatched.includes(tag.tag);
             const color = resolveTagColor(tag.tag, tag.color);
