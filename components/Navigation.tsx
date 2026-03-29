@@ -20,6 +20,7 @@ const links = [
   { href: "/", label: "Discover" },
   { href: "/stats", label: "Stats" },
   { href: "/watchlist", label: "Watchlist" },
+  { href: "/schedule", label: "Schedule" },
   { href: "/changelog", label: "Changelog" },
 ];
 

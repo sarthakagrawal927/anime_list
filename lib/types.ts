@@ -116,3 +116,44 @@ export interface WatchlistTag {
   count: number;
   color: string;
 }
+
+// Schedule types
+
+export interface ScheduleItem {
+  mal_id: string;
+  episodes_per_day: number;
+  sort_order: number;
+  title: string;
+  image?: string;
+  episodes?: number;
+  type?: string;
+  score?: number;
+  url?: string;
+  watchStatus: string;
+}
+
+export interface ScheduleTimelineEntry {
+  mal_id: string;
+  title: string;
+  image?: string;
+  episodes_today: number;
+  episode_range: [number, number];
+  is_final_day: boolean;
+}
+
+export interface ScheduleTimelineDay {
+  day: number;
+  date: string;
+  entries: ScheduleTimelineEntry[];
+}
+
+export interface ScheduleTimelineResponse {
+  items: ScheduleItem[];
+  timeline: ScheduleTimelineDay[];
+  stats: {
+    total_episodes: number;
+    total_days: number;
+    start_date: string;
+    finish_date: string;
+  };
+}

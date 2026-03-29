@@ -8,6 +8,12 @@ import {
   watchedListSchema,
 } from "../validators/watchedList";
 import {
+  addToScheduleSchema,
+  updateScheduleItemSchema,
+  removeFromScheduleSchema,
+  reorderScheduleSchema,
+} from "../validators/schedule";
+import {
   watchlistTagDeleteSchema,
   watchlistTagSchema,
   watchlistTagUpdateSchema,
@@ -30,6 +36,13 @@ import {
   updateWatchlistTag,
   searchAnime,
 } from "../controllers/animeController";
+import {
+  getScheduleTimeline,
+  addToScheduleHandler,
+  updateScheduleEntry,
+  removeFromScheduleHandler,
+  reorderScheduleHandler,
+} from "../controllers/scheduleController";
 
 const router = Router();
 const { routes } = SERVER_CONFIG;
@@ -91,6 +104,41 @@ router.post(
   userRateLimit,
   validate(watchedListRemoveSchema, { errorMessage: "Invalid watchlist payload" }),
   catcher(removeFromWatchlist)
+);
+
+// Schedule
+router.get(`${routes.base}/schedule/timeline`, requireAuth, catcher(getScheduleTimeline));
+
+router.post(
+  `${routes.base}/schedule/add`,
+  requireAuth,
+  userRateLimit,
+  validate(addToScheduleSchema, { errorMessage: "Invalid schedule payload" }),
+  catcher(addToScheduleHandler),
+);
+
+router.post(
+  `${routes.base}/schedule/:malId/update`,
+  requireAuth,
+  userRateLimit,
+  validate(updateScheduleItemSchema, { errorMessage: "Invalid schedule update payload" }),
+  catcher(updateScheduleEntry),
+);
+
+router.post(
+  `${routes.base}/schedule/remove`,
+  requireAuth,
+  userRateLimit,
+  validate(removeFromScheduleSchema, { errorMessage: "Invalid schedule payload" }),
+  catcher(removeFromScheduleHandler),
+);
+
+router.post(
+  `${routes.base}/schedule/reorder`,
+  requireAuth,
+  userRateLimit,
+  validate(reorderScheduleSchema, { errorMessage: "Invalid schedule reorder payload" }),
+  catcher(reorderScheduleHandler),
 );
 
 export default router;

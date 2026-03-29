@@ -7,6 +7,7 @@ import type {
   WatchlistData,
   EnrichedWatchlistResponse,
   WatchlistTag,
+  ScheduleTimelineResponse,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -155,6 +156,54 @@ export function deleteWatchlistTag(
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ moveToTagId }),
+  });
+}
+
+// Schedule
+
+export function getScheduleTimeline(): Promise<ScheduleTimelineResponse> {
+  return fetchJson(`${BASE}/schedule/timeline`, { headers: authHeaders() });
+}
+
+export function addToSchedule(
+  malIds: number[],
+  episodesPerDay: number = 3,
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/schedule/add`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ mal_ids: malIds, episodes_per_day: episodesPerDay }),
+  });
+}
+
+export function updateScheduleItem(
+  malId: string,
+  episodesPerDay: number,
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/schedule/${malId}/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ episodes_per_day: episodesPerDay }),
+  });
+}
+
+export function removeFromSchedule(
+  malIds: number[],
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/schedule/remove`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ mal_ids: malIds }),
+  });
+}
+
+export function reorderSchedule(
+  malIds: string[],
+): Promise<{ success: boolean; message: string }> {
+  return fetchJson(`${BASE}/schedule/reorder`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ mal_ids: malIds }),
   });
 }
 
