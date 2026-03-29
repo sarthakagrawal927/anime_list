@@ -10,7 +10,6 @@ import {
   getEnrichedWatchlist,
   getScheduleTimeline,
   removeFromSchedule,
-  updateScheduleItem,
   reorderSchedule,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -20,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 // ── Client-side timeline computation (uses local timezone) ─────────────
 
-function buildTimeline(items: ScheduleItem[]): {
+function buildTimeline(items: ScheduleItem[], epd: number): {
   timeline: ScheduleTimelineDay[];
   stats: { total_episodes: number; total_days: number; start_date: string; finish_date: string };
 } {
@@ -30,7 +29,6 @@ function buildTimeline(items: ScheduleItem[]): {
 
   let currentDay = 0;
   let totalEpisodes = 0;
-  // Track whether current day is partially filled (previous anime ended early)
   let dayPartial = false;
 
   const dateForDay = (day: number): string => {
@@ -55,11 +53,9 @@ function buildTimeline(items: ScheduleItem[]): {
     const totalEps = item.episodes ?? 0;
     if (totalEps === 0) continue;
     totalEpisodes += totalEps;
-    const epd = item.episodes_per_day;
     let epsRemaining = totalEps;
     let currentEp = 1;
 
-    // If current day is partially filled, start this anime on the same day
     if (dayPartial && epsRemaining > 0) {
       const epsThisDay = Math.min(epd, epsRemaining);
       const dayEntry = getOrCreateDay(currentDay);
@@ -77,10 +73,8 @@ function buildTimeline(items: ScheduleItem[]): {
         currentDay++;
         dayPartial = false;
       }
-      // else: this anime also ended partially (or exactly), dayPartial stays true
     }
 
-    // Full days for remaining episodes
     while (epsRemaining > 0) {
       const epsThisDay = Math.min(epd, epsRemaining);
       const dayEntry = getOrCreateDay(currentDay);
@@ -99,10 +93,8 @@ function buildTimeline(items: ScheduleItem[]): {
         currentDay++;
         dayPartial = false;
       } else {
-        // Last day of this anime — partial if fewer than full rate
         dayPartial = epsThisDay < epd;
         if (!dayPartial) {
-          // Full day used, next anime starts tomorrow
           currentDay++;
           dayPartial = false;
         }
@@ -167,8 +159,18 @@ export default function ScheduleView() {
   const { user, loading: authLoading } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [defaultEpd, setDefaultEpd] = useState(3);
+  const [epd, setEpd] = useState(() => {
+    if (typeof window === "undefined") return 3;
+    const saved = localStorage.getItem("mal_schedule_epd");
+    return saved ? Math.max(1, Number(saved) || 3) : 3;
+  });
   const queryClient = useQueryClient();
+
+  const updateEpd = (val: number) => {
+    const clamped = Math.max(1, Math.min(100, val));
+    setEpd(clamped);
+    localStorage.setItem("mal_schedule_epd", String(clamped));
+  };
 
   // Drag state
   const dragIndexRef = useRef<number | null>(null);
@@ -187,8 +189,7 @@ export default function ScheduleView() {
   });
 
   const addMutation = useMutation({
-    mutationFn: ({ malIds, epd }: { malIds: number[]; epd: number }) =>
-      addToSchedule(malIds, epd),
+    mutationFn: (malIds: number[]) => addToSchedule(malIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["schedule"] });
       setSelectedIds(new Set());
@@ -197,31 +198,6 @@ export default function ScheduleView() {
   });
 
   const SCHEDULE_KEY = ["schedule", "timeline"];
-
-  const updateMutation = useMutation({
-    mutationFn: ({ malId, episodesPerDay }: { malId: string; episodesPerDay: number }) =>
-      updateScheduleItem(malId, episodesPerDay),
-    onMutate: async ({ malId, episodesPerDay }) => {
-      await queryClient.cancelQueries({ queryKey: SCHEDULE_KEY });
-      const previous = queryClient.getQueryData(SCHEDULE_KEY);
-      queryClient.setQueryData(SCHEDULE_KEY, (old: typeof data) => {
-        if (!old) return old;
-        return {
-          ...old,
-          items: old.items.map((i: ScheduleItem) =>
-            i.mal_id === malId ? { ...i, episodes_per_day: episodesPerDay } : i,
-          ),
-        };
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(SCHEDULE_KEY, context.previous);
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: SCHEDULE_KEY });
-    },
-  });
 
   const removeMutation = useMutation({
     mutationFn: (malIds: number[]) => removeFromSchedule(malIds),
@@ -295,7 +271,7 @@ export default function ScheduleView() {
   const items: ScheduleItem[] = data?.items ?? [];
 
   // Compute timeline client-side for correct local timezone
-  const { timeline, stats } = useMemo(() => buildTimeline(items), [items]);
+  const { timeline, stats } = useMemo(() => buildTimeline(items, epd), [items, epd]);
 
   const scheduledIds = new Set(items.map((i) => i.mal_id));
   const availableWatchlist: EnrichedWatchlistItem[] = (watchlistData?.items ?? []).filter(
@@ -358,7 +334,18 @@ export default function ScheduleView() {
 
   return (
     <div className="space-y-5">
-      {/* Stats */}
+      {/* Ep/day control + Stats */}
+      <div className="flex items-center gap-3">
+        <label className="text-sm text-muted-foreground">Episodes per day</label>
+        <input
+          type="number"
+          min={1}
+          max={100}
+          value={epd}
+          onChange={(e) => updateEpd(Number(e.target.value) || 1)}
+          className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm text-center"
+        />
+      </div>
       {stats && items.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="p-3 text-center">
@@ -394,28 +381,16 @@ export default function ScheduleView() {
       {/* Anime picker */}
       {showPicker && (
         <Card className="p-3 space-y-3">
-          <div className="flex items-center gap-3 flex-wrap">
-            <label className="text-xs text-muted-foreground">Episodes/day:</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={defaultEpd}
-              onChange={(e) => setDefaultEpd(Math.max(1, Number(e.target.value) || 1))}
-              className="h-7 w-16 rounded border border-input bg-background px-2 text-xs text-center"
-            />
+          <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 if (selectedIds.size === 0) return;
-                addMutation.mutate({
-                  malIds: Array.from(selectedIds).map(Number),
-                  epd: defaultEpd,
-                });
+                addMutation.mutate(Array.from(selectedIds).map(Number));
               }}
               disabled={selectedIds.size === 0 || addMutation.isPending}
               className="h-7 rounded-md px-3 text-xs bg-primary text-primary-foreground disabled:opacity-50"
             >
-              Add {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+              Add {selectedIds.size > 0 ? `(${selectedIds.size})` : "selected"}
             </button>
           </div>
 
@@ -512,26 +487,10 @@ export default function ScheduleView() {
                     {item.type && <span>{item.type}</span>}
                     {item.episodes && (
                       <span className="text-primary">
-                        {Math.ceil(item.episodes / item.episodes_per_day)} days
+                        {Math.ceil(item.episodes / epd)} days
                       </span>
                     )}
                   </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <label className="text-[10px] text-muted-foreground">ep/day</label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={item.episodes_per_day}
-                    onChange={(e) => {
-                      const val = Math.max(1, Number(e.target.value) || 1);
-                      updateMutation.mutate({ malId: item.mal_id, episodesPerDay: val });
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-7 w-12 rounded border border-input bg-background px-1 text-xs text-center"
-                  />
                 </div>
 
                 <button
