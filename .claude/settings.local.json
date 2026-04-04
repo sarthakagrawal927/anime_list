@@ -52,7 +52,12 @@
       "Bash(npm run db:seed:*)",
       "Bash(tsx test:*)",
       "Bash(gh secret set:*)",
-      "Bash(gh secret:*)"
+      "Bash(gh secret:*)",
+      "Bash(gh run:*)",
+      "Bash(gh workflow:*)",
+      "mcp__claude_ai_Vercel__list_deployments",
+      "mcp__claude_ai_Vercel__get_project",
+      "Bash(npx wrangler:*)"
     ],
     "deny": []
   }
