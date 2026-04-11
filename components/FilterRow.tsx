@@ -87,10 +87,20 @@ export default function FilterRow({
   const handleFieldChange = (field: string) => {
     const newActions = getActionsForField(field, fields, actions);
     const newIsMultiSelect = supportsMultiSelect(field, fields);
+    
+    let defaultAction = newActions[0] || filter.action;
+    if (fields.numeric.includes(field)) {
+      if (field === "rank" || field === "popularity") {
+        defaultAction = "LESS_THAN_OR_EQUALS";
+      } else {
+        defaultAction = "GREATER_THAN_OR_EQUALS";
+      }
+    }
+
     onChange(index, {
       ...filter,
       field,
-      action: newActions[0] || filter.action,
+      action: defaultAction,
       value: newIsMultiSelect ? [] : "",
     });
   };

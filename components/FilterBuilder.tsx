@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const DEFAULT_FILTER: SearchFilter = {
   field: "score",
-  action: "GREATER_THAN",
+  action: "GREATER_THAN_OR_EQUALS",
   value: 7,
 };
 
