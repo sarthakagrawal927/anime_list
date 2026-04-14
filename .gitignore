@@ -12,3 +12,7 @@ next-env.d.ts
 # Keep cleaned_anime_data.json locally for seed script only
 anime_data.json
 cleaned_anime_data.json
+.env
+.env.*
+!.env.example
+.saasmaker.json
