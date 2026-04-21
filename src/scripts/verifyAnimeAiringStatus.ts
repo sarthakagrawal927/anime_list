@@ -7,7 +7,6 @@ import {
   applyAniListStatusUpdates,
   type AniListStatusRecord,
 } from "../services/anilistStatusSync";
-import { delay } from "../utils/file";
 
 dotenv.config({ path: ".env.local" });
 dotenv.config();
@@ -28,6 +27,9 @@ const QUERY = `
 const DEFAULT_BATCH_SIZE = 50;
 const DEFAULT_DELAY_MS = 800;
 const DEFAULT_MAX_RETRIES = 5;
+
+const delay = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 function getNumberArg(name: string, fallback: number): number {
   const prefix = `${name}=`;
