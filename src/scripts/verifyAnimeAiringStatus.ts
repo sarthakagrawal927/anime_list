@@ -25,7 +25,7 @@ const QUERY = `
 `;
 
 const DEFAULT_BATCH_SIZE = 50;
-const DEFAULT_DELAY_MS = 800;
+const DEFAULT_DELAY_MS = 2200;
 const DEFAULT_MAX_RETRIES = 5;
 
 const delay = (ms: number): Promise<void> =>
@@ -52,7 +52,8 @@ function ensureRequiredEnv(): void {
 
 async function fetchAniListBatch(
   malIds: number[],
-  maxRetries: number
+  maxRetries: number,
+  baseDelayMs: number
 ): Promise<AniListStatusRecord[]> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -96,9 +97,10 @@ async function fetchAniListBatch(
         throw error;
       }
 
-      const delayMs = Number.isFinite(retryAfterSeconds)
+      const delayMs =
+        Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
         ? retryAfterSeconds * 1000
-        : Math.min(30000, DEFAULT_DELAY_MS * 2 ** attempt);
+        : Math.min(60000, baseDelayMs * 2 ** attempt);
 
       console.warn(
         `AniList batch failed with ${statusCode ?? "network error"} on attempt ${attempt}/${maxRetries}. Retrying in ${delayMs}ms...`
@@ -135,7 +137,11 @@ async function main() {
   for (let offset = 0; offset < scopedAnimeList.length; offset += batchSize) {
     const batch = scopedAnimeList.slice(offset, offset + batchSize);
     const malIds = batch.map((anime) => anime.mal_id);
-    const updates = await fetchAniListBatch(malIds, DEFAULT_MAX_RETRIES);
+    const updates = await fetchAniListBatch(
+      malIds,
+      DEFAULT_MAX_RETRIES,
+      delayMs
+    );
     const { changedAnime, changes, missingMalIds } = applyAniListStatusUpdates(
       batch,
       updates
