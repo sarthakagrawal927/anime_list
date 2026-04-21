@@ -12,6 +12,7 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const BASE = `${API_URL}/api`;
+const DEFAULT_PAGE_SIZE = 40;
 
 function getAuthToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -65,7 +66,7 @@ export function searchAnime(
     headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({
       filters,
-      pagesize: opts.pagesize ?? 20,
+      pagesize: opts.pagesize ?? DEFAULT_PAGE_SIZE,
       offset: opts.offset ?? 0,
       sortBy: opts.sortBy,
       airing: opts.airing ?? "any",

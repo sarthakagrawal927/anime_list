@@ -27,6 +27,40 @@ const DEMOGRAPHICS = ["Shounen", "Shoujo", "Seinen", "Josei", "Kids"];
 
 const SEASONS = ["winter", "spring", "summer", "fall"];
 const TYPES = ["TV", "Movie", "OVA", "ONA", "Special", "Music"];
+const VALUE_SELECT_FIELDS = new Set(["type", "season"]);
+const TEXT_ACTIONS = ["CONTAINS", "EQUALS", "EXCLUDES"];
+const ENUM_ACTIONS = ["EQUALS", "EXCLUDES"];
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "Title",
+  title_english: "English Title",
+  synopsis: "Synopsis",
+  score: "Score",
+  scored_by: "Scored By",
+  rank: "Rank",
+  popularity: "Popularity",
+  members: "Members",
+  favorites: "Favorites",
+  year: "Year",
+  episodes: "Episodes",
+  genres: "Genres",
+  themes: "Themes",
+  demographics: "Demographics",
+  type: "Type",
+  season: "Season",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  EQUALS: "is",
+  CONTAINS: "contains",
+  EXCLUDES: "is not",
+  GREATER_THAN: "greater than",
+  GREATER_THAN_OR_EQUALS: "at least",
+  LESS_THAN: "less than",
+  LESS_THAN_OR_EQUALS: "at most",
+  INCLUDES_ALL: "includes all",
+  INCLUDES_ANY: "includes any",
+};
 
 interface Props {
   filter: SearchFilter;
@@ -37,10 +71,22 @@ interface Props {
   onRemove: (index: number) => void;
 }
 
-const MULTI_SELECT_FIELDS = new Set(["type", "season"]);
+function humanize(value: string): string {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
-function isMultiSelectField(field: string): boolean {
-  return MULTI_SELECT_FIELDS.has(field);
+function getFieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? humanize(field);
+}
+
+function getActionLabel(action: string): string {
+  return ACTION_LABELS[action] ?? humanize(action.toLowerCase());
+}
+
+function isValueSelectField(field: string): boolean {
+  return VALUE_SELECT_FIELDS.has(field);
 }
 
 function getActionsForField(
@@ -50,16 +96,36 @@ function getActionsForField(
 ): string[] {
   if (fields.numeric.includes(field)) return [...actions.comparison];
   if (fields.array.includes(field)) return [...actions.array];
-  if (isMultiSelectField(field)) return [...actions.array];
-  return ["EQUALS", "CONTAINS"];
+  if (isValueSelectField(field)) return [...ENUM_ACTIONS];
+  return [...TEXT_ACTIONS];
 }
 
 function isArrayField(field: string, fields: FieldOptions): boolean {
   return fields.array.includes(field);
 }
 
-function supportsMultiSelect(field: string, fields: FieldOptions): boolean {
-  return fields.array.includes(field) || isMultiSelectField(field);
+function getDefaultAction(
+  field: string,
+  fields: FieldOptions,
+  actions: FilterActions
+): string {
+  if (fields.numeric.includes(field)) {
+    return field === "rank" || field === "popularity"
+      ? "LESS_THAN_OR_EQUALS"
+      : "GREATER_THAN_OR_EQUALS";
+  }
+
+  if (fields.array.includes(field)) {
+    return actions.array.includes("INCLUDES_ANY")
+      ? "INCLUDES_ANY"
+      : actions.array[0] || "INCLUDES_ANY";
+  }
+
+  if (isValueSelectField(field)) {
+    return "EQUALS";
+  }
+
+  return "CONTAINS";
 }
 
 function getValueOptions(field: string): string[] | null {
@@ -81,41 +147,51 @@ export default function FilterRow({
 }: Props) {
   const allFields = [...fields.numeric, ...fields.array, ...fields.string];
   const availableActions = getActionsForField(filter.field, fields, actions);
-  const isArray = supportsMultiSelect(filter.field, fields);
+  const isArray = isArrayField(filter.field, fields);
   const valueOptions = getValueOptions(filter.field);
+  const fallbackAction =
+    availableActions[0] || getDefaultAction(filter.field, fields, actions);
+  const normalizedAction = availableActions.includes(filter.action)
+    ? filter.action
+    : fallbackAction;
+  const normalizedValue = isArray
+    ? Array.isArray(filter.value)
+      ? filter.value
+      : []
+    : Array.isArray(filter.value)
+      ? filter.value[0] ?? ""
+      : filter.value;
+  const normalizedFilter: SearchFilter = {
+    ...filter,
+    action: normalizedAction,
+    value: normalizedValue,
+  };
 
   const handleFieldChange = (field: string) => {
-    const newActions = getActionsForField(field, fields, actions);
-    const newIsMultiSelect = supportsMultiSelect(field, fields);
-    
-    let defaultAction = newActions[0] || filter.action;
-    if (fields.numeric.includes(field)) {
-      if (field === "rank" || field === "popularity") {
-        defaultAction = "LESS_THAN_OR_EQUALS";
-      } else {
-        defaultAction = "GREATER_THAN_OR_EQUALS";
-      }
-    }
-
     onChange(index, {
-      ...filter,
+      ...normalizedFilter,
       field,
-      action: defaultAction,
-      value: newIsMultiSelect ? [] : "",
+      action: getDefaultAction(field, fields, actions),
+      value: isArrayField(field, fields) ? [] : "",
     });
   };
 
   const handleValueChange = (value: string) => {
     if (isArray) {
-      const current = Array.isArray(filter.value) ? filter.value : [];
+      const current = Array.isArray(normalizedFilter.value)
+        ? normalizedFilter.value
+        : [];
       const updated = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value];
-      onChange(index, { ...filter, value: updated });
+      onChange(index, { ...normalizedFilter, value: updated });
     } else if (fields.numeric.includes(filter.field)) {
-      onChange(index, { ...filter, value: value === "" ? "" : Number(value) });
+      onChange(index, {
+        ...normalizedFilter,
+        value: value === "" ? "" : Number(value),
+      });
     } else {
-      onChange(index, { ...filter, value });
+      onChange(index, { ...normalizedFilter, value });
     }
   };
 
@@ -124,25 +200,27 @@ export default function FilterRow({
       {/* Field and Action selectors - stack on mobile, row on desktop */}
       <div className="flex gap-2 w-full sm:w-auto">
         <select
-          value={filter.field}
+          value={normalizedFilter.field}
           onChange={(e) => handleFieldChange(e.target.value)}
           className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[120px]"
         >
           {allFields.map((f) => (
             <option key={f} value={f}>
-              {f}
+              {getFieldLabel(f)}
             </option>
           ))}
         </select>
 
         <select
-          value={filter.action}
-          onChange={(e) => onChange(index, { ...filter, action: e.target.value })}
+          value={normalizedFilter.action}
+          onChange={(e) =>
+            onChange(index, { ...normalizedFilter, action: e.target.value })
+          }
           className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[140px]"
         >
           {availableActions.map((a) => (
             <option key={a} value={a}>
-              {a}
+              {getActionLabel(a)}
             </option>
           ))}
         </select>
@@ -167,7 +245,7 @@ export default function FilterRow({
         </div>
       ) : valueOptions ? (
         <select
-          value={filter.value as string}
+          value={typeof normalizedFilter.value === "string" ? normalizedFilter.value : ""}
           onChange={(e) => handleValueChange(e.target.value)}
           className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm w-full sm:flex-1"
         >
@@ -181,7 +259,7 @@ export default function FilterRow({
       ) : (
         <Input
           type={fields.numeric.includes(filter.field) ? "number" : "text"}
-          value={filter.value as string | number}
+          value={normalizedFilter.value as string | number}
           onChange={(e) => handleValueChange(e.target.value)}
           placeholder="Value..."
           className="h-9 sm:h-8 w-full sm:flex-1"

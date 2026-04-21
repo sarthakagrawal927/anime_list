@@ -71,6 +71,83 @@ export interface UpsertSummary {
   updated: { mal_id: number; title: string }[];
 }
 
+const UPSERT_BATCH_SIZE = 100;
+
+const buildAnimeUpsertStatement = (anime: AnimeItem) => ({
+  sql: `
+    INSERT INTO anime_data (
+      mal_id, url, title, title_english, type, episodes,
+      aired_from, aired_to, score, scored_by, rank, status,
+      popularity, members, favorites, synopsis, year, season,
+      image, genres, themes, demographics, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    ON CONFLICT(mal_id) DO UPDATE SET
+      url = excluded.url,
+      title = excluded.title,
+      title_english = excluded.title_english,
+      type = excluded.type,
+      episodes = excluded.episodes,
+      aired_from = excluded.aired_from,
+      aired_to = excluded.aired_to,
+      score = excluded.score,
+      scored_by = excluded.scored_by,
+      rank = excluded.rank,
+      status = excluded.status,
+      popularity = excluded.popularity,
+      members = excluded.members,
+      favorites = excluded.favorites,
+      synopsis = excluded.synopsis,
+      year = excluded.year,
+      season = excluded.season,
+      image = excluded.image,
+      genres = excluded.genres,
+      themes = excluded.themes,
+      demographics = excluded.demographics,
+      updated_at = datetime('now')
+  `,
+  args: [
+    anime.mal_id,
+    anime.url,
+    anime.title,
+    anime.title_english || null,
+    anime.type || null,
+    anime.episodes || null,
+    anime.aired?.from || null,
+    anime.aired?.to || null,
+    anime.score || null,
+    anime.scored_by || null,
+    anime.rank || null,
+    anime.status || null,
+    anime.popularity || null,
+    anime.members || null,
+    anime.favorites || null,
+    anime.synopsis || null,
+    anime.year || null,
+    anime.season || null,
+    anime.image || null,
+    JSON.stringify(anime.genres),
+    JSON.stringify(anime.themes),
+    JSON.stringify(anime.demographics),
+  ],
+});
+
+async function writeAnimeBatches(animeList: AnimeItem[]): Promise<void> {
+  const db = getDb();
+
+  for (let i = 0; i < animeList.length; i += UPSERT_BATCH_SIZE) {
+    const batch = animeList.slice(i, i + UPSERT_BATCH_SIZE);
+    const statements = batch.map(buildAnimeUpsertStatement);
+    await db.batch(statements, "write");
+  }
+}
+
+export async function upsertAnimeBatchNoSummary(
+  animeList: AnimeItem[]
+): Promise<void> {
+  await writeAnimeBatches(animeList);
+  console.log(`Upserted ${animeList.length} anime`);
+}
+
 /**
  * Bulk insert/update anime (more efficient for large batches)
  * Uses created_at column to distinguish new inserts from updates:
@@ -80,70 +157,7 @@ export interface UpsertSummary {
  */
 export async function upsertAnimeBatch(animeList: AnimeItem[]): Promise<UpsertSummary> {
   const db = getDb();
-  const batchSize = 100;
-
-  for (let i = 0; i < animeList.length; i += batchSize) {
-    const batch = animeList.slice(i, i + batchSize);
-    const statements = batch.map((anime) => ({
-      sql: `
-        INSERT INTO anime_data (
-          mal_id, url, title, title_english, type, episodes,
-          aired_from, aired_to, score, scored_by, rank, status,
-          popularity, members, favorites, synopsis, year, season,
-          image, genres, themes, demographics, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-        ON CONFLICT(mal_id) DO UPDATE SET
-          url = excluded.url,
-          title = excluded.title,
-          title_english = excluded.title_english,
-          type = excluded.type,
-          episodes = excluded.episodes,
-          aired_from = excluded.aired_from,
-          aired_to = excluded.aired_to,
-          score = excluded.score,
-          scored_by = excluded.scored_by,
-          rank = excluded.rank,
-          status = excluded.status,
-          popularity = excluded.popularity,
-          members = excluded.members,
-          favorites = excluded.favorites,
-          synopsis = excluded.synopsis,
-          year = excluded.year,
-          season = excluded.season,
-          image = excluded.image,
-          genres = excluded.genres,
-          themes = excluded.themes,
-          demographics = excluded.demographics,
-          updated_at = datetime('now')
-      `,
-      args: [
-        anime.mal_id,
-        anime.url,
-        anime.title,
-        anime.title_english || null,
-        anime.type || null,
-        anime.episodes || null,
-        anime.aired?.from || null,
-        anime.aired?.to || null,
-        anime.score || null,
-        anime.scored_by || null,
-        anime.rank || null,
-        anime.status || null,
-        anime.popularity || null,
-        anime.members || null,
-        anime.favorites || null,
-        anime.synopsis || null,
-        anime.year || null,
-        anime.season || null,
-        anime.image || null,
-        JSON.stringify(anime.genres),
-        JSON.stringify(anime.themes),
-        JSON.stringify(anime.demographics),
-      ],
-    }));
-
-    await db.batch(statements, "write");
-  }
+  await writeAnimeBatches(animeList);
 
   // Query which of the upserted rows were new inserts vs updates
   const malIds = animeList.map((a) => a.mal_id);

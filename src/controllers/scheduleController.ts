@@ -147,7 +147,9 @@ export const addToScheduleHandler = async (req: AuthRequest, res: Response) => {
 
 export const updateScheduleEntry = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
-  const malId = req.params.malId;
+  const malId = Array.isArray(req.params.malId)
+    ? req.params.malId[0]
+    : req.params.malId;
   await dbUpdateScheduleItem(userId, malId, {
     episodesPerDay: req.body.episodes_per_day,
     episodesWatched: req.body.episodes_watched,

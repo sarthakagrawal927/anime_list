@@ -12,6 +12,7 @@
     "test": "jest",
     "db:seed": "tsx src/scripts/seedAnimeData.ts",
     "db:update": "tsx src/scripts/updateAnimeData.ts",
+    "db:verify-airing-status": "tsx src/scripts/verifyAnimeAiringStatus.ts",
     "dev:worker": "wrangler dev",
     "deploy:worker": "wrangler deploy",
     "prepare": "husky"

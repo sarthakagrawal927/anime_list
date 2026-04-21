@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useQueryState, parseAsString, parseAsStringLiteral, parseAsArrayOf, parseAsInteger, parseAsJson } from "nuqs";
+import {
+  useQueryState,
+  parseAsString,
+  parseAsStringLiteral,
+  parseAsArrayOf,
+  parseAsInteger,
+  parseAsJson,
+} from "nuqs";
 import { useQuery } from "@tanstack/react-query";
-import type {
-  SearchFilter,
-  SearchResponse,
-} from "@/lib/types";
+import type { SearchFilter, SearchResponse } from "@/lib/types";
 import { getFields, getFilterActions, getWatchlistTags, searchAnime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import FilterRow from "./FilterRow";
@@ -21,6 +25,8 @@ const DEFAULT_FILTER: SearchFilter = {
   action: "GREATER_THAN_OR_EQUALS",
   value: 7,
 };
+const DEFAULT_PAGE_SIZE = 40;
+const SINGLE_VALUE_OPTION_FIELDS = new Set(["type", "season"]);
 
 const QUICK_GENRES = [
   "Action", "Comedy", "Drama", "Fantasy", "Romance", "Sci-Fi",
@@ -43,6 +49,33 @@ const filtersParser = parseAsJson<SearchFilter[]>((v) => {
   return v as SearchFilter[];
 });
 
+function normalizeFilter(filter: SearchFilter): SearchFilter {
+  if (!SINGLE_VALUE_OPTION_FIELDS.has(filter.field)) {
+    return filter;
+  }
+
+  const value = Array.isArray(filter.value)
+    ? filter.value[0] ?? ""
+    : typeof filter.value === "string"
+      ? filter.value
+      : "";
+
+  return {
+    ...filter,
+    action: filter.action === "EXCLUDES" ? "EXCLUDES" : "EQUALS",
+    value,
+  };
+}
+
+function isFilterValuePresent(filter: SearchFilter): boolean {
+  const normalizedFilter = normalizeFilter(filter);
+  if (Array.isArray(normalizedFilter.value)) {
+    return normalizedFilter.value.length > 0;
+  }
+
+  return normalizedFilter.value !== "" && normalizedFilter.value !== undefined;
+}
+
 export default function FilterBuilder() {
   const { user } = useAuth();
   const [filters, setFilters] = useQueryState("af", filtersParser.withDefault([{ ...DEFAULT_FILTER }]));
@@ -52,8 +85,10 @@ export default function FilterBuilder() {
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("wt", parseAsArrayOf(parseAsString).withDefault([]));
   const [watchlistMode, setWatchlistMode] = useQueryState("wm", parseAsStringLiteral(["hide", "show"] as const).withDefault("hide"));
-  const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(20));
+  const [pagesize, setPagesize] = useQueryState("pagesize", parseAsInteger.withDefault(DEFAULT_PAGE_SIZE));
   const [currentPage, setCurrentPage] = useQueryState("page", parseAsInteger.withDefault(1));
+  const normalizedFilters = filters.map(normalizeFilter);
+  const activeAdvancedFilters = normalizedFilters.filter(isFilterValuePresent);
 
   // Local input for instant UI, debounce URL param update
   const [inputValue, setInputValue] = useState(searchText);
@@ -73,10 +108,9 @@ export default function FilterBuilder() {
     }, 300);
   };
 
-  // Auto-open advanced panel if URL contains non-default filters
-  const hasCustomFilters = filters.length > 1 ||
-    (filters.length === 1 && (filters[0].field !== "score" || filters[0].action !== "GREATER_THAN" || filters[0].value !== 7));
-  const [showAdvanced, setShowAdvanced] = useState(hasCustomFilters);
+  const [showAdvanced, setShowAdvanced] = useState(() =>
+    normalizedFilters.some(isFilterValuePresent)
+  );
 
   // Reset to page 1 whenever called — used by all filter mutations
   const resetPage = () => setCurrentPage(1);
@@ -120,14 +154,7 @@ export default function FilterBuilder() {
       });
     }
 
-    // Only apply advanced filters if the section is expanded
-    if (showAdvanced) {
-      const validAdvanced = filters.filter((f) => {
-        if (Array.isArray(f.value)) return f.value.length > 0;
-        return f.value !== "" && f.value !== undefined;
-      });
-      allFilters.push(...validAdvanced);
-    }
+    allFilters.push(...activeAdvancedFilters);
 
     return {
       filters: allFilters,
@@ -140,7 +167,17 @@ export default function FilterBuilder() {
         includeWatched: watchlistMode === "show" ? hideWatched : [],
       },
     };
-  }, [filters, pagesize, offset, sortBy, airing, selectedGenres, searchText, hideWatched, watchlistMode, showAdvanced]);
+  }, [
+    activeAdvancedFilters,
+    pagesize,
+    offset,
+    sortBy,
+    airing,
+    selectedGenres,
+    searchText,
+    hideWatched,
+    watchlistMode,
+  ]);
 
   // Create stable query key from filter params
   const filterKey = JSON.stringify(buildSearchOpts());
@@ -173,7 +210,9 @@ export default function FilterBuilder() {
   };
 
   const updateFilter = (index: number, filter: SearchFilter) => {
-    setFilters((prev) => prev.map((f, i) => (i === index ? filter : f)));
+    setFilters((prev) =>
+      prev.map((f, i) => (i === index ? normalizeFilter(filter) : f))
+    );
     resetPage();
   };
 
@@ -192,11 +231,12 @@ export default function FilterBuilder() {
     setInputValue("");
     setSelectedGenres([]);
     setSearchText("");
-    setFilters([{ ...DEFAULT_FILTER }]);
+    setFilters([]);
     setSortBy("score");
     setAiring("any");
     setHideWatched([]);
     setWatchlistMode("hide");
+    setPagesize(DEFAULT_PAGE_SIZE);
     setShowAdvanced(false);
     setCurrentPage(1);
   };
@@ -205,15 +245,14 @@ export default function FilterBuilder() {
     selectedGenres.length +
     (searchText ? 1 : 0) +
     hideWatched.length +
-    (showAdvanced ? filters.filter((f) => {
-      if (Array.isArray(f.value)) return f.value.length > 0;
-      return f.value !== "" && f.value !== undefined;
-    }).length : 0);
+    activeAdvancedFilters.length;
 
   const totalFiltered = data?.totalFiltered || 0;
-  const totalPages = Math.ceil(totalFiltered / pagesize);
+  const totalPages = totalFiltered > 0 ? Math.ceil(totalFiltered / pagesize) : 0;
   const hasNext = currentPage < totalPages;
   const hasPrev = currentPage > 1;
+  const rangeStart = totalFiltered === 0 ? 0 : offset + 1;
+  const rangeEnd = Math.min(offset + (data?.filteredList.length ?? 0), totalFiltered);
 
   if (!fields || !actions) {
     return <ResultsGridSkeleton />;
@@ -272,7 +311,7 @@ export default function FilterBuilder() {
           aria-label="Results per page"
           className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
         >
-          {[20, 50, 100].map((n) => (
+          {[20, 40, 80, 100].map((n) => (
             <option key={n} value={n}>
               {n} results
             </option>
@@ -355,6 +394,11 @@ export default function FilterBuilder() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
           </svg>
           Advanced
+          {activeAdvancedFilters.length > 0 && (
+            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] leading-none">
+              {activeAdvancedFilters.length}
+            </span>
+          )}
         </button>
 
         {activeFilterCount > 0 && (
@@ -462,7 +506,7 @@ export default function FilterBuilder() {
             {filters.map((filter, i) => (
               <FilterRow
                 key={i}
-                filter={filter}
+                filter={normalizedFilters[i]}
                 index={i}
                 fields={fields}
                 actions={actions}
@@ -483,7 +527,7 @@ export default function FilterBuilder() {
           <div className={cn("transition-opacity", isFetching && "opacity-60")}>
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-muted-foreground">
-                Showing {offset + 1}–{Math.min(offset + data.filteredList.length, totalFiltered)} of {totalFiltered.toLocaleString()} results
+                Showing {rangeStart}–{rangeEnd} of {totalFiltered.toLocaleString()} results
               </p>
               {totalPages > 1 && (
                 <p className="text-xs text-muted-foreground">

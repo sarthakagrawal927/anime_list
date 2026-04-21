@@ -3,19 +3,19 @@
  */
 
 describe("Page-based pagination logic", () => {
-  const pagesize = 20;
+  const pagesize = 40;
 
   it("calculates offset from page number", () => {
     expect((1 - 1) * pagesize).toBe(0);
-    expect((2 - 1) * pagesize).toBe(20);
-    expect((3 - 1) * pagesize).toBe(40);
+    expect((2 - 1) * pagesize).toBe(40);
+    expect((3 - 1) * pagesize).toBe(80);
   });
 
   it("calculates total pages", () => {
-    expect(Math.ceil(100 / 20)).toBe(5);
-    expect(Math.ceil(101 / 20)).toBe(6);
-    expect(Math.ceil(20 / 20)).toBe(1);
-    expect(Math.ceil(0 / 20)).toBe(0);
+    expect(Math.ceil(100 / 40)).toBe(3);
+    expect(Math.ceil(101 / 40)).toBe(3);
+    expect(Math.ceil(40 / 40)).toBe(1);
+    expect(Math.ceil(0 / 40)).toBe(0);
   });
 
   it("hasNext is true when currentPage < totalPages", () => {
@@ -33,25 +33,25 @@ describe("Page-based pagination logic", () => {
     const currentPage = 3;
     const offset = (currentPage - 1) * pagesize;
     const resultCount = 20;
-    const total = 100;
+    const total = 120;
 
-    const start = offset + 1;
+    const start = total === 0 ? 0 : offset + 1;
     const end = Math.min(offset + resultCount, total);
-    expect(start).toBe(41);
-    expect(end).toBe(60);
+    expect(start).toBe(81);
+    expect(end).toBe(100);
   });
 
   it("displays correct range for last partial page", () => {
-    const currentPage = 6;
-    const ps = 20;
+    const currentPage = 3;
+    const ps = 40;
     const offset = (currentPage - 1) * ps;
     const resultCount = 5;
-    const total = 105;
+    const total = 85;
 
-    const start = offset + 1;
+    const start = total === 0 ? 0 : offset + 1;
     const end = Math.min(offset + resultCount, total);
-    expect(start).toBe(101);
-    expect(end).toBe(105);
+    expect(start).toBe(81);
+    expect(end).toBe(85);
   });
 
   it("resets to page 1 on filter change", () => {
@@ -60,5 +60,17 @@ describe("Page-based pagination logic", () => {
     page = 1;
     expect(page).toBe(1);
     expect((page - 1) * pagesize).toBe(0);
+  });
+
+  it("shows 0 to 0 when there are no results", () => {
+    const total = 0;
+    const offset = 0;
+    const resultCount = 0;
+
+    const start = total === 0 ? 0 : offset + 1;
+    const end = Math.min(offset + resultCount, total);
+
+    expect(start).toBe(0);
+    expect(end).toBe(0);
   });
 });
