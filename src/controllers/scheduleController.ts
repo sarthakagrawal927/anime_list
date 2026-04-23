@@ -7,9 +7,10 @@ import {
   removeScheduleItems,
   reorderSchedule as dbReorderSchedule,
 } from "../db/schedule";
-import { getAnimeWatchlist, upsertAnimeWatchlist } from "../db/watchlist";
+import { getAnimeWatchlist } from "../db/watchlist";
 import { animeStore } from "../store/animeStore";
 import type { ScheduleRow } from "../db/schedule";
+import type { WatchlistData } from "../types/watchlist";
 
 interface EnrichedScheduleItem {
   mal_id: string;
@@ -101,10 +102,9 @@ export function computeTimeline(
 }
 
 async function enrichScheduleItems(
-  userId: string,
   scheduleRows: ScheduleRow[],
+  watchlist: WatchlistData | null,
 ): Promise<EnrichedScheduleItem[]> {
-  const watchlist = await getAnimeWatchlist(userId);
   const allAnime = await animeStore.getAnimeList();
   const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
 
@@ -129,8 +129,11 @@ async function enrichScheduleItems(
 
 export const getScheduleTimeline = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
-  const scheduleRows = await getSchedule(userId);
-  const items = await enrichScheduleItems(userId, scheduleRows);
+  const [scheduleRows, watchlist] = await Promise.all([
+    getSchedule(userId),
+    getAnimeWatchlist(userId),
+  ]);
+  const items = await enrichScheduleItems(scheduleRows, watchlist);
   const { timeline, stats } = computeTimeline(items);
   res.json({ items, timeline, stats });
 };
@@ -138,26 +141,11 @@ export const getScheduleTimeline = async (req: AuthRequest, res: Response) => {
 export const addToScheduleHandler = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
   const { mal_ids, episodes_per_day } = req.body;
-  const watchlist = await getAnimeWatchlist(userId);
-  const missingWatchlistIds = mal_ids.filter(
-    (id: string) => !watchlist?.anime[id],
-  );
-
-  if (missingWatchlistIds.length > 0) {
-    await upsertAnimeWatchlist(missingWatchlistIds, "Watching", userId);
-  }
-
   await upsertScheduleItems(
     userId,
     mal_ids.map((id: string) => ({ malId: id, episodesPerDay: episodes_per_day })),
   );
-  res.json({
-    success: true,
-    message:
-      missingWatchlistIds.length > 0
-        ? "Added to schedule and watchlist"
-        : "Added to schedule",
-  });
+  res.json({ success: true, message: "Added to schedule" });
 };
 
 export const updateScheduleEntry = async (req: AuthRequest, res: Response) => {

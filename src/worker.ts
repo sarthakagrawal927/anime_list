@@ -8,7 +8,9 @@ import { filterAnimeList } from "./filterEngine";
 import {
   deleteUserTag,
   getAnimeWatchlist,
+  getAnimeWatchlistEntry,
   upsertAnimeWatchlist,
+  updateAnimeWatchlistNote,
   deleteFromAnimeWatchlist,
   initWatchlistTables,
   getUserTags,
@@ -18,7 +20,11 @@ import {
 import { getAnimeStats } from "./statistics";
 import { getScoreSortedList } from "./utils/statistics";
 import { animeStore } from "./store/animeStore";
-import { getLastDataUpdate, getRecentChanges } from "./db/animeData";
+import {
+  getAnimeByMalId,
+  getLastDataUpdate,
+  getRecentChanges,
+} from "./db/animeData";
 import { findOrCreateUser } from "./db/users";
 import { initUsersTable } from "./db/users";
 import {
@@ -51,8 +57,15 @@ import {
   removeScheduleItems,
   reorderSchedule as dbReorderSchedule,
 } from "./db/schedule";
-import { migrateScheduleEpisodesWatched } from "./db/migrations";
-import { computeTimeline } from "./controllers/scheduleController";
+import {
+  migrateAnimeDetailCache,
+  migrateAnimeWatchlistNotes,
+  migrateScheduleEpisodesWatched,
+} from "./db/migrations";
+import { getAnimeDetailSupplementalData } from "./controllers/animeDetailService";
+import {
+  computeTimeline,
+} from "./controllers/scheduleController";
 import {
   NUMERIC_FIELDS,
   ARRAY_FIELDS,
@@ -60,6 +73,11 @@ import {
   COMPARISON_ACTIONS,
   ARRAY_ACTIONS,
 } from "./types/anime";
+import type { AnimeDetailResponse } from "./types/animeDetail";
+import {
+  animeDetailNoteSchema,
+  animeMalIdParamsSchema,
+} from "./validators/animeDetail";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -151,6 +169,31 @@ const GOOGLE_JWKS = createRemoteJWKSet(
 
 const app = new Hono<{ Bindings: Env; Variables: { user?: AuthPayload } }>();
 
+const toDetailAnime = (
+  anime: NonNullable<Awaited<ReturnType<typeof getAnimeByMalId>>>,
+) => ({
+  mal_id: anime.mal_id,
+  url: anime.url,
+  title: anime.title,
+  title_english: anime.title_english,
+  type: anime.type,
+  episodes: anime.episodes,
+  score: anime.score,
+  scored_by: anime.scored_by,
+  rank: anime.rank,
+  status: anime.status,
+  popularity: anime.popularity,
+  members: anime.members,
+  favorites: anime.favorites,
+  synopsis: anime.synopsis,
+  year: anime.year,
+  season: anime.season,
+  image: anime.image,
+  genres: Object.keys(anime.genres ?? {}),
+  themes: Object.keys(anime.themes ?? {}),
+  demographics: Object.keys(anime.demographics ?? {}),
+});
+
 // Bridge env bindings → process.env so existing code (db/client, config) works unchanged
 app.use("*", async (c, next) => {
   process.env.TURSO_DATABASE_URL = c.env.TURSO_DATABASE_URL;
@@ -168,6 +211,8 @@ app.use("*", async (_c, next) => {
     await initWatchlistTables();
     await initScheduleTable();
     await migrateScheduleEpisodesWatched();
+    await migrateAnimeWatchlistNotes();
+    await migrateAnimeDetailCache();
     dbInitialized = true;
   }
   await next();
@@ -426,6 +471,111 @@ app.get("/api/stats", optionalAuth, async (c) => {
   return c.json(await getAnimeStats(animeList));
 });
 
+app.get("/api/anime/:malId", optionalAuth, async (c) => {
+  const parsed = animeMalIdParamsSchema.safeParse({
+    malId: c.req.param("malId"),
+  });
+  if (!parsed.success) {
+    return c.json({ error: "Invalid anime id", details: parsed.error.issues }, 400);
+  }
+
+  const malId = parsed.data.malId;
+  const anime = await getAnimeByMalId(malId);
+
+  if (!anime) {
+    return c.json({ error: "Anime not found" }, 404);
+  }
+
+  const user = c.get("user");
+  const [supplemental, watchlistEntry, animeList] = await Promise.all([
+    getAnimeDetailSupplementalData(malId),
+    user
+      ? getAnimeWatchlistEntry(String(malId), user.userId)
+      : Promise.resolve(null),
+    animeStore.getAnimeList(),
+  ]);
+  const animeMap = new Map(animeList.map((item) => [item.mal_id, item] as const));
+
+  const response: AnimeDetailResponse = {
+    anime: toDetailAnime(anime),
+    relations: supplemental.relations.flatMap((group) =>
+      group.entries.map((entry) => {
+        const relatedAnime = animeMap.get(entry.mal_id);
+        return {
+          mal_id: entry.mal_id,
+          relation: group.relation,
+          title: relatedAnime?.title || entry.name,
+          title_english: relatedAnime?.title_english,
+          image: relatedAnime?.image,
+          type: relatedAnime?.type || entry.type,
+          status: relatedAnime?.status,
+          episodes: relatedAnime?.episodes,
+          year: relatedAnime?.year,
+          url: relatedAnime?.url || entry.url,
+        };
+      }),
+    ),
+    recommendations: supplemental.recommendations.map((recommendation) => {
+      const recommendedAnime = animeMap.get(recommendation.entry.mal_id);
+      return {
+        mal_id: recommendation.entry.mal_id,
+        title: recommendedAnime?.title || recommendation.entry.title,
+        title_english: recommendedAnime?.title_english,
+        image: recommendedAnime?.image || recommendation.entry.image,
+        type: recommendedAnime?.type,
+        status: recommendedAnime?.status,
+        episodes: recommendedAnime?.episodes,
+        year: recommendedAnime?.year,
+        url: recommendedAnime?.url || recommendation.entry.url,
+        votes: recommendation.votes ?? 0,
+      };
+    }),
+    watchlistEntry: watchlistEntry
+      ? {
+          status: watchlistEntry.status,
+          note: watchlistEntry.note || null,
+        }
+      : null,
+  };
+
+  return c.json(response);
+});
+
+app.post("/api/anime/:malId/note", requireAuth, async (c) => {
+  const parsedParams = animeMalIdParamsSchema.safeParse({
+    malId: c.req.param("malId"),
+  });
+  if (!parsedParams.success) {
+    return c.json(
+      { error: "Invalid anime id", details: parsedParams.error.issues },
+      400,
+    );
+  }
+
+  const body = await c.req.json();
+  const parsedBody = animeDetailNoteSchema.safeParse(body);
+  if (!parsedBody.success) {
+    return c.json(
+      { error: "Invalid anime note payload", details: parsedBody.error.issues },
+      400,
+    );
+  }
+
+  const user = c.get("user")!;
+  const normalizedNote = parsedBody.data.note.trim();
+  const updated = await updateAnimeWatchlistNote(
+    String(parsedParams.data.malId),
+    normalizedNote.length > 0 ? normalizedNote : null,
+    user.userId,
+  );
+
+  if (!updated) {
+    return c.json({ error: "Anime is not in the watchlist" }, 404);
+  }
+
+  return c.json({ success: true, message: "Watchlist note updated" });
+});
+
 // Watchlist
 app.get("/api/watchlist", requireAuth, async (c) => {
   const user = c.get("user")!;
@@ -512,6 +662,7 @@ app.get("/api/watchlist/enriched", requireAuth, async (c) => {
     return {
       mal_id: entry.id,
       watchStatus: entry.status,
+      note: entry.note,
       title: anime?.title_english || anime?.title || entry.title || `ID: ${entry.id}`,
       image: anime?.image,
       score: anime?.score,
@@ -566,8 +717,10 @@ app.post("/api/watched/remove", requireAuth, async (c) => {
 // Schedule
 app.get("/api/schedule/timeline", requireAuth, async (c) => {
   const user = c.get("user")!;
-  const scheduleRows = await getSchedule(user.userId);
-  const watchlist = await getAnimeWatchlist(user.userId);
+  const [scheduleRows, watchlist] = await Promise.all([
+    getSchedule(user.userId),
+    getAnimeWatchlist(user.userId),
+  ]);
   const allAnime = await animeStore.getAnimeList();
   const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
 
