@@ -1,5 +1,4 @@
 import { promises as fs } from "fs";
-import parser from "xml2json";
 
 /**
  * Delay execution for a specified number of milliseconds
@@ -42,6 +41,7 @@ export const writeJsonFile = async <T>(
 export const parseUserXMLFile = async (fileName: string = "test.xml") => {
   try {
     const data = await fs.readFile(fileName, "utf8");
+    const { default: parser } = await import("xml2json");
     const stringifiedJson = parser.toJson(data);
     return JSON.parse(stringifiedJson);
   } catch (error) {
