@@ -94,6 +94,7 @@ export interface WatchlistData {
 export interface EnrichedWatchlistItem {
   mal_id: string;
   watchStatus: string;
+  note?: string;
   title: string;
   image?: string;
   score?: number;
@@ -108,6 +109,65 @@ export interface EnrichedWatchlistItem {
 
 export interface EnrichedWatchlistResponse {
   items: EnrichedWatchlistItem[];
+}
+
+export interface AnimeRelationItem {
+  mal_id: number;
+  relation: string;
+  title: string;
+  title_english?: string;
+  image?: string;
+  type?: string;
+  status?: string;
+  episodes?: number;
+  year?: number;
+  url?: string;
+}
+
+export interface AnimeRecommendationItem {
+  mal_id: number;
+  title: string;
+  title_english?: string;
+  image?: string;
+  type?: string;
+  status?: string;
+  episodes?: number;
+  year?: number;
+  url?: string;
+  votes: number;
+}
+
+export interface AnimeDetail {
+  mal_id: number;
+  url: string;
+  title: string;
+  title_english?: string;
+  type?: string;
+  episodes?: number;
+  score?: number;
+  scored_by?: number;
+  rank?: number;
+  status?: string;
+  popularity?: number;
+  members?: number;
+  favorites?: number;
+  synopsis?: string;
+  year?: number;
+  season?: string;
+  image?: string;
+  genres: string[];
+  themes: string[];
+  demographics: string[];
+}
+
+export interface AnimeDetailResponse {
+  anime: AnimeDetail;
+  relations: AnimeRelationItem[];
+  recommendations: AnimeRecommendationItem[];
+  watchlistEntry: {
+    status: string;
+    note: string | null;
+  } | null;
 }
 
 export interface WatchlistTag {

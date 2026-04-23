@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 import type { EnrichedWatchlistItem } from "@/lib/types";
 import {
   addToWatchlist,
@@ -16,7 +18,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getAnimeDetailHref } from "@/lib/utils";
 import { getDefaultTagColor, resolveTagColor, toRgba } from "@/lib/watchStatus";
 
 function WatchlistSkeleton() {
@@ -325,7 +327,10 @@ export default function WatchlistView() {
           {filtered.map((item) => (
             <Card key={item.mal_id} className="overflow-hidden flex flex-row p-0 hover:border-primary/30 transition-colors">
               {item.image ? (
-                <div className="relative w-[85px] min-h-[120px] shrink-0">
+                <Link
+                  href={getAnimeDetailHref(item.mal_id)}
+                  className="relative block w-[85px] min-h-[120px] shrink-0"
+                >
                   <Image
                     src={item.image}
                     alt={item.title}
@@ -333,7 +338,7 @@ export default function WatchlistView() {
                     className="object-cover"
                     sizes="85px"
                   />
-                </div>
+                </Link>
               ) : (
                 <div className="w-[85px] min-h-[120px] shrink-0 bg-muted flex items-center justify-center">
                   <span className="text-muted-foreground text-xs">No img</span>
@@ -342,23 +347,30 @@ export default function WatchlistView() {
 
               <div className="flex-1 p-3 flex flex-col gap-1.5 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  {item.url ? (
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate"
-                    >
-                      {item.title}
-                    </a>
-                  ) : (
-                    <span className="text-sm font-medium text-foreground truncate">{item.title}</span>
-                  )}
-                  {item.type && (
-                    <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      {item.type}
-                    </Badge>
-                  )}
+                  <Link
+                    href={getAnimeDetailHref(item.mal_id)}
+                    className="min-w-0 flex-1 text-sm font-medium text-foreground hover:text-primary transition-colors truncate"
+                  >
+                    {item.title}
+                  </Link>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {item.url ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${item.title} on MyAnimeList`}
+                        className="text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : null}
+                    {item.type && (
+                      <Badge variant="secondary" className="shrink-0 text-[10px]">
+                        {item.type}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 text-xs text-muted-foreground">
@@ -385,6 +397,12 @@ export default function WatchlistView() {
                     ))}
                   </div>
                 )}
+
+                {item.note ? (
+                  <p className="line-clamp-2 rounded-md bg-secondary/50 px-2 py-1 text-xs text-muted-foreground">
+                    {item.note}
+                  </p>
+                ) : null}
 
                 <div className="mt-auto pt-1">
                   <select

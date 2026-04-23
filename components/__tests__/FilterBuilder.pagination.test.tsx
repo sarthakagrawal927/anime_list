@@ -33,7 +33,7 @@ describe("Page-based pagination logic", () => {
     const currentPage = 3;
     const offset = (currentPage - 1) * pagesize;
     const resultCount = 20;
-    const total = 120;
+    const total: number = 120;
 
     const start = total === 0 ? 0 : offset + 1;
     const end = Math.min(offset + resultCount, total);
@@ -46,7 +46,7 @@ describe("Page-based pagination logic", () => {
     const ps = 40;
     const offset = (currentPage - 1) * ps;
     const resultCount = 5;
-    const total = 85;
+    const total: number = 85;
 
     const start = total === 0 ? 0 : offset + 1;
     const end = Math.min(offset + resultCount, total);

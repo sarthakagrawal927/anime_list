@@ -154,6 +154,7 @@ export async function initWatchlistTables(): Promise<void> {
       title TEXT,
       type TEXT,
       episodes INTEGER,
+      note TEXT,
       PRIMARY KEY (user_id, mal_id)
     )`,
     `CREATE TABLE IF NOT EXISTS manga_watchlist (
@@ -306,7 +307,7 @@ export async function getAnimeWatchlist(userId: string = "default"): Promise<Wat
   const db = getDb();
   const result = await db.execute({
     sql: `
-      SELECT aw.mal_id, ut.name AS tag_name, aw.title, aw.type, aw.episodes
+      SELECT aw.mal_id, ut.name AS tag_name, aw.title, aw.type, aw.episodes, aw.note
       FROM anime_watchlist aw
       JOIN user_tags ut ON ut.id = aw.tag_id
       WHERE aw.user_id = ?
@@ -323,12 +324,44 @@ export async function getAnimeWatchlist(userId: string = "default"): Promise<Wat
       ...(row.title ? { title: row.title as string } : {}),
       ...(row.type ? { type: row.type as string } : {}),
       ...(row.episodes ? { episodes: row.episodes as number } : {}),
+      ...(row.note ? { note: row.note as string } : {}),
     };
   }
 
   return {
     user: { id: userId, name: userId },
     anime,
+  };
+}
+
+export async function getAnimeWatchlistEntry(
+  malId: string,
+  userId: string = "default",
+): Promise<WatchedAnime | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `
+      SELECT aw.mal_id, ut.name AS tag_name, aw.title, aw.type, aw.episodes, aw.note
+      FROM anime_watchlist aw
+      JOIN user_tags ut ON ut.id = aw.tag_id
+      WHERE aw.user_id = ? AND aw.mal_id = ?
+      LIMIT 1
+    `,
+    args: [userId, malId],
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const row = result.rows[0];
+  return {
+    id: row.mal_id as string,
+    status: ((row.tag_name as string) || "").trim(),
+    ...(row.title ? { title: row.title as string } : {}),
+    ...(row.type ? { type: row.type as string } : {}),
+    ...(row.episodes ? { episodes: row.episodes as number } : {}),
+    ...(row.note ? { note: row.note as string } : {}),
   };
 }
 
@@ -359,6 +392,20 @@ export async function deleteFromAnimeWatchlist(
     args: [userId, id],
   }));
   await db.batch(statements);
+}
+
+export async function updateAnimeWatchlistNote(
+  malId: string,
+  note: string | null,
+  userId: string = "default",
+): Promise<boolean> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: "UPDATE anime_watchlist SET note = ? WHERE user_id = ? AND mal_id = ?",
+    args: [note, userId, malId],
+  });
+
+  return Number(result.rowsAffected || 0) > 0;
 }
 
 // Manga watchlist

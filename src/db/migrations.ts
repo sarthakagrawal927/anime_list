@@ -78,6 +78,7 @@ export async function migrateWatchlistTables(): Promise<void> {
         title TEXT,
         type TEXT,
         episodes INTEGER,
+        note TEXT,
         PRIMARY KEY (user_id, mal_id)
       )`,
       `CREATE TABLE IF NOT EXISTS manga_watchlist (
@@ -110,6 +111,7 @@ export async function migrateWatchlistTables(): Promise<void> {
       title TEXT,
       type TEXT,
       episodes INTEGER,
+      note TEXT,
       PRIMARY KEY (user_id, mal_id)
     )`,
     `CREATE TABLE manga_watchlist (
@@ -221,6 +223,7 @@ export async function migrateWatchlistToTagIds(): Promise<void> {
       title TEXT,
       type TEXT,
       episodes INTEGER,
+      note TEXT,
       PRIMARY KEY (user_id, mal_id)
     )`,
     `CREATE TABLE manga_watchlist (
@@ -449,6 +452,64 @@ export async function migrateScheduleEpisodesWatched(): Promise<void> {
   await db.execute("ALTER TABLE anime_schedule ADD COLUMN episodes_watched INTEGER NOT NULL DEFAULT 0");
 }
 
+export async function migrateAnimeWatchlistNotes(): Promise<void> {
+  const exists = await tableExists("anime_watchlist");
+  if (!exists) return;
+
+  const col = await hasColumn("anime_watchlist", "note");
+  if (col) return;
+
+  console.log("Adding note column to anime_watchlist...");
+  const db = getDb();
+  await db.execute("ALTER TABLE anime_watchlist ADD COLUMN note TEXT");
+}
+
+export async function migrateAnimeDetailCache(): Promise<void> {
+  const db = getDb();
+  await db.batch([
+    `CREATE TABLE IF NOT EXISTS anime_relations_cache (
+      mal_id INTEGER PRIMARY KEY,
+      payload TEXT NOT NULL,
+      fetched_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS anime_recommendations_cache (
+      mal_id INTEGER PRIMARY KEY,
+      payload TEXT NOT NULL,
+      fetched_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_anime_relations_cache_fetched_at ON anime_relations_cache(fetched_at)",
+    "CREATE INDEX IF NOT EXISTS idx_anime_recommendations_cache_fetched_at ON anime_recommendations_cache(fetched_at)",
+  ]);
+
+  const legacyExists = await tableExists("anime_detail_cache");
+  if (!legacyExists) return;
+
+  console.log("Migrating legacy anime_detail_cache data...");
+  await db.batch([
+    `INSERT INTO anime_relations_cache (mal_id, payload, fetched_at)
+     SELECT
+       mal_id,
+       COALESCE(relations_json, '[]'),
+       COALESCE(relations_fetched_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+     FROM anime_detail_cache
+     WHERE relations_json IS NOT NULL
+     ON CONFLICT(mal_id) DO UPDATE SET
+       payload = excluded.payload,
+       fetched_at = excluded.fetched_at`,
+    `INSERT INTO anime_recommendations_cache (mal_id, payload, fetched_at)
+     SELECT
+       mal_id,
+       COALESCE(recommendations_json, '[]'),
+       COALESCE(recommendations_fetched_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+     FROM anime_detail_cache
+     WHERE recommendations_json IS NOT NULL
+     ON CONFLICT(mal_id) DO UPDATE SET
+       payload = excluded.payload,
+       fetched_at = excluded.fetched_at`,
+    "DROP TABLE anime_detail_cache",
+  ]);
+}
+
 export async function runAllMigrations(): Promise<void> {
   await migrateWatchlistTables();
   await migrateUserTagsTable();
@@ -459,5 +520,7 @@ export async function runAllMigrations(): Promise<void> {
   await migrateAnimeCreatedAt();
   await migrateScheduleTable();
   await migrateScheduleEpisodesWatched();
+  await migrateAnimeWatchlistNotes();
+  await migrateAnimeDetailCache();
   console.log("All migrations completed");
 }

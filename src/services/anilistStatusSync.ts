@@ -13,6 +13,12 @@ export interface AniListStatusRecord {
   episodes?: number | null;
 }
 
+export interface DirectStatusRecord {
+  malId: number;
+  status?: string | null;
+  episodes?: number | null;
+}
+
 export interface AnimeStatusChange {
   malId: number;
   title: string;
@@ -40,15 +46,23 @@ export function mapAniListStatus(
   return STATUS_MAP[status];
 }
 
-export function applyAniListStatusUpdates(
+function normalizeStatus(status?: string | null): string | undefined {
+  if (!status) {
+    return undefined;
+  }
+
+  return mapAniListStatus(status as AniListMediaStatus) ?? status;
+}
+
+function applyDirectStatusUpdatesInternal(
   animeList: AnimeItem[],
-  updates: AniListStatusRecord[]
+  updates: DirectStatusRecord[]
 ): {
   changedAnime: AnimeItem[];
   changes: AnimeStatusChange[];
   missingMalIds: number[];
 } {
-  const updateMap = new Map(updates.map((update) => [update.idMal, update]));
+  const updateMap = new Map(updates.map((update) => [update.malId, update]));
   const changedAnime: AnimeItem[] = [];
   const changes: AnimeStatusChange[] = [];
   const missingMalIds: number[] = [];
@@ -68,7 +82,7 @@ export function applyAniListStatusUpdates(
       title: anime.title_english || anime.title,
     };
 
-    const mappedStatus = mapAniListStatus(update.status);
+    const mappedStatus = normalizeStatus(update.status);
     if (mappedStatus && anime.status !== mappedStatus) {
       nextAnime = {
         ...nextAnime,
@@ -104,4 +118,33 @@ export function applyAniListStatusUpdates(
     changes,
     missingMalIds,
   };
+}
+
+export function applyDirectStatusUpdates(
+  animeList: AnimeItem[],
+  updates: DirectStatusRecord[]
+): {
+  changedAnime: AnimeItem[];
+  changes: AnimeStatusChange[];
+  missingMalIds: number[];
+} {
+  return applyDirectStatusUpdatesInternal(animeList, updates);
+}
+
+export function applyAniListStatusUpdates(
+  animeList: AnimeItem[],
+  updates: AniListStatusRecord[]
+): {
+  changedAnime: AnimeItem[];
+  changes: AnimeStatusChange[];
+  missingMalIds: number[];
+} {
+  return applyDirectStatusUpdatesInternal(
+    animeList,
+    updates.map((update) => ({
+      malId: update.idMal,
+      status: mapAniListStatus(update.status),
+      episodes: update.episodes,
+    }))
+  );
 }

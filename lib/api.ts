@@ -5,6 +5,7 @@ import type {
   SearchFilter,
   AnimeStats,
   WatchlistData,
+  AnimeDetailResponse,
   EnrichedWatchlistResponse,
   WatchlistTag,
   ScheduleTimelineResponse,
@@ -34,8 +35,10 @@ function authHeaders(): Record<string, string> {
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
   if (res.status === 401) {
-    localStorage.removeItem("mal_auth");
-    window.dispatchEvent(new Event("mal_auth_expired"));
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("mal_auth");
+      window.dispatchEvent(new Event("mal_auth_expired"));
+    }
     throw new Error("Session expired. Please sign in again.");
   }
   if (!res.ok) throw new Error(`API error: ${res.status}`);
@@ -97,6 +100,10 @@ export function getWatchlist(status?: string): Promise<WatchlistData> {
   return fetchJson(url, { headers: authHeaders() });
 }
 
+export function getAnimeDetail(malId: number | string): Promise<AnimeDetailResponse> {
+  return fetchJson(`${BASE}/anime/${malId}`, { headers: authHeaders() });
+}
+
 export function addToWatchlist(
   malIds: number[],
   status: string,
@@ -121,6 +128,17 @@ export function removeFromWatchlist(
 
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
   return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
+}
+
+export function updateAnimeNote(
+  malId: number | string,
+  note: string,
+): Promise<{ success: boolean; note: string }> {
+  return fetchJson(`${BASE}/anime/${malId}/note`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify({ note }),
+  });
 }
 
 export function getWatchlistTags(): Promise<{ tags: WatchlistTag[] }> {

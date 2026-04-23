@@ -2,7 +2,9 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ExternalLink } from "lucide-react";
 import type { EnrichedWatchlistItem, ScheduleItem, ScheduleTimelineDay, ScheduleTimelineEntry } from "@/lib/types";
 import {
   addToSchedule,
@@ -16,7 +18,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getAnimeDetailHref } from "@/lib/utils";
 
 // ── Client-side timeline computation (uses local timezone) ─────────────
 
@@ -473,9 +475,12 @@ export default function ScheduleView() {
               )}
             >
               {item.image ? (
-                <div className="relative w-[60px] min-h-[80px] shrink-0">
+                <Link
+                  href={getAnimeDetailHref(item.mal_id)}
+                  className="relative block w-[60px] min-h-[80px] shrink-0"
+                >
                   <Image src={item.image} alt={item.title} fill className="object-cover" sizes="60px" />
-                </div>
+                </Link>
               ) : (
                 <div className="w-[60px] min-h-[80px] shrink-0 bg-muted" />
               )}
@@ -494,7 +499,25 @@ export default function ScheduleView() {
                 </div>
 
                 <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                  <span className="text-sm font-medium truncate">{item.title}</span>
+                  <div className="flex items-start gap-2">
+                    <Link
+                      href={getAnimeDetailHref(item.mal_id)}
+                      className="min-w-0 flex-1 truncate text-sm font-medium transition-colors hover:text-primary"
+                    >
+                      {item.title}
+                    </Link>
+                    {item.url ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Open ${item.title} on MyAnimeList`}
+                        className="shrink-0 text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : null}
+                  </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {item.episodes != null && (
                       <span className="inline-flex items-center gap-1">
@@ -568,7 +591,12 @@ export default function ScheduleView() {
                       {entry.image && (
                         <Image src={entry.image} alt="" width={20} height={28} className="rounded object-cover shrink-0" />
                       )}
-                      <span className="truncate flex-1">{entry.title}</span>
+                      <Link
+                        href={getAnimeDetailHref(entry.mal_id)}
+                        className="truncate flex-1 transition-colors hover:text-primary"
+                      >
+                        {entry.title}
+                      </Link>
                       <Badge variant={entry.is_final_day ? "default" : "secondary"} className="text-[10px] shrink-0">
                         {entry.episode_range[0] === entry.episode_range[1]
                           ? `Ep ${entry.episode_range[0]}`

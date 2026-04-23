@@ -37,6 +37,14 @@ import {
   searchAnime,
 } from "../controllers/animeController";
 import {
+  getAnimeDetailByMalId,
+  updateAnimeWatchlistNoteHandler,
+} from "../controllers/animeDetailController";
+import {
+  animeDetailNoteSchema,
+  animeMalIdParamsSchema,
+} from "../validators/animeDetail";
+import {
   getScheduleTimeline,
   addToScheduleHandler,
   updateScheduleEntry,
@@ -63,6 +71,22 @@ router.post(
 );
 
 router.get(`${routes.base}${routes.stats}`, optionalAuth, catcher(getStats));
+
+router.get(
+  `${routes.base}/anime/:malId`,
+  optionalAuth,
+  validate(animeMalIdParamsSchema, { target: "params", errorMessage: "Invalid anime id" }),
+  catcher(getAnimeDetailByMalId),
+);
+
+router.post(
+  `${routes.base}/anime/:malId/note`,
+  requireAuth,
+  userRateLimit,
+  validate(animeMalIdParamsSchema, { target: "params", errorMessage: "Invalid anime id" }),
+  validate(animeDetailNoteSchema, { errorMessage: "Invalid anime note payload" }),
+  catcher(updateAnimeWatchlistNoteHandler),
+);
 
 router.get(`${routes.base}${routes.watchlist}`, requireAuth, catcher(getWatchlist));
 router.get(`${routes.base}/watchlist/tags`, requireAuth, catcher(getWatchlistTags));

@@ -1,6 +1,35 @@
 import { getDb } from "./client";
 import { AnimeItem } from "../types/anime";
 
+const mapAnimeRow = (row: Record<string, unknown>): AnimeItem => ({
+  mal_id: row.mal_id as number,
+  url: row.url as string,
+  title: row.title as string,
+  title_english: (row.title_english as string) || undefined,
+  type: (row.type as string) || undefined,
+  episodes: (row.episodes as number) || undefined,
+  aired: row.aired_from
+    ? {
+        from: row.aired_from as string,
+        to: (row.aired_to as string) || "",
+      }
+    : undefined,
+  score: (row.score as number) || undefined,
+  scored_by: (row.scored_by as number) || undefined,
+  rank: (row.rank as number) || undefined,
+  status: (row.status as string) || undefined,
+  popularity: (row.popularity as number) || undefined,
+  members: (row.members as number) || undefined,
+  favorites: (row.favorites as number) || undefined,
+  synopsis: (row.synopsis as string) || undefined,
+  year: (row.year as number) || undefined,
+  season: (row.season as string) || undefined,
+  image: (row.image as string) || undefined,
+  genres: JSON.parse((row.genres as string) || "{}"),
+  themes: JSON.parse((row.themes as string) || "{}"),
+  demographics: JSON.parse((row.demographics as string) || "{}"),
+});
+
 /**
  * Insert or update anime in the database
  */
@@ -192,34 +221,21 @@ export async function getAllAnime(): Promise<AnimeItem[]> {
   const db = getDb();
   const result = await db.execute("SELECT * FROM anime_data");
 
-  return result.rows.map((row) => ({
-    mal_id: row.mal_id as number,
-    url: row.url as string,
-    title: row.title as string,
-    title_english: (row.title_english as string) || undefined,
-    type: (row.type as string) || undefined,
-    episodes: (row.episodes as number) || undefined,
-    aired: row.aired_from
-      ? {
-          from: row.aired_from as string,
-          to: (row.aired_to as string) || "",
-        }
-      : undefined,
-    score: (row.score as number) || undefined,
-    scored_by: (row.scored_by as number) || undefined,
-    rank: (row.rank as number) || undefined,
-    status: (row.status as string) || undefined,
-    popularity: (row.popularity as number) || undefined,
-    members: (row.members as number) || undefined,
-    favorites: (row.favorites as number) || undefined,
-    synopsis: (row.synopsis as string) || undefined,
-    year: (row.year as number) || undefined,
-    season: (row.season as string) || undefined,
-    image: (row.image as string) || undefined,
-    genres: JSON.parse((row.genres as string) || "{}"),
-    themes: JSON.parse((row.themes as string) || "{}"),
-    demographics: JSON.parse((row.demographics as string) || "{}"),
-  }));
+  return result.rows.map((row) => mapAnimeRow(row as unknown as Record<string, unknown>));
+}
+
+export async function getAnimeByMalId(malId: number): Promise<AnimeItem | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: "SELECT * FROM anime_data WHERE mal_id = ? LIMIT 1",
+    args: [malId],
+  });
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapAnimeRow(result.rows[0] as unknown as Record<string, unknown>);
 }
 
 /**

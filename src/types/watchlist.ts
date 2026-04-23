@@ -8,13 +8,17 @@ export interface UserInfo {
 export interface WatchedAnime {
   status: WatchTag;
   id: string;
-  [key: string]: string | number;
+  title?: string;
+  type?: string;
+  episodes?: number;
+  note?: string;
+  [key: string]: string | number | undefined;
 }
 
 export interface WatchedManga {
   status: WatchTag;
   id: string;
-  [key: string]: string | number;
+  [key: string]: string | number | undefined;
 }
 
 export interface WatchlistData {

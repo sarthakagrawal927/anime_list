@@ -7,7 +7,7 @@ import {
   removeScheduleItems,
   reorderSchedule as dbReorderSchedule,
 } from "../db/schedule";
-import { getAnimeWatchlist } from "../db/watchlist";
+import { getAnimeWatchlist, upsertAnimeWatchlist } from "../db/watchlist";
 import { animeStore } from "../store/animeStore";
 import type { ScheduleRow } from "../db/schedule";
 
@@ -138,11 +138,26 @@ export const getScheduleTimeline = async (req: AuthRequest, res: Response) => {
 export const addToScheduleHandler = async (req: AuthRequest, res: Response) => {
   const userId = req.user!.userId;
   const { mal_ids, episodes_per_day } = req.body;
+  const watchlist = await getAnimeWatchlist(userId);
+  const missingWatchlistIds = mal_ids.filter(
+    (id: string) => !watchlist?.anime[id],
+  );
+
+  if (missingWatchlistIds.length > 0) {
+    await upsertAnimeWatchlist(missingWatchlistIds, "Watching", userId);
+  }
+
   await upsertScheduleItems(
     userId,
     mal_ids.map((id: string) => ({ malId: id, episodesPerDay: episodes_per_day })),
   );
-  res.json({ success: true, message: "Added to schedule" });
+  res.json({
+    success: true,
+    message:
+      missingWatchlistIds.length > 0
+        ? "Added to schedule and watchlist"
+        : "Added to schedule",
+  });
 };
 
 export const updateScheduleEntry = async (req: AuthRequest, res: Response) => {
