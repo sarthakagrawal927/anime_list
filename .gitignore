@@ -16,3 +16,5 @@ cleaned_anime_data.json
 .env.*
 !.env.example
 .saasmaker.json
+playwright-report
+test-results
