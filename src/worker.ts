@@ -223,7 +223,7 @@ app.use(
   "*",
   cors({
     origin: [
-      "https://anime-explorer-mal.vercel.app",
+      "https://anime-list-web.sarthakagrawal927.workers.dev",
       "http://localhost:3000",
     ],
     allowMethods: ["GET", "POST"],
