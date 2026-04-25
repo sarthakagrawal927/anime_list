@@ -1,4 +1,4 @@
-name: Deploy anime_list to Cloudflare
+name: Deploy anime_list to Cloudflare Pages
 on:
   push:
     branches: [main]
@@ -6,8 +6,6 @@ on:
   pull_request:
     branches: [main]
     paths: ['app/**', 'src/**', 'components/**', 'lib/**', 'package.json', 'next.config.*', 'open-next.config.ts', 'wrangler.toml']
-  pull_request_target:
-    types: [closed]
 
 jobs:
   deploy-production:
@@ -24,7 +22,7 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: deploy
+          command: pages deploy --project-name=anime-list-web --branch=main --commit-dirty=true
 
   deploy-preview:
     if: github.event_name == 'pull_request'
@@ -43,7 +41,7 @@ jobs:
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: deploy --name anime-list-web-pr-${{ github.event.number }}
+          command: pages deploy --project-name=anime-list-web --branch=pr-${{ github.event.number }} --commit-dirty=true
       - uses: actions/github-script@v7
         with:
           script: |
@@ -51,14 +49,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Preview: https://anime-list-web-pr-${{ github.event.number }}.sarthakagrawal927.workers.dev`
+              body: `Preview: https://pr-${{ github.event.number }}.anime-list-web.pages.dev`
             })
-
-  cleanup-preview:
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    steps:
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: delete --name anime-list-web-pr-${{ github.event.number }} --force
