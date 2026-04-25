@@ -18,3 +18,5 @@ cleaned_anime_data.json
 .saasmaker.json
 playwright-report
 test-results
+.open-next
+.wrangler
