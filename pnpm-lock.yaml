@@ -11,6 +11,9 @@ importers:
       '@libsql/client':
         specifier: ^0.17.3
         version: 0.17.3
+      '@saas-maker/ops':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@tailwindcss/postcss':
         specifier: ^4.2.4
         version: 4.2.4
@@ -2553,6 +2556,9 @@ packages:
     resolution: {integrity: sha512-4dv/6Sz13gAlZnQrbaaepZvwaGzw4r7FR2EFjDO+8iyraM6+jYnMRynJc2CufXaPs2cex50y1LR79pZQ6gHnUA==}
     peerDependencies:
       eslint: '>=9.0.0'
+
+  '@saas-maker/ops@0.1.1':
+    resolution: {integrity: sha512-MdCt9Q6B5F6c/sGtjfbBD949vr64693j+oyM+umQAIo8ovAtVCqduvMo9N/BDkD4o1FYec8e05fUnmnXmQa0Vg==}
 
   '@saas-maker/prettier-config@1.0.0':
     resolution: {integrity: sha512-SIEj/4cwEOGnWj6aQzvIQh+BuHZ3DWo4YVYtplgpCIgP9IW01h+x+8Lh648L9boRfGwBDsJq5D0oHly7Ckmjqg==}
@@ -9288,6 +9294,8 @@ snapshots:
       - eslint-import-resolver-webpack
       - supports-color
       - typescript
+
+  '@saas-maker/ops@0.1.1': {}
 
   '@saas-maker/prettier-config@1.0.0': {}
 

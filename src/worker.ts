@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
+import { configurePostHog, trace, flushPostHog } from "@saas-maker/ops";
 
 // Business logic imports (all unchanged files)
 import { filterAnimeList } from "./filterEngine";
@@ -93,6 +94,7 @@ type Env = {
   TURSO_AUTH_TOKEN: string;
   JWT_SECRET: string;
   GOOGLE_CLIENT_ID: string;
+  POSTHOG_API_KEY?: string;
 };
 
 const SEARCH_CACHE_TTL_SECONDS = 180;
@@ -201,6 +203,17 @@ app.use("*", async (c, next) => {
   process.env.JWT_SECRET = c.env.JWT_SECRET;
   process.env.GOOGLE_CLIENT_ID = c.env.GOOGLE_CLIENT_ID;
   await next();
+});
+
+// PostHog tracing middleware
+let phConfigured = false;
+app.use("*", async (c, next) => {
+  if (!phConfigured && c.env.POSTHOG_API_KEY) {
+    configurePostHog(c.env.POSTHOG_API_KEY, "https://us.i.posthog.com");
+    phConfigured = true;
+  }
+  await next();
+  if (c.env.POSTHOG_API_KEY) c.executionCtx.waitUntil(flushPostHog());
 });
 
 // DB init (runs once per isolate)
@@ -368,7 +381,7 @@ app.post("/api/search", optionalAuth, async (c) => {
     }
   }
 
-  let filtered = await filterAnimeList(filters);
+  let filtered = await trace("db:search", () => filterAnimeList(filters), { project: "mal-api" });
 
   // Airing filter
   if (airing !== "any") {
