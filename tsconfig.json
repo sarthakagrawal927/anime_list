@@ -1,9 +1,3 @@
 {
-  "extends": "@saas-maker/tsconfig/next.json",
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./*"]
-    }
-  }
+  "extends": "@saas-maker/tsconfig/next.json"
 }
