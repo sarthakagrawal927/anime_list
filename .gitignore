@@ -19,5 +19,6 @@ cleaned_anime_data.json
 playwright-report
 test-results
 .open-next
+.pages-deploy
 .wrangler
 .fallow
