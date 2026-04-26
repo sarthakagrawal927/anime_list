@@ -236,6 +236,7 @@ app.use(
   "*",
   cors({
     origin: [
+      "https://anime-list-web.sarthakagrawal927.workers.dev",
       "https://anime-list-9lk.pages.dev",
       "http://localhost:3000",
     ],
