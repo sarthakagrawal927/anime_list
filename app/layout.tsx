@@ -1,4 +1,3 @@
-import { AnalyticsProvider } from '@/components/posthog-provider'
 import { SaasMakerAnalytics } from '@/components/SaasMakerAnalytics'
 import type { Metadata } from "next";
 import Script from "next/script";
@@ -57,7 +56,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body data-analytics="true" className="min-h-screen antialiased">
-        <AnalyticsProvider>
         <SaasMakerAnalytics />
         <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <Script
@@ -91,7 +89,6 @@ export default function RootLayout({
             </AuthProvider>
           </QueryProvider>
         </NuqsAdapter>
-        </AnalyticsProvider>
       </body>
     </html>
   );
