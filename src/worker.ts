@@ -127,6 +127,35 @@ function extractBearerToken(header: string | undefined): string | null {
   return null;
 }
 
+// ── Cookie helpers (XSS hardening: token lives in httpOnly cookie) ─────
+
+const AUTH_COOKIE_NAME = "mal_auth_token";
+const AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days, matches signToken TTL
+
+function buildAuthCookie(token: string): string {
+  // Cross-site (Workers ↔ Vercel/Pages frontends) requires SameSite=None+Secure
+  return `${AUTH_COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE}`;
+}
+
+function buildAuthClearCookie(): string {
+  return `${AUTH_COOKIE_NAME}=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0`;
+}
+
+function readAuthCookie(cookieHeader: string | undefined): string | null {
+  if (!cookieHeader) return null;
+  const match = cookieHeader.match(/(?:^|;\s*)mal_auth_token=([^;]+)/);
+  return match?.[1] ?? null;
+}
+
+function extractToken(c: {
+  req: { header: (name: string) => string | undefined };
+}): string | null {
+  return (
+    extractBearerToken(c.req.header("Authorization")) ||
+    readAuthCookie(c.req.header("Cookie"))
+  );
+}
+
 const toHex = (buffer: ArrayBuffer): string =>
   Array.from(new Uint8Array(buffer))
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -238,10 +267,13 @@ app.use(
     origin: [
       "https://anime-list-web.sarthakagrawal927.workers.dev",
       "https://anime-list-9lk.pages.dev",
+      "https://anime-explorer-mal.vercel.app",
       "http://localhost:3000",
     ],
     allowMethods: ["GET", "POST"],
     allowHeaders: ["Content-Type", "Authorization"],
+    // Required for the browser to attach the httpOnly cookie cross-origin.
+    credentials: true,
   })
 );
 
@@ -251,7 +283,7 @@ const optionalAuth = async (
   c: { req: { header: (name: string) => string | undefined }; set: (key: string, value: unknown) => void },
   next: () => Promise<void>
 ) => {
-  const token = extractBearerToken(c.req.header("Authorization"));
+  const token = extractToken(c);
   if (token) {
     const user = await verifyToken(token);
     if (user) c.set("user", user);
@@ -263,7 +295,7 @@ const requireAuth = async (
   c: { req: { header: (name: string) => string | undefined }; set: (key: string, value: unknown) => void; json: (data: unknown, status?: number) => Response },
   next: () => Promise<void>
 ) => {
-  const token = extractBearerToken(c.req.header("Authorization"));
+  const token = extractToken(c);
   if (!token) return c.json({ error: "Authentication required" }, 401);
   const user = await verifyToken(token);
   if (!user) return c.json({ error: "Invalid or expired token" }, 401);
@@ -307,6 +339,11 @@ app.post("/api/auth/google", async (c) => {
       picture: user.picture,
     });
 
+    // Set token in httpOnly cookie (XSS hardening). The token is also returned
+    // in the body for backward compatibility during migration; the frontend
+    // no longer needs to persist it.
+    c.header("Set-Cookie", buildAuthCookie(token), { append: true });
+
     return c.json({
       token,
       user: {
@@ -320,6 +357,12 @@ app.post("/api/auth/google", async (c) => {
     console.error("Google OAuth error:", err);
     return c.json({ error: "Invalid Google token" }, 400);
   }
+});
+
+// Logout: clear the auth cookie
+app.post("/api/auth/logout", (c) => {
+  c.header("Set-Cookie", buildAuthClearCookie(), { append: true });
+  return c.json({ ok: true });
 });
 
 // Static data

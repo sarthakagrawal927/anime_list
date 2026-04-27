@@ -11,43 +11,48 @@ interface AuthUser {
 
 interface AuthContextValue {
   user: AuthUser | null;
-  token: string | null;
   loading: boolean;
   login: (credential: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null,
-  token: null,
   loading: true,
   login: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Non-sensitive profile cache only — the JWT now lives in an httpOnly cookie
+// set by the server. This avoids reading/parsing the token from JS, which
+// closes the XSS exfiltration vector.
+const PROFILE_KEY = "mal_profile";
+// Legacy key (held the JWT in localStorage). We purge it on load.
+const LEGACY_KEY = "mal_auth";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem("mal_auth");
+    // Drop any legacy token-bearing entry from before the cookie migration.
+    if (localStorage.getItem(LEGACY_KEY)) {
+      localStorage.removeItem(LEGACY_KEY);
+    }
+    const saved = localStorage.getItem(PROFILE_KEY);
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setUser(parsed.user);
-        setToken(parsed.token);
+        setUser(JSON.parse(saved) as AuthUser);
       } catch {
-        localStorage.removeItem("mal_auth");
+        localStorage.removeItem(PROFILE_KEY);
       }
     }
     setLoading(false);
 
     const handleExpired = () => {
       setUser(null);
-      setToken(null);
+      localStorage.removeItem(PROFILE_KEY);
     };
     window.addEventListener("mal_auth_expired", handleExpired);
     return () => window.removeEventListener("mal_auth_expired", handleExpired);
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await fetch(`${API_URL}/api/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include", // server sets the auth cookie
       body: JSON.stringify({ credential }),
     });
 
@@ -65,20 +71,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(err.error || "Login failed");
     }
 
-    const data = await res.json() as { user: AuthUser; token: string };
+    const data = await res.json() as { user: AuthUser };
     setUser(data.user);
-    setToken(data.token);
-    localStorage.setItem("mal_auth", JSON.stringify(data));
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(data.user));
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     setUser(null);
-    setToken(null);
-    localStorage.removeItem("mal_auth");
+    localStorage.removeItem(PROFILE_KEY);
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // best-effort
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

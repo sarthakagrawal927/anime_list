@@ -15,27 +15,21 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const BASE = `${API_URL}/api`;
 const DEFAULT_PAGE_SIZE = 40;
 
-function getAuthToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const saved = localStorage.getItem("mal_auth");
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.token || null;
-    }
-  } catch {}
-  return null;
-}
-
-function authHeaders(): Record<string, string> {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+// Auth now flows via httpOnly cookie set by the server. We send
+// `credentials: "include"` on every request so the cookie ships along.
+// No more reading tokens from localStorage (XSS hardening).
+function withCreds(init: RequestInit = {}): RequestInit {
+  return { ...init, credentials: "include" };
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const res = await fetch(url, withCreds(init));
   if (res.status === 401) {
     if (typeof window !== "undefined") {
+      // Profile cache only — the cookie is the source of truth and the
+      // server has already rejected it. Tell the app to drop user state.
+      localStorage.removeItem("mal_profile");
+      // Best-effort: also clear any leftover legacy entry.
       localStorage.removeItem("mal_auth");
       window.dispatchEvent(new Event("mal_auth_expired"));
     }
@@ -44,6 +38,8 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
+
+const jsonHeaders = { "Content-Type": "application/json" } as const;
 
 export function getFields(): Promise<FieldOptions> {
   return fetchJson(`${BASE}/fields`);
@@ -66,7 +62,7 @@ export function searchAnime(
 ): Promise<SearchResponse> {
   return fetchJson(`${BASE}/search`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({
       filters,
       pagesize: opts.pagesize ?? DEFAULT_PAGE_SIZE,
@@ -92,16 +88,16 @@ export function getStats(opts: {
   }
   const query = params.toString();
   const suffix = query ? `?${query}` : "";
-  return fetchJson(`${BASE}/stats${suffix}`, { headers: authHeaders() });
+  return fetchJson(`${BASE}/stats${suffix}`);
 }
 
 export function getWatchlist(status?: string): Promise<WatchlistData> {
   const url = status ? `${BASE}/watchlist?status=${status}` : `${BASE}/watchlist`;
-  return fetchJson(url, { headers: authHeaders() });
+  return fetchJson(url);
 }
 
 export function getAnimeDetail(malId: number | string): Promise<AnimeDetailResponse> {
-  return fetchJson(`${BASE}/anime/${malId}`, { headers: authHeaders() });
+  return fetchJson(`${BASE}/anime/${malId}`);
 }
 
 export function addToWatchlist(
@@ -111,7 +107,7 @@ export function addToWatchlist(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watched/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ mal_ids: malIds, status, tagColor }),
   });
 }
@@ -121,13 +117,13 @@ export function removeFromWatchlist(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watched/remove`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ mal_ids: malIds }),
   });
 }
 
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
-  return fetchJson(`${BASE}/watchlist/enriched`, { headers: authHeaders() });
+  return fetchJson(`${BASE}/watchlist/enriched`);
 }
 
 export function updateAnimeNote(
@@ -136,13 +132,13 @@ export function updateAnimeNote(
 ): Promise<{ success: boolean; note: string }> {
   return fetchJson(`${BASE}/anime/${malId}/note`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ note }),
   });
 }
 
 export function getWatchlistTags(): Promise<{ tags: WatchlistTag[] }> {
-  return fetchJson(`${BASE}/watchlist/tags`, { headers: authHeaders() });
+  return fetchJson(`${BASE}/watchlist/tags`);
 }
 
 export function saveWatchlistTag(
@@ -151,7 +147,7 @@ export function saveWatchlistTag(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watchlist/tags`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ tag, color }),
   });
 }
@@ -162,7 +158,7 @@ export function updateWatchlistTag(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watchlist/tags/${tagId}/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify(payload),
   });
 }
@@ -173,7 +169,7 @@ export function deleteWatchlistTag(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/watchlist/tags/${tagId}/delete`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ moveToTagId }),
   });
 }
@@ -181,7 +177,7 @@ export function deleteWatchlistTag(
 // Schedule
 
 export function getScheduleTimeline(): Promise<ScheduleTimelineResponse> {
-  return fetchJson(`${BASE}/schedule/timeline`, { headers: authHeaders() });
+  return fetchJson(`${BASE}/schedule/timeline`);
 }
 
 export function addToSchedule(
@@ -190,7 +186,7 @@ export function addToSchedule(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/schedule/add`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ mal_ids: malIds, episodes_per_day: episodesPerDay }),
   });
 }
@@ -201,7 +197,7 @@ export function updateScheduleItem(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/schedule/${malId}/update`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify(payload),
   });
 }
@@ -211,7 +207,7 @@ export function removeFromSchedule(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/schedule/remove`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ mal_ids: malIds }),
   });
 }
@@ -221,7 +217,7 @@ export function reorderSchedule(
 ): Promise<{ success: boolean; message: string }> {
   return fetchJson(`${BASE}/schedule/reorder`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: jsonHeaders,
     body: JSON.stringify({ mal_ids: malIds }),
   });
 }
