@@ -7,7 +7,6 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { AuthProvider } from "@/lib/auth";
 import { QueryProvider } from "@/lib/query-provider";
-import FeedbackWidgetWrapper from "@/components/FeedbackWidgetWrapper";
 
 export const metadata: Metadata = {
   title: {
@@ -85,7 +84,6 @@ export default function RootLayout({
               <Navigation />
               <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">{children}</main>
               <Footer />
-              <FeedbackWidgetWrapper />
             </AuthProvider>
           </QueryProvider>
         </NuqsAdapter>
