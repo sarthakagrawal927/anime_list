@@ -1,13 +1,7 @@
-import { defineConfig } from "@playwright/test";
+import { definePlaywrightConfig } from '@saas-maker/test-config/playwright';
 
-export default defineConfig({
-  testDir: "./e2e",
-  timeout: 30_000,
-  fullyParallel: false,
-  retries: 0,
-  use: {
-    baseURL: process.env.E2E_BASE_URL || "https://anime-explorer-mal.vercel.app",
-    headless: true,
-    trace: "retain-on-failure",
-  },
+export default definePlaywrightConfig({
+  testDir: './e2e',
+  baseURL: process.env.E2E_BASE_URL || 'https://anime-explorer-mal.vercel.app',
+  viewportMatrix: false,
 });
