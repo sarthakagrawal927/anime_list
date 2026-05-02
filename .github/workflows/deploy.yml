@@ -2,10 +2,14 @@ name: Deploy anime_list to Cloudflare Pages
 on:
   push:
     branches: [main]
-    paths: ['app/**', 'src/**', 'components/**', 'lib/**', 'package.json', 'next.config.*', 'open-next.config.ts', 'wrangler.toml']
+    paths: ['app/**', 'src/**', 'components/**', 'lib/**', 'scripts/prepare-pages-deploy.mjs', 'package.json', 'pnpm-lock.yaml', 'next.config.*', 'open-next.config.ts', 'wrangler.toml']
   pull_request:
     branches: [main]
-    paths: ['app/**', 'src/**', 'components/**', 'lib/**', 'package.json', 'next.config.*', 'open-next.config.ts', 'wrangler.toml']
+    paths: ['app/**', 'src/**', 'components/**', 'lib/**', 'scripts/prepare-pages-deploy.mjs', 'package.json', 'pnpm-lock.yaml', 'next.config.*', 'open-next.config.ts', 'wrangler.toml']
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy-production:
@@ -14,15 +18,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: latest }
+        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '20', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm cf:build
-      - uses: cloudflare/wrangler-action@v3
+      - run: pnpm pages:build
+      - id: deploy
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: pages deploy --project-name=anime-list-web --branch=main --commit-dirty=true
+          command: pages deploy .pages-deploy --project-name=anime-list --branch=main --commit-dirty=true
+      - name: Smoke production
+        run: |
+          set -euo pipefail
+          for path in / /anime/1; do
+            curl --fail --retry 5 --retry-delay 5 --max-time 20 "https://anime-list-9lk.pages.dev${path}" >/dev/null
+          done
 
   deploy-preview:
     if: github.event_name == 'pull_request'
@@ -33,15 +44,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: latest }
+        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '20', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm cf:build
-      - uses: cloudflare/wrangler-action@v3
+      - run: pnpm pages:build
+      - id: deploy
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: pages deploy --project-name=anime-list-web --branch=pr-${{ github.event.number }} --commit-dirty=true
+          command: pages deploy .pages-deploy --project-name=anime-list --branch=pr-${{ github.event.number }} --commit-dirty=true
+      - name: Smoke preview
+        run: |
+          set -euo pipefail
+          url="${{ steps.deploy.outputs.deployment-url }}"
+          curl --fail --retry 5 --retry-delay 5 --max-time 20 "${url}/" >/dev/null
       - uses: actions/github-script@v7
         with:
           script: |
@@ -49,5 +66,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `Preview: https://pr-${{ github.event.number }}.anime-list-web.pages.dev`
+              body: `Preview: https://pr-${{ github.event.number }}.anime-list-9lk.pages.dev`
             })
