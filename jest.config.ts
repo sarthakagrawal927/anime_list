@@ -1,6 +1,8 @@
 import type { Config } from "jest";
 
 const config: Config = {
+  modulePathIgnorePatterns: ["<rootDir>/.open-next", "<rootDir>/.pages-deploy"],
+  testPathIgnorePatterns: ["<rootDir>/.open-next", "<rootDir>/.pages-deploy", "<rootDir>/node_modules"],
   projects: [
     // Backend tests (Node environment)
     {

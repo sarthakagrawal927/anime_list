@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { getApiUrl } from "./apiConfig";
 
 interface AuthUser {
   id: string;
@@ -23,7 +24,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
 });
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = getApiUrl();
 // Non-sensitive profile cache only — the JWT now lives in an httpOnly cookie
 // set by the server. This avoids reading/parsing the token from JS, which
 // closes the XSS exfiltration vector.

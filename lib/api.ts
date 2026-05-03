@@ -10,8 +10,9 @@ import type {
   WatchlistTag,
   ScheduleTimelineResponse,
 } from "./types";
+import { getApiUrl } from "./apiConfig";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_URL = getApiUrl();
 const BASE = `${API_URL}/api`;
 const DEFAULT_PAGE_SIZE = 40;
 

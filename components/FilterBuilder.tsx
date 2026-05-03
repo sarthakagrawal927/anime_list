@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { SearchFilter, SearchResponse } from "@/lib/types";
 import { getFields, getFilterActions, getWatchlistTags, searchAnime } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { DEFAULT_FIELD_OPTIONS, DEFAULT_FILTER_ACTIONS } from "@/lib/filterMetadata";
 import FilterRow from "./FilterRow";
 import ResultsGrid, { ResultsGridSkeleton } from "./ResultsGrid";
 import { Button } from "@/components/ui/button";
@@ -118,11 +119,13 @@ export default function FilterBuilder() {
   const { data: fields } = useQuery({
     queryKey: ["fields"],
     queryFn: getFields,
+    initialData: DEFAULT_FIELD_OPTIONS,
   });
 
   const { data: actions } = useQuery({
     queryKey: ["filterActions"],
     queryFn: getFilterActions,
+    initialData: DEFAULT_FILTER_ACTIONS,
   });
 
   const { data: watchlistTagsData } = useQuery({

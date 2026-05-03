@@ -1,6 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { isAllowedOrigin } from "./corsOrigins";
 import { SignJWT, jwtVerify, createRemoteJWKSet } from "jose";
 import { configurePostHog, trace, flushPostHog } from "@saas-maker/ops";
 
@@ -264,12 +265,7 @@ app.use("*", async (_c, next) => {
 app.use(
   "*",
   cors({
-    origin: [
-      "https://anime-list-web.sarthakagrawal927.workers.dev",
-      "https://anime-list-9lk.pages.dev",
-      "https://anime-explorer-mal.vercel.app",
-      "http://localhost:3000",
-    ],
+    origin: (origin) => (isAllowedOrigin(origin) ? origin : undefined),
     allowMethods: ["GET", "POST"],
     allowHeaders: ["Content-Type", "Authorization"],
     // Required for the browser to attach the httpOnly cookie cross-origin.
