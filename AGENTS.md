@@ -86,3 +86,24 @@ pnpm deploy:worker    # Deploy Cloudflare Worker
 <!-- FLEET-GUIDANCE:END -->
 
 ## Active context
+
+
+<claude-mem-context>
+# Memory Context
+
+# [anime_list] recent context, 2026-05-03 9:35am GMT+5:30
+
+Legend: 🎯session 🔴bugfix 🟣feature 🔄refactor ✅change 🔵discovery ⚖️decision 🚨security_alert 🔐security_note
+Format: ID TIME TYPE TITLE
+Fetch details: get_observations([IDs]) | Search: mem-search skill
+
+Stats: 4 obs (1,681t read) | 54,515t work | 97% savings
+
+### May 2, 2026
+715 7:51p 🔵 anime-list CF Pages returning HTTP 500 "Internal Server Error"
+716 10:03p 🔵 anime-list-9lk.pages.dev Production 500 — Latest Deploy Broken, Previous Works
+717 10:05p 🔵 swe-interview-prep Has 120 ESLint Warnings — All Non-Blocking
+721 10:11p 🔵 anime-list-9lk.pages.dev — MyAnimeList CDN images return 403
+
+Access 55k tokens of past work via get_observations([IDs]) or mem-search skill.
+</claude-mem-context>
