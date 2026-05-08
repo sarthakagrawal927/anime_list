@@ -177,6 +177,36 @@ export interface WatchlistTag {
   color: string;
 }
 
+export interface TasteSignal {
+  name: string;
+  weight: number;
+}
+
+export interface TasteRecommendation {
+  mal_id: number;
+  title: string;
+  title_english?: string;
+  image?: string;
+  type?: string;
+  score?: number;
+  year?: number;
+  url?: string;
+  genres: string[];
+  themes: string[];
+  tasteScore: number;
+  reasons: string[];
+}
+
+export interface TasteRecommendationsResponse {
+  profile: {
+    favoriteGenres: TasteSignal[];
+    favoriteThemes: TasteSignal[];
+    preferredTypes: TasteSignal[];
+    sampledTitles: number;
+  };
+  recommendations: TasteRecommendation[];
+}
+
 // Schedule types
 
 export interface ScheduleItem {

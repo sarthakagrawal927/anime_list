@@ -7,6 +7,7 @@ import type {
   WatchlistData,
   AnimeDetailResponse,
   EnrichedWatchlistResponse,
+  TasteRecommendationsResponse,
   WatchlistTag,
   ScheduleTimelineResponse,
 } from "./types";
@@ -125,6 +126,10 @@ export function removeFromWatchlist(
 
 export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
   return fetchJson(`${BASE}/watchlist/enriched`);
+}
+
+export function getTasteRecommendations(): Promise<TasteRecommendationsResponse> {
+  return fetchJson(`${BASE}/watchlist/recommendations`);
 }
 
 export function updateAnimeNote(

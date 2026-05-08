@@ -36,6 +36,7 @@ import {
   updateUserTag,
   upsertUserTag,
 } from "../db/watchlist";
+import { buildTasteRecommendations } from "../recommendations";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -227,6 +228,27 @@ export const getEnrichedWatchlist = async (req: AuthRequest, res: Response) => {
   });
 
   res.json({ items });
+};
+
+export const getWatchlistRecommendations = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const watchlist = await getWatchedAnimeList(userId);
+
+  if (!watchlist) {
+    res.json({
+      profile: {
+        favoriteGenres: [],
+        favoriteThemes: [],
+        preferredTypes: [],
+        sampledTitles: 0,
+      },
+      recommendations: [],
+    });
+    return;
+  }
+
+  const allAnime = await animeStore.getAnimeList();
+  res.json(buildTasteRecommendations(allAnime, watchlist));
 };
 
 export const getWatchlistTags = async (req: AuthRequest, res: Response) => {

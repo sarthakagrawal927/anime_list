@@ -30,6 +30,7 @@ import {
   getLastUpdated,
   getStats,
   getWatchlist,
+  getWatchlistRecommendations,
   getWatchlistTags,
   deleteWatchlistTag,
   saveWatchlistTag,
@@ -90,6 +91,11 @@ router.post(
 
 router.get(`${routes.base}${routes.watchlist}`, requireAuth, catcher(getWatchlist));
 router.get(`${routes.base}/watchlist/tags`, requireAuth, catcher(getWatchlistTags));
+router.get(
+  `${routes.base}/watchlist/recommendations`,
+  requireAuth,
+  catcher(getWatchlistRecommendations),
+);
 router.post(
   `${routes.base}/watchlist/tags`,
   requireAuth,

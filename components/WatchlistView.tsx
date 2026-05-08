@@ -10,6 +10,7 @@ import {
   addToWatchlist,
   deleteWatchlistTag,
   getEnrichedWatchlist,
+  getTasteRecommendations,
   getWatchlistTags,
   removeFromWatchlist,
   saveWatchlistTag,
@@ -59,6 +60,12 @@ export default function WatchlistView() {
     enabled: !!user,
   });
 
+  const { data: recommendationsData } = useQuery({
+    queryKey: ["watchlist", "recommendations"],
+    queryFn: () => getTasteRecommendations(),
+    enabled: !!user,
+  });
+
   const statusMutation = useMutation({
     mutationFn: ({ malId, status, tagColor }: { malId: string; status: string; tagColor?: string }) =>
       addToWatchlist([Number(malId)], status, tagColor),
@@ -105,6 +112,8 @@ export default function WatchlistView() {
 
   const items: EnrichedWatchlistItem[] = data?.items ?? [];
   const tags = tagsData?.tags ?? [];
+  const tasteProfile = recommendationsData?.profile;
+  const recommendations = recommendationsData?.recommendations ?? [];
   const tagColorMap = useMemo(
     () => new Map(tags.map((tag) => [tag.tag, resolveTagColor(tag.tag, tag.color)])),
     [tags],
@@ -316,6 +325,93 @@ export default function WatchlistView() {
             })}
           </div>
         </div>
+      )}
+
+      {tasteProfile && (
+        <Card className="overflow-hidden p-0">
+          <div className="border-b border-border p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Taste Profile</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Recommendations from your watchlist genres, themes, types, and list signals.
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md border border-border px-3 py-2">
+                  <div className="text-sm font-semibold">{tasteProfile.sampledTitles}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">sampled</div>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <div className="text-sm font-semibold">{tasteProfile.favoriteGenres.length}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">genres</div>
+                </div>
+                <div className="rounded-md border border-border px-3 py-2">
+                  <div className="text-sm font-semibold">{recommendations.length}</div>
+                  <div className="text-[10px] uppercase text-muted-foreground">picks</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[...tasteProfile.favoriteGenres, ...tasteProfile.favoriteThemes].slice(0, 8).map((signal) => (
+                <Badge key={`${signal.name}-${signal.weight}`} variant="outline" className="text-[11px]">
+                  {signal.name} · {signal.weight}
+                </Badge>
+              ))}
+              {tasteProfile.sampledTitles === 0 && (
+                <span className="text-sm text-muted-foreground">
+                  Add anime to your watchlist to build a profile.
+                </span>
+              )}
+            </div>
+          </div>
+
+          {recommendations.length > 0 && (
+            <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+              {recommendations.slice(0, 6).map((item) => (
+                <Link
+                  key={item.mal_id}
+                  href={getAnimeDetailHref(item.mal_id)}
+                  className="group flex gap-3 rounded-lg border border-border p-3 transition-colors hover:border-primary/50"
+                >
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.title_english || item.title}
+                      width={56}
+                      height={78}
+                      className="h-[78px] w-14 rounded-md object-cover"
+                    />
+                  ) : (
+                    <div className="h-[78px] w-14 shrink-0 rounded-md bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground group-hover:text-primary">
+                      {item.title_english || item.title}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
+                      {item.score ? <span>{item.score}</span> : null}
+                      {item.year ? <span>{item.year}</span> : null}
+                      {item.type ? <span>{item.type}</span> : null}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {item.reasons.slice(0, 2).map((reason) => (
+                        <Badge key={reason} variant="secondary" className="text-[10px] font-normal">
+                          {reason}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-semibold text-primary">{item.tasteScore}</div>
+                    <div className="text-[10px] text-muted-foreground">fit</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
       )}
 
       {filtered.length === 0 ? (
