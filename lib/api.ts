@@ -9,6 +9,8 @@ import type {
   EnrichedWatchlistResponse,
   TasteRecommendationsResponse,
   WatchlistTag,
+  WatchlistImportPreview,
+  AniListExportResponse,
   ScheduleTimelineResponse,
 } from "./types";
 import { getApiUrl } from "./apiConfig";
@@ -130,6 +132,32 @@ export function getEnrichedWatchlist(): Promise<EnrichedWatchlistResponse> {
 
 export function getTasteRecommendations(): Promise<TasteRecommendationsResponse> {
   return fetchJson(`${BASE}/watchlist/recommendations`);
+}
+
+export function previewWatchlistImport(
+  source: "mal" | "anilist",
+  payload: string,
+): Promise<WatchlistImportPreview> {
+  return fetchJson(`${BASE}/watchlist/import/preview`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ source, payload }),
+  });
+}
+
+export function applyWatchlistImport(
+  source: "mal" | "anilist",
+  payload: string,
+): Promise<WatchlistImportPreview> {
+  return fetchJson(`${BASE}/watchlist/import/apply`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ source, payload }),
+  });
+}
+
+export function exportAniListWatchlist(): Promise<AniListExportResponse> {
+  return fetchJson(`${BASE}/watchlist/export/anilist`);
 }
 
 export function updateAnimeNote(

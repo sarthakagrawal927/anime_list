@@ -9,9 +9,12 @@ import type { EnrichedWatchlistItem } from "@/lib/types";
 import {
   addToWatchlist,
   deleteWatchlistTag,
+  applyWatchlistImport,
+  exportAniListWatchlist,
   getEnrichedWatchlist,
   getTasteRecommendations,
   getWatchlistTags,
+  previewWatchlistImport,
   removeFromWatchlist,
   saveWatchlistTag,
   updateWatchlistTag,
@@ -43,6 +46,10 @@ export default function WatchlistView() {
   const { user, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("");
   const [showListSettings, setShowListSettings] = useState(false);
+  const [showSyncTools, setShowSyncTools] = useState(false);
+  const [syncSource, setSyncSource] = useState<"mal" | "anilist">("mal");
+  const [syncPayload, setSyncPayload] = useState("");
+  const [syncResult, setSyncResult] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#10b981");
   const [tagDrafts, setTagDrafts] = useState<Record<string, { tag: string; color: string }>>({});
@@ -107,6 +114,36 @@ export default function WatchlistView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+  });
+
+  const previewImportMutation = useMutation({
+    mutationFn: () => previewWatchlistImport(syncSource, syncPayload),
+    onSuccess: (result) => {
+      setSyncResult(
+        `Preview: ${result.entries.length} importable, ${result.skipped} skipped. ${Object.entries(result.statusCounts)
+          .map(([status, count]) => `${status}: ${count}`)
+          .join(" · ")}`,
+      );
+    },
+  });
+
+  const applyImportMutation = useMutation({
+    mutationFn: () => applyWatchlistImport(syncSource, syncPayload),
+    onSuccess: (result) => {
+      setSyncResult(`Imported ${result.imported ?? result.entries.length} items from ${result.source}.`);
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "tags"] });
+      queryClient.invalidateQueries({ queryKey: ["watchlist", "recommendations"] });
+    },
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: () => exportAniListWatchlist(),
+    onSuccess: async (result) => {
+      const text = JSON.stringify(result.entries, null, 2);
+      await navigator.clipboard?.writeText(text);
+      setSyncResult(`Copied ${result.entries.length} AniList export rows to clipboard.`);
     },
   });
 
@@ -219,7 +256,68 @@ export default function WatchlistView() {
         >
           {showListSettings ? "Close Settings" : "List Settings"}
         </button>
+        <button
+          onClick={() => setShowSyncTools((prev) => !prev)}
+          className="h-8 rounded-md px-3 text-xs border border-border hover:bg-accent"
+        >
+          {showSyncTools ? "Close Sync" : "Import / Export"}
+        </button>
       </div>
+
+      {showSyncTools && (
+        <Card className="space-y-3 p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <h3 className="text-sm font-medium text-foreground">MAL / AniList Sync</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Paste a MyAnimeList XML export or AniList MediaList JSON to preview and import.
+              </p>
+            </div>
+            <select
+              value={syncSource}
+              onChange={(event) => setSyncSource(event.target.value as "mal" | "anilist")}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              <option value="mal">MyAnimeList XML</option>
+              <option value="anilist">AniList JSON</option>
+            </select>
+          </div>
+          <textarea
+            value={syncPayload}
+            onChange={(event) => setSyncPayload(event.target.value)}
+            placeholder={syncSource === "mal" ? "<myanimelist>...</myanimelist>" : "{\"lists\":[...]}"}
+            className="min-h-36 w-full rounded-md border border-input bg-background p-3 font-mono text-xs"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => previewImportMutation.mutate()}
+              disabled={previewImportMutation.isPending || !syncPayload.trim()}
+              className="h-8 rounded-md px-3 text-xs border border-border hover:bg-accent disabled:opacity-60"
+            >
+              Preview Import
+            </button>
+            <button
+              onClick={() => applyImportMutation.mutate()}
+              disabled={applyImportMutation.isPending || !syncPayload.trim()}
+              className="h-8 rounded-md bg-primary px-3 text-xs text-primary-foreground disabled:opacity-60"
+            >
+              Apply Import
+            </button>
+            <button
+              onClick={() => exportMutation.mutate()}
+              disabled={exportMutation.isPending}
+              className="h-8 rounded-md px-3 text-xs border border-border hover:bg-accent disabled:opacity-60"
+            >
+              Copy AniList Export
+            </button>
+          </div>
+          {syncResult && (
+            <p className="rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
+              {syncResult}
+            </p>
+          )}
+        </Card>
+      )}
 
       {showListSettings && (
         <div className="rounded-lg border border-border p-3 space-y-3">

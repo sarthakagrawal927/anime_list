@@ -207,6 +207,30 @@ export interface TasteRecommendationsResponse {
   recommendations: TasteRecommendation[];
 }
 
+export interface WatchlistImportPreview {
+  source: "mal" | "anilist";
+  entries: {
+    malId: string;
+    status: string;
+    title?: string;
+    type?: string;
+    episodes?: number;
+    note?: string;
+  }[];
+  statusCounts: Record<string, number>;
+  skipped: number;
+  imported?: number;
+}
+
+export interface AniListExportResponse {
+  source: "anilist";
+  entries: {
+    mediaIdMal: number;
+    status: string;
+    notes: string;
+  }[];
+}
+
 // Schedule types
 
 export interface ScheduleItem {

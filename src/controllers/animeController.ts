@@ -33,10 +33,16 @@ import { getLastDataUpdate, getRecentChanges } from "../db/animeData";
 import {
   deleteUserTag,
   getUserTags,
+  importAnimeWatchlistEntries,
   updateUserTag,
   upsertUserTag,
 } from "../db/watchlist";
 import { buildTasteRecommendations } from "../recommendations";
+import {
+  buildAniListExport,
+  parseAniListJson,
+  parseMalAnimeXml,
+} from "../watchlistSync";
 
 type ScoredAnime = ReturnType<typeof getScoreSortedList>[number];
 
@@ -249,6 +255,46 @@ export const getWatchlistRecommendations = async (req: AuthRequest, res: Respons
 
   const allAnime = await animeStore.getAnimeList();
   res.json(buildTasteRecommendations(allAnime, watchlist));
+};
+
+export const previewWatchlistImport = async (
+  req: AuthRequest & Request<{}, {}, { source?: string; payload?: string }>,
+  res: Response,
+) => {
+  const source = req.body.source === "anilist" ? "anilist" : "mal";
+  const payload = typeof req.body.payload === "string" ? req.body.payload : "";
+  if (!payload.trim()) {
+    res.status(400).json({ error: "Import payload is required" });
+    return;
+  }
+
+  res.json(source === "anilist" ? parseAniListJson(payload) : parseMalAnimeXml(payload));
+};
+
+export const applyWatchlistImport = async (
+  req: AuthRequest & Request<{}, {}, { source?: string; payload?: string }>,
+  res: Response,
+) => {
+  const userId = req.user!.userId;
+  const source = req.body.source === "anilist" ? "anilist" : "mal";
+  const payload = typeof req.body.payload === "string" ? req.body.payload : "";
+  if (!payload.trim()) {
+    res.status(400).json({ error: "Import payload is required" });
+    return;
+  }
+
+  const preview = source === "anilist" ? parseAniListJson(payload) : parseMalAnimeXml(payload);
+  const result = await importAnimeWatchlistEntries(preview.entries, userId);
+  res.json({ ...preview, imported: result.imported });
+};
+
+export const exportAniListWatchlist = async (req: AuthRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const watchlist = await getWatchedAnimeList(userId);
+  res.json({
+    source: "anilist",
+    entries: watchlist ? buildAniListExport(watchlist.anime) : [],
+  });
 };
 
 export const getWatchlistTags = async (req: AuthRequest, res: Response) => {

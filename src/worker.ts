@@ -11,6 +11,7 @@ import {
   deleteUserTag,
   getAnimeWatchlist,
   getAnimeWatchlistEntry,
+  importAnimeWatchlistEntries,
   upsertAnimeWatchlist,
   updateAnimeWatchlistNote,
   deleteFromAnimeWatchlist,
@@ -45,6 +46,11 @@ import {
   watchlistTagSchema,
   watchlistTagUpdateSchema,
 } from "./validators/watchlistTags";
+import {
+  buildAniListExport,
+  parseAniListJson,
+  parseMalAnimeXml,
+} from "./watchlistSync";
 import {
   addToScheduleSchema,
   updateScheduleItemSchema,
@@ -730,6 +736,38 @@ app.get("/api/watchlist/enriched", requireAuth, async (c) => {
   });
 
   return c.json({ items });
+});
+
+app.post("/api/watchlist/import/preview", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const source = body.source === "anilist" ? "anilist" : "mal";
+  const payload = typeof body.payload === "string" ? body.payload : "";
+  if (!payload.trim()) {
+    return c.json({ error: "Import payload is required" }, 400);
+  }
+  return c.json(source === "anilist" ? parseAniListJson(payload) : parseMalAnimeXml(payload));
+});
+
+app.post("/api/watchlist/import/apply", requireAuth, async (c) => {
+  const body = await c.req.json();
+  const user = c.get("user")!;
+  const source = body.source === "anilist" ? "anilist" : "mal";
+  const payload = typeof body.payload === "string" ? body.payload : "";
+  if (!payload.trim()) {
+    return c.json({ error: "Import payload is required" }, 400);
+  }
+  const preview = source === "anilist" ? parseAniListJson(payload) : parseMalAnimeXml(payload);
+  const result = await importAnimeWatchlistEntries(preview.entries, user.userId);
+  return c.json({ ...preview, imported: result.imported });
+});
+
+app.get("/api/watchlist/export/anilist", requireAuth, async (c) => {
+  const user = c.get("user")!;
+  const watchlist = await getAnimeWatchlist(user.userId);
+  return c.json({
+    source: "anilist",
+    entries: watchlist ? buildAniListExport(watchlist.anime) : [],
+  });
 });
 
 app.post("/api/watched/add", requireAuth, async (c) => {

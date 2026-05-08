@@ -1,5 +1,6 @@
 import { getDb } from "./client";
 import type {
+  ExternalWatchlistEntry,
   MangaWatchlistData,
   WatchedAnime,
   WatchedManga,
@@ -380,6 +381,43 @@ export async function upsertAnimeWatchlist(
     args: [userId, id, tag.id],
   }));
   await db.batch(statements);
+}
+
+export async function importAnimeWatchlistEntries(
+  entries: ExternalWatchlistEntry[],
+  userId: string = "default",
+): Promise<{ imported: number }> {
+  const db = getDb();
+  const statements = [];
+
+  for (const entry of entries) {
+    const tag = await ensureTag(userId, entry.status);
+    statements.push({
+      sql: `INSERT INTO anime_watchlist (user_id, mal_id, tag_id, title, type, episodes, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, mal_id) DO UPDATE SET
+              tag_id = excluded.tag_id,
+              title = COALESCE(excluded.title, anime_watchlist.title),
+              type = COALESCE(excluded.type, anime_watchlist.type),
+              episodes = COALESCE(excluded.episodes, anime_watchlist.episodes),
+              note = COALESCE(excluded.note, anime_watchlist.note)`,
+      args: [
+        userId,
+        entry.malId,
+        tag.id,
+        entry.title ?? null,
+        entry.type ?? null,
+        entry.episodes ?? null,
+        entry.note ?? null,
+      ],
+    });
+  }
+
+  if (statements.length > 0) {
+    await db.batch(statements);
+  }
+
+  return { imported: statements.length };
 }
 
 export async function deleteFromAnimeWatchlist(

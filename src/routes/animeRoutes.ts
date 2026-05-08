@@ -22,7 +22,9 @@ import { requireAuth, optionalAuth } from "../middleware/auth";
 import { userRateLimit } from "../middleware/rateLimit";
 import {
   addToWatchlist,
+  applyWatchlistImport,
   removeFromWatchlist,
+  exportAniListWatchlist,
   getChangelog,
   getEnrichedWatchlist,
   getFieldOptions,
@@ -32,6 +34,7 @@ import {
   getWatchlist,
   getWatchlistRecommendations,
   getWatchlistTags,
+  previewWatchlistImport,
   deleteWatchlistTag,
   saveWatchlistTag,
   updateWatchlistTag,
@@ -119,6 +122,23 @@ router.post(
 );
 
 router.get(`${routes.base}/watchlist/enriched`, requireAuth, catcher(getEnrichedWatchlist));
+router.post(
+  `${routes.base}/watchlist/import/preview`,
+  requireAuth,
+  userRateLimit,
+  catcher(previewWatchlistImport),
+);
+router.post(
+  `${routes.base}/watchlist/import/apply`,
+  requireAuth,
+  userRateLimit,
+  catcher(applyWatchlistImport),
+);
+router.get(
+  `${routes.base}/watchlist/export/anilist`,
+  requireAuth,
+  catcher(exportAniListWatchlist),
+);
 
 router.post(
   `${routes.base}${routes.add_to_watched}`,
