@@ -29,7 +29,6 @@
   "license": "ISC",
   "dependencies": {
     "@libsql/client": "0.17.3",
-    "@saas-maker/changelog-widget": "^0.2.1",
     "@saas-maker/ops": "0.1.1",
     "@saas-maker/posthog-client": "^0.1.0",
     "@saas-maker/testimonials": "^0.2.1",
