@@ -1,5 +1,9 @@
 # agents.md — anime_list (MAL Explorer)
 
+## Shared Fleet Standard
+
+Also read and follow the shared fleet-level agent standard at `../AGENTS.md`. Treat this repository as owned product code: protect production stability, keep changes scoped, verify work, and record durable follow-up tasks when something remains incomplete or blocked.
+
 ## Purpose
 Anime/manga discovery platform with 14,800+ titles, multi-field filtering, personal watchlists, schedule tracking, and daily auto-sync from MyAnimeList via Jikan API.
 
