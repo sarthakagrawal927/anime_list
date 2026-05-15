@@ -19,15 +19,23 @@ import ResultsGrid, { ResultsGridSkeleton } from "./ResultsGrid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_FILTER: SearchFilter = {
-  field: "score",
+  field: "members",
   action: "GREATER_THAN_OR_EQUALS",
-  value: 7,
+  value: 100000,
 };
 const DEFAULT_PAGE_SIZE = 40;
 const SINGLE_VALUE_OPTION_FIELDS = new Set(["type", "season"]);
+const RELEVANCE_SORT_VALUE = "relevance";
 
 const QUICK_GENRES = [
   "Action", "Comedy", "Drama", "Fantasy", "Romance", "Sci-Fi",
@@ -40,8 +48,18 @@ const SORT_OPTIONS = [
   { value: "members", label: "Popularity" },
   { value: "year", label: "Year" },
   { value: "favorites", label: "Favorites" },
-  { value: "", label: "Relevance" },
+  { value: RELEVANCE_SORT_VALUE, label: "Relevance" },
 ];
+
+const SEASON_NAMES = ["winter", "spring", "summer", "fall"] as const;
+const SEASON_OPTIONS = Array.from({ length: 18 }, (_, i) => 2027 - i).flatMap((year) =>
+  [...SEASON_NAMES].reverse().map((season) => ({
+    value: `${season}-${year}`,
+    label: `${season[0].toUpperCase()}${season.slice(1)} ${year}`,
+    season,
+    year,
+  }))
+);
 
 import { resolveTagColor, toRgba } from "@/lib/watchStatus";
 
@@ -82,6 +100,7 @@ export default function FilterBuilder() {
   const [filters, setFilters] = useQueryState("af", filtersParser.withDefault([{ ...DEFAULT_FILTER }]));
   const [searchText, setSearchText] = useQueryState("q", parseAsString.withDefault(""));
   const [sortBy, setSortBy] = useQueryState("sort", parseAsString.withDefault("score"));
+  const [selectedSeason, setSelectedSeason] = useQueryState("season", parseAsString.withDefault("any"));
   const [airing, setAiring] = useQueryState("airing", parseAsStringLiteral(["yes", "no", "any"] as const).withDefault("any"));
   const [selectedGenres, setSelectedGenres] = useQueryState("genres", parseAsArrayOf(parseAsString).withDefault([]));
   const [hideWatched, setHideWatched] = useQueryState("wt", parseAsArrayOf(parseAsString).withDefault([]));
@@ -157,6 +176,22 @@ export default function FilterBuilder() {
       });
     }
 
+    const seasonOption = SEASON_OPTIONS.find((option) => option.value === selectedSeason);
+    if (seasonOption) {
+      allFilters.push(
+        {
+          field: "season",
+          action: "EQUALS",
+          value: seasonOption.season,
+        },
+        {
+          field: "year",
+          action: "EQUALS",
+          value: seasonOption.year,
+        }
+      );
+    }
+
     allFilters.push(...activeAdvancedFilters);
 
     return {
@@ -164,7 +199,7 @@ export default function FilterBuilder() {
       opts: {
         pagesize,
         offset,
-        sortBy: sortBy || undefined,
+        sortBy: sortBy === RELEVANCE_SORT_VALUE ? undefined : sortBy || undefined,
         airing,
         hideWatched: watchlistMode === "hide" ? hideWatched : [],
         includeWatched: watchlistMode === "show" ? hideWatched : [],
@@ -177,6 +212,7 @@ export default function FilterBuilder() {
     sortBy,
     airing,
     selectedGenres,
+    selectedSeason,
     searchText,
     hideWatched,
     watchlistMode,
@@ -236,6 +272,7 @@ export default function FilterBuilder() {
     setSearchText("");
     setFilters([]);
     setSortBy("score");
+    setSelectedSeason("any");
     setAiring("any");
     setHideWatched([]);
     setWatchlistMode("hide");
@@ -247,6 +284,7 @@ export default function FilterBuilder() {
   const activeFilterCount =
     selectedGenres.length +
     (searchText ? 1 : 0) +
+    (selectedSeason !== "any" ? 1 : 0) +
     hideWatched.length +
     activeAdvancedFilters.length;
 
@@ -295,31 +333,54 @@ export default function FilterBuilder() {
           />
         </div>
 
-        <select
-          value={sortBy}
-          onChange={(e) => { setSortBy(e.target.value); resetPage(); }}
-          aria-label="Sort by"
-          className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
+        <Select
+          value={sortBy || RELEVANCE_SORT_VALUE}
+          onValueChange={(value) => { setSortBy(value); resetPage(); }}
         >
+          <SelectTrigger aria-label="Sort by" className="h-9 w-[150px] border-0 bg-secondary">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
           {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
-            </option>
+            </SelectItem>
           ))}
-        </select>
+          </SelectContent>
+        </Select>
 
-        <select
-          value={pagesize}
-          onChange={(e) => { setPagesize(Number(e.target.value)); resetPage(); }}
-          aria-label="Results per page"
-          className="h-9 rounded-lg bg-secondary border-0 px-3 text-sm text-foreground"
+        <Select
+          value={String(pagesize)}
+          onValueChange={(value) => { setPagesize(Number(value)); resetPage(); }}
         >
+          <SelectTrigger aria-label="Results per page" className="h-9 w-[138px] border-0 bg-secondary">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
           {[20, 40, 80, 100].map((n) => (
-            <option key={n} value={n}>
+            <SelectItem key={n} value={String(n)}>
               {n} results
-            </option>
+            </SelectItem>
           ))}
-        </select>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedSeason}
+          onValueChange={(value) => { setSelectedSeason(value); resetPage(); }}
+        >
+          <SelectTrigger aria-label="Season" className="h-9 w-[150px] border-0 bg-secondary">
+            <SelectValue placeholder="Season" />
+          </SelectTrigger>
+          <SelectContent align="end">
+            <SelectItem value="any">Any season</SelectItem>
+            {SEASON_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         <Button
           onClick={handleSearch}

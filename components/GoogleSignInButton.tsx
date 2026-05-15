@@ -65,13 +65,12 @@ export default function GoogleSignInButton() {
     }
   };
 
-  if (!ready) return null;
-
   return (
     <Button
       variant="outline"
       size="sm"
       onClick={handleClick}
+      disabled={!ready}
       className="gap-2 text-sm font-medium"
     >
       <svg className="h-4 w-4" viewBox="0 0 24 24">

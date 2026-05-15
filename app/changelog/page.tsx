@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getChangelog } from "@/lib/api";
 import type { ChangelogEntry } from "@/lib/api";
@@ -92,14 +93,12 @@ export default function ChangelogPage() {
                         {entry.type}
                       </span>
                     )}
-                    <a
-                      href={`https://myanimelist.net/anime/${entry.mal_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href={`/anime/${entry.mal_id}`}
                       className="text-foreground hover:text-primary transition-colors truncate"
                     >
                       {entry.title_english || entry.title}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>

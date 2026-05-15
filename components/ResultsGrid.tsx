@@ -36,8 +36,8 @@ export default function ResultsGrid({ results }: { results: SearchResponse }) {
 
       {results.filteredList.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-4 gap-y-6">
-          {results.filteredList.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+          {results.filteredList.map((anime, index) => (
+            <AnimeCard key={anime.id} anime={anime} priority={index < 4} />
           ))}
         </div>
       ) : (
