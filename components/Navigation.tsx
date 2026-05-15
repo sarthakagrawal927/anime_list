@@ -18,6 +18,7 @@ import { Menu } from "lucide-react";
 
 const links = [
   { href: "/", label: "Discover" },
+  { href: "/seasonal", label: "Seasonal" },
   { href: "/stats", label: "Stats" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/schedule", label: "Schedule" },
