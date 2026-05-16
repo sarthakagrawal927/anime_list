@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Search, SlidersHorizontal, Trash2 } from "lucide-react";
 
 const DEFAULT_FILTER: SearchFilter = {
   field: "members",
@@ -52,13 +53,30 @@ const SORT_OPTIONS = [
 ];
 
 const SEASON_NAMES = ["winter", "spring", "summer", "fall"] as const;
-const SEASON_OPTIONS = Array.from({ length: 18 }, (_, i) => 2027 - i).flatMap((year) =>
-  [...SEASON_NAMES].reverse().map((season) => ({
-    value: `${season}-${year}`,
-    label: `${season[0].toUpperCase()}${season.slice(1)} ${year}`,
-    season,
-    year,
-  }))
+
+// Don't surface seasons that haven't aired yet — month-based mapping matches
+// MAL's quarterly buckets.
+const currentSeasonIndex = (() => {
+  const now = new Date();
+  const month = now.getMonth();
+  if (month < 3) return 0; // winter
+  if (month < 6) return 1; // spring
+  if (month < 9) return 2; // summer
+  return 3; // fall
+})();
+const currentYear = new Date().getFullYear();
+
+const SEASON_OPTIONS = Array.from({ length: 18 }, (_, i) => currentYear - i).flatMap((year) =>
+  [...SEASON_NAMES].reverse().flatMap((season) => {
+    const idx = SEASON_NAMES.indexOf(season);
+    if (year === currentYear && idx > currentSeasonIndex) return [];
+    return [{
+      value: `${season}-${year}`,
+      label: `${season[0].toUpperCase()}${season.slice(1)} ${year}`,
+      season,
+      year,
+    }];
+  })
 );
 
 import { resolveTagColor, toRgba } from "@/lib/watchStatus";
@@ -110,12 +128,10 @@ export default function FilterBuilder() {
   const normalizedFilters = filters.map(normalizeFilter);
   const activeAdvancedFilters = normalizedFilters.filter(isFilterValuePresent);
 
-  // Local input for instant UI, debounce URL param update
   const [inputValue, setInputValue] = useState(searchText);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
-    // Sync local input when URL param changes externally (back/forward nav)
     setInputValue(searchText);
   }, [searchText]);
 
@@ -132,7 +148,6 @@ export default function FilterBuilder() {
     normalizedFilters.some(isFilterValuePresent)
   );
 
-  // Reset to page 1 whenever called — used by all filter mutations
   const resetPage = () => setCurrentPage(1);
 
   const { data: fields } = useQuery({
@@ -218,7 +233,6 @@ export default function FilterBuilder() {
     watchlistMode,
   ]);
 
-  // Create stable query key from filter params
   const filterKey = JSON.stringify(buildSearchOpts());
 
   const { data, isLoading: loading, isFetching, error } = useQuery<SearchResponse>({
@@ -229,10 +243,6 @@ export default function FilterBuilder() {
     },
     placeholderData: (prev) => prev,
   });
-
-  const handleSearch = () => {
-    setCurrentPage(1);
-  };
 
   const toggleGenre = (genre: string) => {
     setSelectedGenres((prev) =>
@@ -281,13 +291,6 @@ export default function FilterBuilder() {
     setCurrentPage(1);
   };
 
-  const activeFilterCount =
-    selectedGenres.length +
-    (searchText ? 1 : 0) +
-    (selectedSeason !== "any" ? 1 : 0) +
-    hideWatched.length +
-    activeAdvancedFilters.length;
-
   const totalFiltered = data?.totalFiltered || 0;
   const totalPages = totalFiltered > 0 ? Math.ceil(totalFiltered / pagesize) : 0;
   const hasNext = currentPage < totalPages;
@@ -300,273 +303,97 @@ export default function FilterBuilder() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search + Sort bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
-            />
-          </svg>
-          <Input
-            placeholder="Search anime..."
-            aria-label="Search anime"
+    <div className="space-y-10">
+      {/* Top Controls: Search and Essential Selects */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-surface-container-low p-6 rounded-sm border border-outline/10 shadow-2xl">
+        <div className="lg:col-span-4 relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/20 group-focus-within:text-primary transition-colors" />
+          <input
+            placeholder="ENCODE TITLE SEARCH..."
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (debounceRef.current) clearTimeout(debounceRef.current);
-                setSearchText(inputValue);
-                resetPage();
-              }
-            }}
-            className="pl-9 h-9 bg-secondary border-0"
+            className="w-full h-14 bg-surface border border-outline/10 pl-12 pr-4 text-[10px] font-black tracking-widest uppercase text-white placeholder:text-white/20 focus:outline-none focus:border-primary transition-all rounded-sm"
           />
         </div>
 
-        <Select
-          value={sortBy || RELEVANCE_SORT_VALUE}
-          onValueChange={(value) => { setSortBy(value); resetPage(); }}
-        >
-          <SelectTrigger aria-label="Sort by" className="h-9 w-[150px] border-0 bg-secondary">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-          {SORT_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-          </SelectContent>
-        </Select>
+        <div className="lg:col-span-2">
+          <label className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2 block">Priority Sort</label>
+          <Select
+            value={sortBy || RELEVANCE_SORT_VALUE}
+            onValueChange={(value) => { setSortBy(value); resetPage(); }}
+          >
+            <SelectTrigger className="h-14 bg-surface border-outline/10 text-[10px] font-black tracking-widest uppercase rounded-sm focus:border-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-container-high border-outline/10">
+              {SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="text-[10px] font-bold uppercase tracking-widest focus:bg-primary/10 focus:text-primary">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select
-          value={String(pagesize)}
-          onValueChange={(value) => { setPagesize(Number(value)); resetPage(); }}
-        >
-          <SelectTrigger aria-label="Results per page" className="h-9 w-[138px] border-0 bg-secondary">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-          {[20, 40, 80, 100].map((n) => (
-            <SelectItem key={n} value={String(n)}>
-              {n} results
-            </SelectItem>
-          ))}
-          </SelectContent>
-        </Select>
+        <div className="lg:col-span-2">
+          <label className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mb-2 block">System Season</label>
+          <Select
+            value={selectedSeason}
+            onValueChange={(value) => { setSelectedSeason(value); resetPage(); }}
+          >
+            <SelectTrigger className="h-14 bg-surface border-outline/10 text-[10px] font-black tracking-widest uppercase rounded-sm focus:border-primary">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface-container-high border-outline/10">
+              <SelectItem value="any" className="text-[10px] font-bold uppercase tracking-widest">ANY SEASON</SelectItem>
+              {SEASON_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value} className="text-[10px] font-bold uppercase tracking-widest">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select
-          value={selectedSeason}
-          onValueChange={(value) => { setSelectedSeason(value); resetPage(); }}
-        >
-          <SelectTrigger aria-label="Season" className="h-9 w-[150px] border-0 bg-secondary">
-            <SelectValue placeholder="Season" />
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value="any">Any season</SelectItem>
-            {SEASON_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Button
-          onClick={handleSearch}
-          disabled={loading}
-          size="sm"
-          className="h-9 px-5"
-        >
-          {loading ? "Searching..." : "Search"}
-        </Button>
-      </div>
-
-      {/* Quick genre chips */}
-      <div className="flex flex-wrap gap-1.5 items-center">
-        {QUICK_GENRES.map((genre) => {
-          const selected = selectedGenres.includes(genre);
-          return (
-            <button
-              key={genre}
-              onClick={() => toggleGenre(genre)}
-              aria-pressed={selected}
-              className={cn(
-                "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
-                selected
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "bg-secondary text-secondary-foreground hover:bg-accent"
-              )}
-            >
-              {genre}
-            </button>
-          );
-        })}
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border" />
-
-        {/* Airing status tags */}
-        <button
-          onClick={() => { setAiring(airing === "yes" ? "any" : "yes"); resetPage(); }}
-          aria-pressed={airing === "yes"}
-          className={cn(
-            "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
-            airing === "yes"
-              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-              : "bg-secondary text-secondary-foreground hover:bg-accent"
-          )}
-        >
-          Airing
-        </button>
-        <button
-          onClick={() => { setAiring(airing === "no" ? "any" : "no"); resetPage(); }}
-          aria-pressed={airing === "no"}
-          className={cn(
-            "text-xs px-3 py-1.5 rounded-full transition-all duration-200",
-            airing === "no"
-              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-              : "bg-secondary text-secondary-foreground hover:bg-accent"
-          )}
-        >
-          Finished
-        </button>
-
-        {/* Separator */}
-        <div className="w-px h-6 bg-border" />
-
-        <button
-          onClick={() => { setShowAdvanced(!showAdvanced); resetPage(); }}
-          className={cn(
-            "text-xs px-3 py-1.5 rounded-full transition-all duration-200 flex items-center gap-1.5",
-            showAdvanced
-              ? "bg-primary/20 text-primary"
-              : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
-          )}
-        >
-          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
-          </svg>
-          Advanced
-          {activeAdvancedFilters.length > 0 && (
-            <span className="rounded-full bg-background/80 px-1.5 py-0.5 text-[10px] leading-none">
-              {activeAdvancedFilters.length}
-            </span>
-          )}
-        </button>
-
-        {activeFilterCount > 0 && (
+        <div className="lg:col-span-4 flex items-end gap-3">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={cn(
+              "h-14 flex-1 flex items-center justify-center gap-3 text-[10px] font-black tracking-widest uppercase rounded-sm border transition-all",
+              showAdvanced 
+                ? "bg-primary-container text-on-primary-container border-primary shadow-[0_0_20px_rgba(255,80,110,0.3)]"
+                : "bg-surface border-outline/10 text-white/60 hover:border-primary hover:text-white"
+            )}
+          >
+            <SlidersHorizontal size={18} />
+            Advanced Matrix
+            {activeAdvancedFilters.length > 0 && (
+              <span className="bg-white/10 px-2 py-0.5 rounded-sm">{activeAdvancedFilters.length}</span>
+            )}
+          </button>
+          
           <button
             onClick={clearAll}
-            className="text-xs px-3 py-1.5 rounded-full text-destructive hover:bg-destructive/10 transition-colors"
+            className="h-14 w-14 flex items-center justify-center bg-surface border border-outline/10 text-white/20 hover:text-error hover:border-error transition-all rounded-sm"
           >
-            Clear all
+            <Trash2 size={20} />
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Hide watched (only when logged in) */}
-      {user && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 mr-1">
-            <button
-              onClick={() => { setWatchlistMode("hide"); resetPage(); }}
-              className={cn(
-                "text-xs px-2 py-0.5 rounded-full transition-all duration-200",
-                watchlistMode === "hide"
-                  ? "bg-primary/20 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Hide
-            </button>
-            <button
-              onClick={() => { setWatchlistMode("show"); resetPage(); }}
-              className={cn(
-                "text-xs px-2 py-0.5 rounded-full transition-all duration-200",
-                watchlistMode === "show"
-                  ? "bg-primary/20 text-primary font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Show only
-            </button>
-          </div>
-          <div className="w-px h-5 bg-border" />
-          {watchlistTags.map((tag) => {
-            const active = hideWatched.includes(tag.tag);
-            const color = resolveTagColor(tag.tag, tag.color);
-            return (
-              <button
-                key={tag.tag}
-                onClick={() => toggleHideWatched(tag.tag)}
-                aria-pressed={active}
-                className={cn(
-                  "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
-                  active
-                    ? ""
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                style={
-                  active
-                    ? {
-                        color,
-                        borderColor: toRgba(color, 0.45),
-                        backgroundColor: toRgba(color, 0.15),
-                      }
-                    : {
-                        color,
-                        borderColor: toRgba(color, 0.3),
-                      }
-                }
-              >
-                {tag.tag}
-              </button>
-            );
-          })}
-          {watchlistTags.length === 0 && (
-            <span className="text-xs text-muted-foreground">No tags yet</span>
-          )}
-        </div>
-      )}
-
-      {/* Selected genre badges */}
-      {selectedGenres.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedGenres.map((g) => (
-            <Badge
-              key={g}
-              variant="default"
-              className="gap-1 cursor-pointer"
-              onClick={() => toggleGenre(g)}
-            >
-              {g}
-              <span className="text-primary-foreground/60">&times;</span>
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {/* Advanced filter builder (collapsible) */}
+      {/* Advanced Matrix Builder */}
       {showAdvanced && (
-        <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-medium text-foreground">Advanced Filters</h3>
-            <Button variant="ghost" size="sm" onClick={addFilter} className="h-8 sm:h-7 text-xs gap-1 shrink-0">
-              <span className="text-lg leading-none">+</span> <span className="hidden sm:inline">Add Filter</span><span className="sm:hidden">Add</span>
-            </Button>
+        <div className="space-y-4 p-8 bg-surface-container-low border border-outline/10 rounded-sm animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center justify-between border-b border-outline/10 pb-4">
+            <h3 className="text-[11px] font-black tracking-[0.3em] uppercase text-white/40">Logic Matrix</h3>
+            <button
+              onClick={addFilter}
+              className="text-[10px] font-black tracking-widest uppercase text-primary hover:text-white transition-colors"
+            >
+              + ADD OPERATOR
+            </button>
           </div>
-          <div className="space-y-2 sm:space-y-2">
+          <div className="space-y-4">
             {filters.map((filter, i) => (
               <FilterRow
                 key={i}
@@ -582,50 +409,141 @@ export default function FilterBuilder() {
         </div>
       )}
 
-      {error && <p className="text-destructive text-sm">{error instanceof Error ? error.message : "Search failed"}</p>}
-
-      {loading && !data ? (
-        <ResultsGridSkeleton />
-      ) : data ? (
-        <>
-          <div className={cn("transition-opacity", isFetching && "opacity-60")}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-muted-foreground">
-                Showing {rangeStart}–{rangeEnd} of {totalFiltered.toLocaleString()} results
-              </p>
-              {totalPages > 1 && (
-                <p className="text-xs text-muted-foreground">
-                  Page {currentPage} of {totalPages}
-                </p>
-              )}
-            </div>
-            <ResultsGrid results={data} />
+      {/* Quick Access Matrix (Genres & Status) */}
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/20 whitespace-nowrap">Genre Matrix</span>
+            <div className="h-px flex-1 bg-outline/5" />
           </div>
-          {totalPages > 1 && (
-            <div className="sticky bottom-0 z-10 flex items-center justify-center gap-3 py-3 bg-background/95 backdrop-blur-sm border-t border-border -mx-4 px-4 sm:static sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:mx-0 sm:py-2 sm:pb-8">
-              <Button
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={!hasPrev || isFetching}
-                variant="outline"
-                size="sm"
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={!hasNext || isFetching}
-                variant="outline"
-                size="sm"
-              >
-                Next
-              </Button>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_GENRES.map((genre) => {
+              const selected = selectedGenres.includes(genre);
+              return (
+                <button
+                  key={genre}
+                  onClick={() => toggleGenre(genre)}
+                  className={cn(
+                    "px-6 py-2 border text-[10px] font-black tracking-widest uppercase transition-all rounded-sm",
+                    selected
+                      ? "bg-primary-container text-on-primary-container border-primary shadow-[0_0_15px_rgba(255,80,110,0.2)]"
+                      : "bg-surface-container-low border-outline/10 text-white/40 hover:border-white/20 hover:text-white"
+                  )}
+                >
+                  {genre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/20 whitespace-nowrap">Status Frequency</span>
+              <div className="h-px flex-1 bg-outline/5" />
+            </div>
+            <div className="flex gap-2 p-1 bg-surface-container-low border border-outline/10 rounded-sm">
+              {["any", "yes", "no"].map((val) => {
+                const labelMap = { any: "ALL", yes: "AIRING", no: "FINISHED" };
+                const active = airing === val;
+                return (
+                  <button
+                    key={val}
+                    onClick={() => { setAiring(val as any); resetPage(); }}
+                    className={cn(
+                      "flex-1 py-3 text-[10px] font-black tracking-widest uppercase transition-all rounded-sm",
+                      active
+                        ? "bg-primary-container text-on-primary-container shadow-[0_0_15px_rgba(255,80,110,0.2)]"
+                        : "text-white/20 hover:text-white"
+                    )}
+                  >
+                    {labelMap[val as keyof typeof labelMap]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {user && watchlistTags.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/20 whitespace-nowrap">Watchlist Filter</span>
+                <div className="h-px flex-1 bg-outline/5" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <div className="flex gap-1 p-1 bg-surface-container-low border border-outline/10 rounded-sm mr-2">
+                  <button
+                    onClick={() => { setWatchlistMode("hide"); resetPage(); }}
+                    className={cn("px-4 py-1.5 text-[9px] font-black rounded-sm transition-all", watchlistMode === "hide" ? "bg-white/10 text-white" : "text-white/20")}
+                  >
+                    HIDE
+                  </button>
+                  <button
+                    onClick={() => { setWatchlistMode("show"); resetPage(); }}
+                    className={cn("px-4 py-1.5 text-[9px] font-black rounded-sm transition-all", watchlistMode === "show" ? "bg-white/10 text-white" : "text-white/20")}
+                  >
+                    ONLY
+                  </button>
+                </div>
+                {watchlistTags.map((tag) => {
+                  const active = hideWatched.includes(tag.tag);
+                  const color = resolveTagColor(tag.tag, tag.color);
+                  return (
+                    <button
+                      key={tag.tag}
+                      onClick={() => toggleHideWatched(tag.tag)}
+                      className="px-4 py-2 border rounded-sm text-[9px] font-black tracking-widest uppercase transition-all"
+                      style={{
+                        borderColor: active ? color : toRgba(color, 0.1),
+                        backgroundColor: active ? toRgba(color, 0.2) : "transparent",
+                        color: active ? color : toRgba(color, 0.4),
+                        boxShadow: active ? `0 0 10px ${toRgba(color, 0.2)}` : 'none'
+                      }}
+                    >
+                      {tag.tag}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
-        </>
-      ) : null}
+        </div>
+      </div>
+
+      {error && <p className="text-error text-[10px] font-bold uppercase tracking-widest animate-pulse">Critical: {error instanceof Error ? error.message : "Search failure detected"}</p>}
+
+      <div className="pt-10">
+        {loading && !data ? (
+          <ResultsGridSkeleton />
+        ) : data ? (
+          <div className={cn("transition-opacity duration-500", isFetching && "opacity-30")}>
+            <ResultsGrid results={data} />
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-20 border-t border-outline/10 pt-10 pb-32">
+                <button
+                  onClick={() => { setCurrentPage(currentPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  disabled={!hasPrev || isFetching}
+                  className="flex items-center gap-4 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-primary disabled:opacity-0 transition-all"
+                >
+                  <span className="text-lg">←</span> PREV SIGNAL
+                </button>
+                <div className="flex items-center gap-6">
+                  <span className="text-white/20 font-display font-black italic text-2xl">{currentPage} <span className="text-sm opacity-50">/ {totalPages}</span></span>
+                </div>
+                <button
+                  onClick={() => { setCurrentPage(currentPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  disabled={!hasNext || isFetching}
+                  className="flex items-center gap-4 text-[11px] font-black tracking-[0.3em] uppercase text-white/40 hover:text-primary disabled:opacity-0 transition-all text-right"
+                >
+                  NEXT SIGNAL <span className="text-lg">→</span>
+                </button>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

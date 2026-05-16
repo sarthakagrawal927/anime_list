@@ -86,20 +86,14 @@ export default function AnimeCard({
     );
   };
 
-  const scoreColor =
-    anime.score >= 8
-      ? "text-emerald-400"
-      : anime.score >= 6
-        ? "text-yellow-400"
-        : "text-red-400";
   const title = anime.title_english || anime.name;
   const detailHref = getAnimeDetailHref(anime.id);
 
   return (
-    <div className="group relative">
+    <div className="group relative cursor-pointer block">
       {/* Poster image */}
-      <Link href={detailHref} className="block">
-        <div className="aspect-[2/3] relative overflow-hidden rounded-lg bg-muted">
+      <Link href={detailHref} prefetch={false} className="block">
+        <div className="aspect-[2/3] relative overflow-hidden bg-surface-container-low mb-4">
           {anime.image ? (
             <Image
               src={anime.image}
@@ -107,22 +101,23 @@ export default function AnimeCard({
               fill
               quality={60}
               priority={priority}
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 185px"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-muted-foreground text-xs">No image</span>
+              <span className="text-white/40 text-[10px] font-bold tracking-widest uppercase">No image</span>
             </div>
           )}
 
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          {/* Cyberpunk Gradient overlay */}
+          <div className="absolute inset-0 bg-primary-container/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-          {/* Score badge - always visible */}
+          {/* Score badge */}
           {anime.score > 0 && (
-            <div className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm rounded-md px-1.5 py-0.5">
-              <span className={`text-xs font-bold ${scoreColor}`}>
+            <div className="absolute top-2 left-2 bg-surface/80 backdrop-blur-md rounded-sm px-2 py-1 border border-outline/20">
+              <span className="text-[10px] font-black tracking-widest text-primary italic font-display">
                 {anime.score.toFixed(1)}
               </span>
             </div>
@@ -130,21 +125,21 @@ export default function AnimeCard({
 
           {/* Type badge */}
           {anime.type && (
-            <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-sm rounded-md px-1.5 py-0.5">
-              <span className="text-[10px] font-medium text-white/90">
+            <div className="absolute top-2 right-2 bg-surface/80 backdrop-blur-md rounded-sm px-2 py-1 border border-outline/20">
+              <span className="text-[10px] font-bold text-white/80 uppercase tracking-widest">
                 {anime.type}
               </span>
             </div>
           )}
 
           {/* Hover overlay with details */}
-          <div className="absolute inset-x-0 bottom-0 p-2.5 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
+          <div className="absolute inset-x-0 bottom-0 p-4 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
             {anime.genres.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-1.5">
+              <div className="flex flex-wrap gap-2 mb-2">
                 {anime.genres.slice(0, 3).map((g) => (
                   <span
                     key={g}
-                    className="text-[10px] bg-white/20 backdrop-blur-sm rounded-full px-2 py-0.5 text-white"
+                    className="text-[9px] font-black tracking-[0.2em] uppercase text-white bg-white/10 backdrop-blur-sm px-2 py-1 rounded-sm"
                   >
                     {g}
                   </span>
@@ -152,7 +147,7 @@ export default function AnimeCard({
               </div>
             )}
             {anime.synopsis && (
-              <p className="text-[11px] text-white/80 line-clamp-3 leading-relaxed">
+              <p className="text-[11px] font-body text-white/70 line-clamp-3 leading-relaxed">
                 {anime.synopsis}
               </p>
             )}
@@ -161,30 +156,32 @@ export default function AnimeCard({
       </Link>
 
       {/* Title and metadata below poster */}
-      <div className="mt-2 space-y-1">
-        <div className="flex items-start gap-2">
+      <div className="mt-2 flex items-start gap-2 justify-between">
+        <div className="min-w-0 flex-1">
           <Link
             href={detailHref}
-            className="min-w-0 flex-1 text-sm font-medium text-foreground line-clamp-2 leading-tight hover:text-primary transition-colors"
+            prefetch={false}
+            className="block w-full"
           >
-            {title}
+            <h4 className="font-display font-black text-lg uppercase tracking-tight text-white group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+              {title}
+            </h4>
           </Link>
-          <a
-            href={anime.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Open ${title} on MyAnimeList`}
-            className="mt-0.5 shrink-0 text-muted-foreground transition-colors hover:text-primary"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-          </a>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-[10px] font-bold text-white/40 tracking-widest uppercase">
+              {anime.genres[0] || "Unknown"} {anime.year > 0 ? `• ${anime.year}` : ""}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {anime.year > 0 && <span>{anime.year}</span>}
-          {anime.members > 0 && (
-            <span>{(anime.members / 1000).toFixed(0)}k users</span>
-          )}
-        </div>
+        <a
+          href={anime.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${title} on MyAnimeList`}
+          className="shrink-0 text-white/30 hover:text-primary transition-colors"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </a>
       </div>
 
       {/* Add to watchlist - top right on hover */}
@@ -198,23 +195,23 @@ export default function AnimeCard({
               }}
               disabled={mutation.isPending}
               aria-label={currentStatus ? `Edit watchlist status: ${currentStatus}` : "Add to watchlist"}
-              className="h-7 min-w-7 rounded-full text-primary-foreground flex items-center justify-center text-lg leading-none shadow-lg hover:scale-110 transition-transform px-2"
+              className="h-8 min-w-8 rounded-sm bg-primary-container text-on-primary-container flex items-center justify-center shadow-[0_0_15px_rgba(255,80,110,0.4)] hover:scale-105 transition-transform px-2"
               style={
                 currentStatusColor
-                  ? { backgroundColor: currentStatusColor }
+                  ? { backgroundColor: currentStatusColor, boxShadow: `0 0 15px ${currentStatusColor}66` }
                   : undefined
               }
             >
               {mutation.isPending ? (
                 <span className="animate-spin text-sm">...</span>
               ) : currentStatus ? (
-                <span className="text-xs font-semibold">{currentStatus.slice(0, 1)}</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">{currentStatus.slice(0, 1)}</span>
               ) : (
-                "+"
+                <span className="font-black text-sm">+</span>
               )}
             </button>
             {showMenu && (
-              <div className="absolute right-0 top-9 bg-popover border border-border rounded-lg shadow-xl py-1 w-52 z-20">
+              <div className="absolute right-0 top-10 bg-surface-container-high border border-outline/20 shadow-2xl rounded-sm py-1 w-52 z-20">
                 {availableTags.map((tag) => {
                   const color = resolveTagColor(tag.tag, tag.color);
                   const isCurrentTag = currentStatus === tag.tag;
@@ -225,51 +222,51 @@ export default function AnimeCard({
                       e.preventDefault();
                       handleAdd(tag.tag, tag.color);
                     }}
-                    className="flex items-center justify-between gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left"
+                    className="flex items-center justify-between gap-2 w-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors text-left"
                   >
-                    <span className="flex items-center gap-2">
+                    <span className="flex items-center gap-3">
                       <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: color }}
+                        className="h-2 w-2 rounded-full shadow-[0_0_8px_currentColor]"
+                        style={{ backgroundColor: color, color: color }}
                       />
-                      {tag.tag}
+                      <span className="text-white/80">{tag.tag}</span>
                     </span>
                     {isCurrentTag && (
-                      <span className="text-[10px] font-medium text-muted-foreground">
+                      <span className="text-[9px] text-primary">
                         Current
                       </span>
                     )}
                   </button>
                   );
                 })}
-                <div className="border-t border-border">
+                <div className="border-t border-outline/10">
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       scheduleMutation.mutate();
                     }}
                     disabled={scheduleMutation.isPending || scheduled}
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-accent transition-colors text-left disabled:opacity-50"
+                    className="flex items-center gap-3 w-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-white/80 hover:bg-white/5 transition-colors text-left disabled:opacity-50"
                   >
-                    <svg className="h-2 w-2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <svg className="h-3 w-3 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                     </svg>
-                    {scheduled ? "Scheduled" : "Add to Schedule"}
+                    {scheduled ? "Scheduled" : "Schedule"}
                   </button>
                 </div>
-                <div className="border-t border-border px-2 pt-2 pb-1 space-y-1.5">
+                <div className="border-t border-outline/10 px-3 pt-3 pb-2 space-y-2">
                   <div className="flex items-center gap-2">
                     <input
                       value={customTag}
                       onChange={(e) => setCustomTag(e.target.value)}
-                      placeholder="New tag"
-                      className="h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+                      placeholder="NEW TAG"
+                      className="h-8 flex-1 rounded-sm border border-outline/20 bg-surface px-2 text-[10px] font-bold uppercase tracking-widest text-white placeholder:text-white/20 focus:outline-none focus:border-primary"
                     />
                     <input
                       type="color"
                       value={customColor}
                       onChange={(e) => setCustomColor(e.target.value)}
-                      className="h-7 w-8 rounded border border-input bg-background p-0.5"
+                      className="h-8 w-8 rounded-sm border border-outline/20 bg-surface p-0.5 cursor-pointer"
                       aria-label="Tag color"
                     />
                   </div>
@@ -280,9 +277,9 @@ export default function AnimeCard({
                       if (!tag) return;
                       handleAdd(tag, customColor);
                     }}
-                    className="h-7 w-full rounded-md bg-primary text-primary-foreground text-xs"
+                    className="h-8 w-full rounded-sm bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-colors"
                   >
-                    Add custom tag
+                    Add
                   </button>
                 </div>
               </div>
@@ -291,12 +288,12 @@ export default function AnimeCard({
         </div>
       )}
       {currentStatus && (
-        <div className="mt-1">
+        <div className="mt-2">
           <Badge
-            className="text-[10px]"
+            className="text-[9px] font-black tracking-widest uppercase rounded-sm border-none shadow-[0_0_10px_rgba(0,0,0,0.5)]"
             style={{
               backgroundColor: currentStatusColor ?? resolveTagColor(currentStatus),
-              color: "#ffffff",
+              color: "#131313",
             }}
           >
             {currentStatus}
