@@ -2,6 +2,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { capturePageCrash } from "@/lib/foundry-monitoring";
 
 interface Props {
   children: React.ReactNode;
@@ -19,6 +20,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   static getDerivedStateFromError(): State {
     return { hasError: true };
+  }
+
+  componentDidCatch(error: Error): void {
+    capturePageCrash(error, "manual");
   }
 
   render() {
