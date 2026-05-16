@@ -1,9 +1,8 @@
 "use client";
 
 import type { SearchFilter, FieldOptions, FilterActions } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const GENRES = [
   "Comedy", "Action", "Fantasy", "Adventure", "Sci-Fi", "Drama", "Romance",
@@ -114,17 +113,10 @@ function getDefaultAction(
       ? "LESS_THAN_OR_EQUALS"
       : "GREATER_THAN_OR_EQUALS";
   }
-
   if (fields.array.includes(field)) {
-    return actions.array.includes("INCLUDES_ANY")
-      ? "INCLUDES_ANY"
-      : actions.array[0] || "INCLUDES_ANY";
+    return actions.array.includes("INCLUDES_ANY") ? "INCLUDES_ANY" : actions.array[0] || "INCLUDES_ANY";
   }
-
-  if (isValueSelectField(field)) {
-    return "EQUALS";
-  }
-
+  if (isValueSelectField(field)) return "EQUALS";
   return "CONTAINS";
 }
 
@@ -149,18 +141,11 @@ export default function FilterRow({
   const availableActions = getActionsForField(filter.field, fields, actions);
   const isArray = isArrayField(filter.field, fields);
   const valueOptions = getValueOptions(filter.field);
-  const fallbackAction =
-    availableActions[0] || getDefaultAction(filter.field, fields, actions);
-  const normalizedAction = availableActions.includes(filter.action)
-    ? filter.action
-    : fallbackAction;
+  const normalizedAction = availableActions.includes(filter.action) ? filter.action : availableActions[0];
   const normalizedValue = isArray
-    ? Array.isArray(filter.value)
-      ? filter.value
-      : []
-    : Array.isArray(filter.value)
-      ? filter.value[0] ?? ""
-      : filter.value;
+    ? Array.isArray(filter.value) ? filter.value : []
+    : Array.isArray(filter.value) ? filter.value[0] ?? "" : filter.value;
+  
   const normalizedFilter: SearchFilter = {
     ...filter,
     action: normalizedAction,
@@ -178,103 +163,85 @@ export default function FilterRow({
 
   const handleValueChange = (value: string) => {
     if (isArray) {
-      const current = Array.isArray(normalizedFilter.value)
-        ? normalizedFilter.value
-        : [];
-      const updated = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value];
+      const current = Array.isArray(normalizedFilter.value) ? normalizedFilter.value : [];
+      const updated = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
       onChange(index, { ...normalizedFilter, value: updated });
     } else if (fields.numeric.includes(filter.field)) {
-      onChange(index, {
-        ...normalizedFilter,
-        value: value === "" ? "" : Number(value),
-      });
+      onChange(index, { ...normalizedFilter, value: value === "" ? "" : Number(value) });
     } else {
       onChange(index, { ...normalizedFilter, value });
     }
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-start gap-2 rounded-lg border border-border bg-card p-3">
-      {/* Field and Action selectors - stack on mobile, row on desktop */}
-      <div className="flex gap-2 w-full sm:w-auto">
+    <div className="flex flex-col md:flex-row md:items-center gap-3 bg-surface p-4 rounded-sm border border-outline/5 transition-all hover:border-outline/20">
+      <div className="flex gap-3 flex-1">
         <select
           value={normalizedFilter.field}
           onChange={(e) => handleFieldChange(e.target.value)}
-          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[120px]"
+          className="h-10 bg-surface-container-low border border-outline/10 px-3 text-[10px] font-black tracking-widest uppercase text-white rounded-sm focus:border-primary focus:outline-none min-w-[140px]"
         >
           {allFields.map((f) => (
-            <option key={f} value={f}>
-              {getFieldLabel(f)}
-            </option>
+            <option key={f} value={f}>{getFieldLabel(f)}</option>
           ))}
         </select>
 
         <select
           value={normalizedFilter.action}
-          onChange={(e) =>
-            onChange(index, { ...normalizedFilter, action: e.target.value })
-          }
-          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm flex-1 sm:flex-initial sm:min-w-[140px]"
+          onChange={(e) => onChange(index, { ...normalizedFilter, action: e.target.value })}
+          className="h-10 bg-surface-container-low border border-outline/10 px-3 text-[10px] font-black tracking-widest uppercase text-primary rounded-sm focus:border-primary focus:outline-none min-w-[140px]"
         >
           {availableActions.map((a) => (
-            <option key={a} value={a}>
-              {getActionLabel(a)}
-            </option>
+            <option key={a} value={a}>{getActionLabel(a)}</option>
           ))}
         </select>
       </div>
 
-      {/* Value input/selector - full width on mobile */}
-      {isArray && valueOptions ? (
-        <div className="flex flex-wrap gap-1.5 flex-1">
-          {valueOptions.map((opt) => {
+      <div className="flex-[2] flex flex-wrap gap-2">
+        {isArray && valueOptions ? (
+          valueOptions.map((opt) => {
             const selected = Array.isArray(filter.value) && filter.value.includes(opt);
             return (
-              <Badge
+              <button
                 key={opt}
-                variant={selected ? "default" : "outline"}
-                className="cursor-pointer text-xs font-normal h-7"
                 onClick={() => handleValueChange(opt)}
+                className={cn(
+                  "px-3 py-1 border text-[9px] font-black tracking-widest uppercase rounded-sm transition-all",
+                  selected ? "bg-primary/20 text-primary border-primary" : "bg-surface-container-highest/20 border-outline/10 text-white/30 hover:text-white"
+                )}
               >
                 {opt}
-              </Badge>
+              </button>
             );
-          })}
-        </div>
-      ) : valueOptions ? (
-        <select
-          value={typeof normalizedFilter.value === "string" ? normalizedFilter.value : ""}
-          onChange={(e) => handleValueChange(e.target.value)}
-          className="h-9 sm:h-8 rounded-md border border-input bg-background px-2 text-sm w-full sm:flex-1"
-        >
-          <option value="">Select...</option>
-          {valueOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              {opt}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <Input
-          type={fields.numeric.includes(filter.field) ? "number" : "text"}
-          value={normalizedFilter.value as string | number}
-          onChange={(e) => handleValueChange(e.target.value)}
-          placeholder="Value..."
-          className="h-9 sm:h-8 w-full sm:flex-1"
-        />
-      )}
+          })
+        ) : valueOptions ? (
+          <select
+            value={typeof normalizedFilter.value === "string" ? normalizedFilter.value : ""}
+            onChange={(e) => handleValueChange(e.target.value)}
+            className="h-10 w-full bg-surface-container-low border border-outline/10 px-3 text-[10px] font-black tracking-widest uppercase text-white rounded-sm focus:border-primary focus:outline-none"
+          >
+            <option value="">SELECT VALUE...</option>
+            {valueOptions.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type={fields.numeric.includes(filter.field) ? "number" : "text"}
+            value={normalizedFilter.value as string | number}
+            onChange={(e) => handleValueChange(e.target.value)}
+            placeholder="INPUT PARAMETER..."
+            className="h-10 w-full bg-surface-container-low border border-outline/10 px-4 text-[10px] font-black tracking-widest uppercase text-white placeholder:text-white/10 rounded-sm focus:border-primary focus:outline-none"
+          />
+        )}
+      </div>
 
-      {/* Remove button - full width on mobile, shrink on desktop */}
-      <Button
-        variant="ghost"
-        size="sm"
+      <button
         onClick={() => onRemove(index)}
-        className="text-destructive hover:text-destructive w-full sm:w-auto sm:shrink-0 h-9 sm:h-8"
+        className="h-10 w-10 flex items-center justify-center text-white/20 hover:text-error transition-colors md:ml-2"
       >
-        Remove
-      </Button>
+        <Trash2 size={16} />
+      </button>
     </div>
   );
 }
