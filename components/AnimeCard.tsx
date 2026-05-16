@@ -88,6 +88,7 @@ export default function AnimeCard({
 
   const title = anime.title_english || anime.name;
   const detailHref = getAnimeDetailHref(anime.id);
+  const memberLabel = anime.members > 0 ? `${Math.round(anime.members / 1000)}k users` : null;
 
   return (
     <div className="group relative cursor-pointer block">
@@ -169,7 +170,11 @@ export default function AnimeCard({
           </Link>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-[10px] font-bold text-white/40 tracking-widest uppercase">
-              {anime.genres[0] || "Unknown"} {anime.year > 0 ? `• ${anime.year}` : ""}
+              <span>{anime.genres[0] || "Unknown"}</span>
+              {anime.year > 0 && <span> • </span>}
+              {anime.year > 0 && <span>{anime.year}</span>}
+              {memberLabel && <span> • </span>}
+              {memberLabel && <span>{memberLabel}</span>}
             </p>
           </div>
         </div>

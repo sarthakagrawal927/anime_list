@@ -15,7 +15,7 @@ let mockWatchlistData = {
 jest.mock("next/image", () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
-    const { fill: _fill, ...imgProps } = props;
+    const { fill: _fill, priority: _priority, ...imgProps } = props;
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img {...imgProps} />;
   },
@@ -26,10 +26,12 @@ jest.mock("next/link", () => ({
   default: ({
     children,
     href,
+    prefetch: _prefetch,
     ...props
   }: {
     children: React.ReactNode;
     href: string;
+    prefetch?: boolean;
   }) => (
     <a href={href} {...props}>
       {children}
