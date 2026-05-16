@@ -105,6 +105,14 @@ type Env = {
 };
 
 const SEARCH_CACHE_TTL_SECONDS = 180;
+const STATS_CACHE_TTL_SECONDS = 300;
+const SEARCH_SYNOPSIS_MAX = 220;
+
+const truncateSynopsis = (text: string | undefined): string | undefined => {
+  if (!text) return text;
+  if (text.length <= SEARCH_SYNOPSIS_MAX) return text;
+  return `${text.slice(0, SEARCH_SYNOPSIS_MAX - 1).trimEnd()}…`;
+};
 
 // ── JWT helpers (using jose instead of jsonwebtoken) ───────────────────
 
@@ -454,7 +462,9 @@ app.post("/api/search", optionalAuth, async (c) => {
     );
   }
 
-  const sorted = getScoreSortedList(filtered, filters, sortBy);
+  // Only keep `pagesize + offset` results — anything beyond is discarded by
+  // takePage anyway, so we avoid scoring/sorting the remaining tail.
+  const sorted = getScoreSortedList(filtered, filters, sortBy, pagesize + offset);
 
   const response = c.json({
     totalFiltered: filtered.length,
@@ -465,7 +475,9 @@ app.post("/api/search", optionalAuth, async (c) => {
       name: anime.title,
       title_english: anime.title_english,
       link: anime.url,
-      synopsis: anime.synopsis,
+      // Card renders line-clamp-3 (~180 chars). Truncate to keep payload small;
+      // full synopsis is on the detail endpoint.
+      synopsis: truncateSynopsis(anime.synopsis),
       members: anime.members,
       favorites: anime.favorites,
       year: anime.year,
@@ -493,10 +505,25 @@ app.post("/api/search", optionalAuth, async (c) => {
 });
 
 // Stats
+const STATS_CACHE_URL = "https://mal-cache.local/api/stats?v=1";
 app.get("/api/stats", optionalAuth, async (c) => {
   const user = c.get("user");
   const includeWatched = parseTagQuery(c.req.query("includeWatched"));
   const hideWatched = parseTagQuery(c.req.query("hideWatched"));
+
+  const isBaseStats =
+    !user?.userId && includeWatched.length === 0 && hideWatched.length === 0;
+  const edgeCache = (caches as unknown as { default: Cache }).default;
+  const baseCacheRequest = isBaseStats ? new Request(STATS_CACHE_URL) : null;
+
+  if (baseCacheRequest) {
+    const cachedResponse = await edgeCache.match(baseCacheRequest);
+    if (cachedResponse) {
+      const response = new Response(cachedResponse.body, cachedResponse);
+      response.headers.set("X-Stats-Cache", "HIT");
+      return response;
+    }
+  }
 
   let animeList = await animeStore.getAnimeList();
 
@@ -527,7 +554,24 @@ app.get("/api/stats", optionalAuth, async (c) => {
     );
   }
 
-  return c.json(await getAnimeStats(animeList));
+  const stats = await getAnimeStats(animeList);
+  const response = c.json(stats);
+
+  if (baseCacheRequest) {
+    response.headers.set("X-Stats-Cache", "MISS");
+    const cacheableResponse = new Response(response.body, response);
+    cacheableResponse.headers.set(
+      "Cache-Control",
+      `public, max-age=0, s-maxage=${STATS_CACHE_TTL_SECONDS}`
+    );
+    c.executionCtx.waitUntil(
+      edgeCache.put(baseCacheRequest, cacheableResponse.clone())
+    );
+    return cacheableResponse;
+  }
+
+  response.headers.set("X-Stats-Cache", "BYPASS");
+  return response;
 });
 
 app.get("/api/anime/:malId", optionalAuth, async (c) => {
@@ -716,6 +760,9 @@ app.get("/api/watchlist/enriched", requireAuth, async (c) => {
   const allAnime = await animeStore.getAnimeList();
   const animeMap = new Map(allAnime.map((a) => [a.mal_id.toString(), a]));
 
+  // Synopsis was historically included but is unused by the watchlist UI; on
+  // a 500-row list it added ~150 KB of body. Detail page fetches the full
+  // anime payload separately.
   const items = Object.values(watchlist.anime).map((entry) => {
     const anime = animeMap.get(entry.id);
     return {
@@ -730,7 +777,6 @@ app.get("/api/watchlist/enriched", requireAuth, async (c) => {
       episodes: anime?.episodes,
       members: anime?.members,
       genres: anime ? Object.keys(anime.genres) : [],
-      synopsis: anime?.synopsis,
       url: anime?.url,
     };
   });

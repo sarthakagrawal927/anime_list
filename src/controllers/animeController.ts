@@ -112,7 +112,7 @@ export const searchAnime = async (
     );
   }
 
-  const sorted = getScoreSortedList(filtered, filters, sortBy);
+  const sorted = getScoreSortedList(filtered, filters, sortBy, pagesize + offset);
 
   res.json({
     totalFiltered: filtered.length,

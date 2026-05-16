@@ -12,7 +12,11 @@ import type {
 } from "../types/animeDetail";
 import { logger } from "../utils/logger";
 
-const DETAIL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// Jikan supplemental data (relations + recommendations) is essentially static
+// for a given anime — relations almost never change post-airing. A 7d TTL
+// turns cache misses from a per-day event into a per-week one while still
+// catching the occasional MAL edit.
+const DETAIL_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const JIKAN_TIMEOUT_MS = 10_000;
 
 type JikanImageSet = {

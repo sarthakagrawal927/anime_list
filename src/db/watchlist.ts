@@ -165,8 +165,11 @@ export async function initWatchlistTables(): Promise<void> {
       PRIMARY KEY (user_id, mal_id)
     )`,
     "CREATE INDEX IF NOT EXISTS idx_user_tags_user ON user_tags(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_user_tags_user_lower_name ON user_tags(user_id, lower(name))",
     "CREATE INDEX IF NOT EXISTS idx_watchlist_tag_id ON anime_watchlist(tag_id)",
+    "CREATE INDEX IF NOT EXISTS idx_watchlist_user_tag ON anime_watchlist(user_id, tag_id)",
     "CREATE INDEX IF NOT EXISTS idx_manga_watchlist_tag_id ON manga_watchlist(tag_id)",
+    "CREATE INDEX IF NOT EXISTS idx_manga_watchlist_user_tag ON manga_watchlist(user_id, tag_id)",
   ]);
 }
 
@@ -387,12 +390,23 @@ export async function importAnimeWatchlistEntries(
   entries: ExternalWatchlistEntry[],
   userId: string = "default",
 ): Promise<{ imported: number }> {
-  const db = getDb();
-  const statements = [];
+  if (entries.length === 0) return { imported: 0 };
 
-  for (const entry of entries) {
-    const tag = await ensureTag(userId, entry.status);
-    statements.push({
+  // Resolve each distinct status to a tag ID once, instead of per-entry.
+  // For a 500-row import that's ~3 lookups instead of 500.
+  const uniqueStatuses = Array.from(
+    new Set(entries.map((entry) => normalizeTag(entry.status))),
+  );
+  const tagIdByStatus = new Map<string, string>();
+  for (const status of uniqueStatuses) {
+    const tag = await ensureTag(userId, status);
+    tagIdByStatus.set(status.toLowerCase(), tag.id);
+  }
+
+  const db = getDb();
+  const statements = entries.map((entry) => {
+    const tagId = tagIdByStatus.get(normalizeTag(entry.status).toLowerCase())!;
+    return {
       sql: `INSERT INTO anime_watchlist (user_id, mal_id, tag_id, title, type, episodes, note)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, mal_id) DO UPDATE SET
@@ -404,19 +418,16 @@ export async function importAnimeWatchlistEntries(
       args: [
         userId,
         entry.malId,
-        tag.id,
+        tagId,
         entry.title ?? null,
         entry.type ?? null,
         entry.episodes ?? null,
         entry.note ?? null,
       ],
-    });
-  }
+    };
+  });
 
-  if (statements.length > 0) {
-    await db.batch(statements);
-  }
-
+  await db.batch(statements);
   return { imported: statements.length };
 }
 

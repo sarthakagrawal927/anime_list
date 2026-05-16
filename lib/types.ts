@@ -103,7 +103,6 @@ export interface EnrichedWatchlistItem {
   episodes?: number;
   members?: number;
   genres: string[];
-  synopsis?: string;
   url?: string;
 }
 

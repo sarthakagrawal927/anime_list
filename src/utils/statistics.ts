@@ -297,11 +297,64 @@ export const getAnimeScore = (
   return baseScore;
 };
 
+type ScoredAnime = AnimeItem & { points: number };
+
+// Top-K selection by partial sort. When `limit` is much smaller than the
+// filtered list (typical pagesize 40 vs 14k anime), this is O(n + k log n)
+// — orders of magnitude faster than the prior O(n log n) full sort.
+const partialSortDescending = (items: ScoredAnime[], limit: number): ScoredAnime[] => {
+  if (limit <= 0 || items.length === 0) return items;
+  if (limit >= items.length) {
+    return items.sort((a, b) => b.points - a.points);
+  }
+  // Build a min-heap of size `limit`; smallest element is at root.
+  const heap: ScoredAnime[] = [];
+  const swap = (i: number, j: number) => {
+    const tmp = heap[i];
+    heap[i] = heap[j];
+    heap[j] = tmp;
+  };
+  const siftUp = (idx: number) => {
+    let i = idx;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (heap[parent].points <= heap[i].points) break;
+      swap(parent, i);
+      i = parent;
+    }
+  };
+  const siftDown = (idx: number) => {
+    const n = heap.length;
+    let i = idx;
+    for (;;) {
+      const l = i * 2 + 1;
+      const r = l + 1;
+      let smallest = i;
+      if (l < n && heap[l].points < heap[smallest].points) smallest = l;
+      if (r < n && heap[r].points < heap[smallest].points) smallest = r;
+      if (smallest === i) return;
+      swap(i, smallest);
+      i = smallest;
+    }
+  };
+  for (const item of items) {
+    if (heap.length < limit) {
+      heap.push(item);
+      siftUp(heap.length - 1);
+    } else if (item.points > heap[0].points) {
+      heap[0] = item;
+      siftDown(0);
+    }
+  }
+  return heap.sort((a, b) => b.points - a.points);
+};
+
 export const getScoreSortedList = (
   animeList: AnimeItem[],
   filters: Filter[],
-  sortBy?: NumericField
-) => {
+  sortBy?: NumericField,
+  limit?: number
+): ScoredAnime[] => {
   const filtersWithScoreRange: FiltersWithScoreRange[] = filters.map(
     (filter) => {
       if (!isNumericField(filter.field)) return filter as FiltersWithScoreRange;
@@ -313,13 +366,19 @@ export const getScoreSortedList = (
       };
     }
   );
-  const animeWithScores = animeList.map((anime) => ({
-    ...anime,
-    points:
+  // Avoid spreading every anime into a new object; mutate-once with type cast
+  // keeps allocations down on hot paths over the full 14k catalogue.
+  const scored = animeList.map((anime) => {
+    const points =
       sortBy && typeof anime[sortBy] === "number"
-        ? anime[sortBy]
-        : getAnimeScore(anime, filtersWithScoreRange),
-  }));
+        ? (anime[sortBy] as number)
+        : getAnimeScore(anime, filtersWithScoreRange);
+    (anime as ScoredAnime).points = points;
+    return anime as ScoredAnime;
+  });
 
-  return animeWithScores.sort((a, b) => b.points - a.points);
+  if (limit != null) {
+    return partialSortDescending(scored, limit);
+  }
+  return scored.sort((a, b) => b.points - a.points);
 };
