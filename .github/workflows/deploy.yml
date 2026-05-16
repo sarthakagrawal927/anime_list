@@ -22,6 +22,13 @@ jobs:
         with: { node-version: '22', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm pages:build
+        env:
+          # NEXT_PUBLIC_* values are inlined into the client bundle at build
+          # time. wrangler.toml [vars] only applies at runtime to server code,
+          # so the client would otherwise see them as undefined.
+          NEXT_PUBLIC_API_URL: https://mal-api.sarthakagrawal927.workers.dev
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: 207924374505-0mur9a99sal0ckob0vt38pcdj360ond5.apps.googleusercontent.com
+          NEXT_PUBLIC_SAASMAKER_API_KEY: pk_fb1fe870205272a447298bfac32122383426d6a1c1fb10ab
       - id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -47,6 +54,10 @@ jobs:
         with: { node-version: '22', cache: 'pnpm' }
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm pages:build
+        env:
+          NEXT_PUBLIC_API_URL: https://mal-api.sarthakagrawal927.workers.dev
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: 207924374505-0mur9a99sal0ckob0vt38pcdj360ond5.apps.googleusercontent.com
+          NEXT_PUBLIC_SAASMAKER_API_KEY: pk_fb1fe870205272a447298bfac32122383426d6a1c1fb10ab
       - id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
