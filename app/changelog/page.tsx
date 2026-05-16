@@ -33,7 +33,7 @@ function formatDate(dateStr: string): string {
 }
 
 export default function ChangelogPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["changelog"],
     queryFn: () => getChangelog(200),
   });
@@ -62,6 +62,20 @@ export default function ChangelogPage() {
               </div>
             </div>
           ))}
+        </div>
+      ) : isError ? (
+        <div className="rounded-xl border border-border bg-card/50 p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Couldn&apos;t load the changelog. Please try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="text-sm font-medium text-primary hover:underline disabled:opacity-60"
+          >
+            {isFetching ? "Retrying…" : "Retry"}
+          </button>
         </div>
       ) : dates.length === 0 ? (
         <p className="text-sm text-muted-foreground">No changes recorded yet.</p>
