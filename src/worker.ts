@@ -250,14 +250,18 @@ app.use("*", async (c, next) => {
 });
 
 // PostHog tracing middleware
+const POSTHOG_KEY = "phc_qgiAarw4Co4pw9fz3Fxj4UJaHmqzFetqs4JrXhGc35Nd";
+const POSTHOG_HOST = "https://us.i.posthog.com";
+
 let phConfigured = false;
 app.use("*", async (c, next) => {
-  if (!phConfigured && c.env.POSTHOG_API_KEY) {
-    configurePostHog(c.env.POSTHOG_API_KEY, "https://us.i.posthog.com");
+  const posthogKey = c.env.POSTHOG_API_KEY || POSTHOG_KEY;
+  if (!phConfigured) {
+    configurePostHog(posthogKey, POSTHOG_HOST);
     phConfigured = true;
   }
   await next();
-  if (c.env.POSTHOG_API_KEY) c.executionCtx.waitUntil(flushPostHog());
+  c.executionCtx.waitUntil(flushPostHog());
 });
 
 // DB init (runs once per isolate)
