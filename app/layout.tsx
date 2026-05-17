@@ -89,7 +89,7 @@ export default function RootLayout({
             <QueryProvider>
               <AuthProvider>
                 <Navigation />
-                <main className="pb-32 pt-20">{children}</main>
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 pb-32 pt-20">{children}</main>
                 <Footer />
                 <FeedbackWidgetWrapper />
               </AuthProvider>

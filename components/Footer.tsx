@@ -26,20 +26,22 @@ export default function Footer() {
   });
 
   return (
-    <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 mt-8 border-t border-border/50">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+    <footer className="max-w-7xl mx-auto px-4 sm:px-6 py-6 mt-8 border-t border-outline/20">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
         <div className="flex items-center gap-3">
-          <span>MAL Explorer</span>
+          <span>
+            <span className="text-primary">NEON</span> CURATOR
+          </span>
           {data?.lastUpdated && (
             <>
-              <span className="text-border">|</span>
+              <span className="text-white/20">|</span>
               <span>Data updated {timeAgo(data.lastUpdated)}</span>
             </>
           )}
         </div>
         <Link
           href="/changelog"
-          className="hover:text-foreground transition-colors"
+          className="hover:text-white transition-colors"
         >
           Changelog
         </Link>
